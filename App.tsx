@@ -21,7 +21,6 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
   
-  // Masquer la navigation sur les pages "App" (Dashboard, Admin, Apply)
   const isAppPage = location.pathname.startsWith('/dashboard') || 
                     location.pathname.startsWith('/admin') || 
                     location.pathname.startsWith('/apply');
@@ -40,24 +39,24 @@ const Navbar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#e8f2ec] dark:border-gray-800 bg-surface-light/90 dark:bg-surface-dark/90 backdrop-blur-md">
-      <div className="px-4 md:px-10 py-3 flex items-center justify-between max-w-[1400px] mx-auto">
-        <Link to="/" className="flex items-center gap-3 shrink-0">
-          <div className="size-8 flex items-center justify-center text-primary bg-primary/10 rounded-lg">
-            <span className="material-symbols-outlined text-[24px] font-bold">school</span>
+    <header className="sticky top-0 z-50 w-full border-b border-border-light dark:border-white/5 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl">
+      <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto">
+        <Link to="/" className="flex items-center gap-4 shrink-0 group">
+          <div className="size-10 flex items-center justify-center text-primary bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
+            <span className="material-symbols-outlined text-[28px] font-bold">school</span>
           </div>
-          <h2 className="text-[#0f1a13] dark:text-white text-lg font-black leading-tight tracking-tight hidden sm:block">
+          <h2 className="text-text-main dark:text-white text-xl font-black tracking-tight group-hover:text-primary transition-colors hidden sm:block">
             Etudier au Bénin
           </h2>
         </Link>
 
-        <div className="hidden lg:flex flex-1 justify-center px-4">
-          <nav className="flex items-center gap-2 xl:gap-4">
+        <div className="hidden lg:flex flex-1 justify-center px-8">
+          <nav className="flex items-center gap-1 xl:gap-2">
             {navLinks.map((link) => (
               <Link 
                 key={link.path}
                 to={link.path} 
-                className={`text-[13px] font-bold transition-all px-3 py-2 rounded-lg ${isActive(link.path) ? 'text-primary' : 'text-[#0f1a13] dark:text-gray-300 hover:text-primary'}`}
+                className={`text-[14px] font-bold transition-all px-4 py-2.5 rounded-xl ${isActive(link.path) ? 'bg-primary/10 text-primary' : 'text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-primary/5'}`}
               >
                 {link.name}
               </Link>
@@ -65,32 +64,39 @@ const Navbar = () => {
           </nav>
         </div>
 
-        <div className="hidden lg:flex items-center gap-6 shrink-0">
-          <Link to="/login" className="text-sm font-bold text-[#0f1a13] dark:text-gray-300 hover:text-primary transition-colors">
+        <div className="hidden lg:flex items-center gap-8 shrink-0">
+          <Link to="/login" className="text-sm font-black text-gray-500 hover:text-primary transition-colors">
             Connexion
           </Link>
-          <Link to="/register" className="flex items-center justify-center rounded-lg h-10 px-6 bg-primary text-[#0f1a13] hover:bg-green-400 transition-all hover:scale-105 active:scale-95 text-sm font-bold shadow-sm">
+          <Link to="/register" className="flex items-center justify-center rounded-2xl h-12 px-8 bg-primary text-black hover:bg-green-400 transition-all hover:shadow-hover hover:-translate-y-0.5 active:translate-y-0 text-sm font-black">
             S'inscrire
           </Link>
         </div>
 
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden p-2 text-gray-600 dark:text-gray-300">
-          <span className="material-symbols-outlined text-3xl">{isMenuOpen ? 'close' : 'menu'}</span>
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors">
+          <span className="material-symbols-outlined text-3xl">{isMenuOpen ? 'close' : 'menu_open'}</span>
         </button>
       </div>
 
       {isMenuOpen && (
-        <div className="lg:hidden fixed inset-x-0 top-[61px] bg-white dark:bg-surface-dark border-b border-gray-100 dark:border-gray-800 p-8 flex flex-col gap-5 animate-fade-in shadow-2xl h-[calc(100vh-61px)] overflow-y-auto">
-          <nav className="flex flex-col gap-4">
+        <div className="lg:hidden fixed inset-0 z-[60] bg-white dark:bg-background-dark p-8 flex flex-col gap-10 animate-fade-in">
+          <div className="flex justify-between items-center">
+             <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3">
+               <div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary"><span className="material-symbols-outlined font-bold">school</span></div>
+               <span className="font-black text-xl">Etudier au Bénin</span>
+             </Link>
+             <button onClick={() => setIsMenuOpen(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
+          </div>
+          <nav className="flex flex-col gap-2">
             {navLinks.map((link) => (
-              <Link key={link.path} onClick={() => setIsMenuOpen(false)} to={link.path} className={`text-xl font-black ${isActive(link.path) ? 'text-primary' : 'dark:text-white'}`}>
+              <Link key={link.path} onClick={() => setIsMenuOpen(false)} to={link.path} className={`text-2xl font-black p-4 rounded-3xl transition-all ${isActive(link.path) ? 'bg-primary text-black' : 'hover:bg-primary/5 dark:text-white'}`}>
                 {link.name}
               </Link>
             ))}
           </nav>
-          <div className="mt-6 flex flex-col gap-3">
-            <Link onClick={() => setIsMenuOpen(false)} to="/login" className="text-lg font-bold text-center py-4 rounded-xl border-2 border-gray-50 dark:border-gray-800 dark:text-white">Connexion</Link>
-            <Link onClick={() => setIsMenuOpen(false)} to="/register" className="bg-primary py-4 text-center rounded-xl font-bold text-[#0f1a13]">S'inscrire</Link>
+          <div className="mt-auto flex flex-col gap-4">
+            <Link onClick={() => setIsMenuOpen(false)} to="/login" className="text-lg font-black text-center py-5 rounded-3xl border-2 border-gray-100 dark:border-white/10 dark:text-white">Connexion</Link>
+            <Link onClick={() => setIsMenuOpen(false)} to="/register" className="bg-primary py-5 text-center rounded-3xl font-black text-black text-lg shadow-xl shadow-primary/20">S'inscrire</Link>
           </div>
         </div>
       )}
@@ -107,45 +113,52 @@ const Footer = () => {
   if (isAppPage) return null;
 
   return (
-    <footer className="bg-surface-light dark:bg-surface-dark border-t border-[#e8f2ec] dark:border-gray-800 pt-16 pb-8">
-      <div className="max-w-[1280px] mx-auto px-4 md:px-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[#0f1a13] dark:text-white">
-              <div className="size-6 bg-primary rounded flex items-center justify-center"><span className="material-symbols-outlined text-sm">school</span></div>
-              <span className="font-bold text-lg">Etudier au Bénin</span>
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">La plateforme officielle d'orientation et d'inscription pour l'enseignement supérieur au Bénin.</p>
+    <footer className="bg-white dark:bg-surface-dark border-t border-border-light dark:border-white/5 pt-20 pb-12">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
+          <div className="space-y-6">
+            <Link to="/" className="flex items-center gap-3">
+              <div className="size-8 bg-primary rounded-xl flex items-center justify-center text-black"><span className="material-symbols-outlined text-sm font-bold">school</span></div>
+              <span className="font-black text-xl tracking-tight dark:text-white">Etudier au Bénin</span>
+            </Link>
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium">
+              La plateforme de référence pour l'orientation, les préinscriptions et l'admission dans le supérieur au Bénin.
+            </p>
           </div>
-          <div className="space-y-4">
-            <h3 className="font-bold text-[#0f1a13] dark:text-white uppercase text-xs tracking-widest">Navigation</h3>
-            <div className="flex flex-col gap-2">
-              <Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Accueil</Link>
-              <Link to="/universities" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Universités</Link>
-              <Link to="/schools" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Ecoles</Link>
-              <Link to="/majors" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Formations</Link>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <h3 className="font-bold text-[#0f1a13] dark:text-white uppercase text-xs tracking-widest">Aide</h3>
-            <div className="flex flex-col gap-2">
-              <Link to="/pricing" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Tarifs</Link>
-              <Link to="/contact" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">Nous Contacter</Link>
-              <Link to="/faq" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium">FAQ</Link>
+          <div className="space-y-8">
+            <h3 className="font-black text-xs uppercase tracking-[0.3em] text-gray-400">Navigation</h3>
+            <div className="flex flex-col gap-4">
+              <Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Accueil</Link>
+              <Link to="/universities" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Universités</Link>
+              <Link to="/schools" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Ecoles</Link>
+              <Link to="/majors" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Formations</Link>
             </div>
           </div>
-          <div className="space-y-4">
-            <h3 className="font-bold text-[#0f1a13] dark:text-white uppercase text-xs tracking-widest">Restez informé</h3>
-            <p className="text-xs text-gray-500">Recevez les dates des concours et les nouvelles offres.</p>
-            <div className="flex gap-2">
-              <input className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none" placeholder="Email" type="email" />
-              <button className="bg-primary text-[#0f1a13] p-2 rounded-lg hover:bg-green-400"><span className="material-symbols-outlined text-xl">send</span></button>
+          <div className="space-y-8">
+            <h3 className="font-black text-xs uppercase tracking-[0.3em] text-gray-400">Aide</h3>
+            <div className="flex flex-col gap-4">
+              <Link to="/pricing" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Tarifs</Link>
+              <Link to="/contact" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Nous Contacter</Link>
+              <Link to="/faq" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">FAQ</Link>
+            </div>
+          </div>
+          <div className="space-y-8">
+            <h3 className="font-black text-xs uppercase tracking-[0.3em] text-gray-400">Restez informé</h3>
+            <p className="text-xs text-gray-500 font-bold leading-relaxed">Soyez averti des dates de concours et des nouvelles offres de formation.</p>
+            <div className="flex gap-2 p-1.5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+              <input className="w-full bg-transparent border-none text-sm font-bold placeholder:text-gray-400 focus:ring-0 px-3" placeholder="votre@email.com" type="email" />
+              <button className="bg-primary text-black p-3 rounded-xl hover:bg-green-400 transition-colors shadow-lg shadow-primary/20">
+                <span className="material-symbols-outlined text-xl font-bold">send</span>
+              </button>
             </div>
           </div>
         </div>
-        <div className="pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
-          <p>© 2024 Etudier au Bénin. Par EDEN Communication.</p>
-          <div className="flex gap-8"><Link to="#" className="hover:text-primary">Légal</Link><Link to="#" className="hover:text-primary">Confidentialité</Link></div>
+        <div className="pt-10 border-t border-gray-100 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+          <p>© 2024 Etudier au Bénin • Par EDEN Communication</p>
+          <div className="flex gap-10">
+            <Link to="#" className="hover:text-primary transition-colors">Mentions Légales</Link>
+            <Link to="#" className="hover:text-primary transition-colors">Confidentialité</Link>
+          </div>
         </div>
       </div>
     </footer>
