@@ -16,9 +16,17 @@ const Pricing: React.FC = () => {
         {/* Local Student Plan */}
         <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 shadow-2xl border border-gray-100 dark:border-white/5 space-y-8 flex flex-col h-full relative overflow-hidden group">
            <div className="flex justify-between items-start">
-             <div>
-               <h2 className="text-2xl font-black dark:text-white tracking-tight">Étudiant résidant au Bénin</h2>
-               <p className="text-gray-500 font-bold text-sm">Pour les candidats sur le territoire national</p>
+             <div className="space-y-3">
+               <div>
+                 <h2 className="text-2xl font-black dark:text-white tracking-tight">Étudiant résidant au Bénin</h2>
+                 <p className="text-gray-500 font-bold text-sm">Pour les candidats sur le territoire national</p>
+               </div>
+               <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl w-fit">
+                  <span className="material-symbols-outlined text-amber-500 text-sm font-bold">info</span>
+                  <p className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    NB: Les écoles et universités d'État sont exemptées
+                  </p>
+               </div>
              </div>
              <span className="px-4 py-1.5 bg-gray-50 dark:bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-400 border border-gray-100 dark:border-gray-800">Local</span>
            </div>
