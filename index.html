@@ -14,12 +14,9 @@
         theme: {
           extend: {
             colors: {
-              "primary": "#13ec6d",
-              "primary-dark": "#0fb955",
-              "background-light": "#f8faf9",
-              "background-dark": "#0d1b13",
-              "surface-light": "#ffffff",
-              "surface-dark": "#162a1f",
+              "primary": "var(--primary-color, #13ec6d)",
+              "background-dark": "var(--bg-color, #0d1b13)",
+              "surface-dark": "var(--surface-color, #162a1f)",
               "text-main": "#0d1b13",
               "text-secondary": "#4c9a6c",
               "border-light": "#e8f2ec",
@@ -29,8 +26,8 @@
               sans: ['Noto Sans', 'sans-serif'],
             },
             borderRadius: {
-              '4xl': '2rem',
-              '5xl': '3rem',
+              '4xl': 'var(--radius-main, 2rem)',
+              '5xl': 'calc(var(--radius-main, 2rem) * 1.5)',
             },
             boxShadow: {
               'premium': '0 20px 50px -12px rgba(0, 0, 0, 0.08)',
@@ -41,7 +38,13 @@
       };
     </script>
     <style>
-      :root { scroll-behavior: smooth; }
+      :root { 
+        scroll-behavior: smooth;
+        --primary-color: #13ec6d;
+        --bg-color: #0d1b13;
+        --surface-color: #162a1f;
+        --radius-main: 2rem;
+      }
       @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .animate-fade-in { animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       
@@ -55,10 +58,10 @@
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
       .dark ::-webkit-scrollbar-thumb { background: #374151; }
-      ::-webkit-scrollbar-thumb:hover { background: #13ec6d; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
 
       /* Custom Selection */
-      ::selection { background: #13ec6d; color: #000; }
+      ::selection { background: var(--primary-color); color: #000; }
 
       /* Soft Glass effect */
       .glass { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.8); }
