@@ -1,11 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { UNIVERSITIES } from '../constants';
-import { useCMS } from '../CMSContext';
+import { UNIVERSITIES, MAJORS } from '../constants';
 
 const Home: React.FC = () => {
-  const { translate } = useCMS();
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('Toutes les villes');
 
@@ -45,10 +43,10 @@ const Home: React.FC = () => {
               </span>
               
               <h1 className="text-white text-5xl md:text-8xl font-black leading-[0.9] tracking-tighter">
-                {translate('hero_title')}
+                Ouvrez les portes <br /> de votre <span className="text-primary underline decoration-primary/20 underline-offset-[15px]">destinée</span>.
               </h1>
               <p className="text-gray-300 text-lg md:text-2xl font-medium max-w-3xl mx-auto leading-relaxed">
-                {translate('hero_subtitle')}
+                Trouvez la formation idéale parmi les établissements d'excellence au Bénin et gérez vos préinscriptions en quelques clics.
               </p>
             </div>
 
@@ -79,7 +77,7 @@ const Home: React.FC = () => {
                   onClick={handleSearchClick}
                   className="bg-primary hover:bg-green-400 text-black font-black rounded-[24px] px-12 py-5 transition-all hover:shadow-hover hover:scale-[1.02] active:scale-100 text-base shadow-xl shadow-primary/20"
                 >
-                  {translate('btn_explore')}
+                  Explorer
                 </button>
               </div>
             </div>
