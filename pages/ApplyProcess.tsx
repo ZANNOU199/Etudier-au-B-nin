@@ -135,7 +135,7 @@ const ApplyProcess: React.FC = () => {
                      Valider et Continuer
                      <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
                    </button>
-                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">Plateforme Sécurisée Ministère de l'Enseignement Supérieur</p>
+                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">Plateforme de référence pour l'Enseignement Supérieur</p>
                 </div>
               </div>
             )}
@@ -188,7 +188,7 @@ const ApplyProcess: React.FC = () => {
                   <h2 className="text-5xl font-black dark:text-white tracking-tighter leading-none">C'est envoyé !</h2>
                   <p className="text-gray-500 max-w-md mx-auto font-medium text-lg leading-relaxed">Votre dossier pour <span className="text-primary">{selectedMajor.name}</span> est désormais en cours de traitement.</p>
                 </div>
-                <div className="bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 w-full max-w-sm">
+                <div className="bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 w-full max-sm:px-4">
                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Délai estimé de réponse</p>
                    <p className="text-lg font-black dark:text-white">48h à 72h ouvrées</p>
                 </div>
@@ -202,7 +202,7 @@ const ApplyProcess: React.FC = () => {
       </div>
 
       <footer className="py-8 px-6 text-center border-t border-gray-100 dark:border-gray-800 bg-white/50 backdrop-blur-sm">
-        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.4em]">Système National d'Admission • Ministère de l'Enseignement Supérieur du Bénin</p>
+        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-[0.4em]">Système d'Admission • Portail d'Orientation Académique du Bénin</p>
       </footer>
     </div>
   );

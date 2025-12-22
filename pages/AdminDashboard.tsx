@@ -50,7 +50,7 @@ const AdminDashboard: React.FC = () => {
           </div>
           <div>
             <h2 className="font-black text-xl dark:text-white tracking-tighter leading-none">ADMIN HUB</h2>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Ministère MESRS</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Gestion Académique</p>
           </div>
         </div>
 
@@ -80,7 +80,7 @@ const AdminDashboard: React.FC = () => {
                <div className="size-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-black">AD</div>
                <div className="flex-1 overflow-hidden">
                   <p className="text-xs font-black dark:text-white truncate">Gervais Dossou</p>
-                  <p className="text-[9px] text-gray-400 font-bold truncate">Directeur National</p>
+                  <p className="text-[9px] text-gray-400 font-bold truncate">Superviseur National</p>
                </div>
             </div>
           </div>

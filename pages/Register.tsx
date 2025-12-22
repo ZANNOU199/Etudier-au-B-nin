@@ -27,7 +27,7 @@ const Register: React.FC = () => {
               Votre avenir académique commence ici.
             </h2>
             <p className="text-xl text-gray-200 max-w-md font-medium leading-relaxed drop-shadow-lg">
-              Rejoignez la plateforme nationale d'orientation. Comparez les universités, choisissez votre parcours et préparez votre succès.
+              Rejoignez la plateforme de référence pour l'orientation universitaire. Comparez les établissements, choisissez votre parcours et préparez votre succès.
             </p>
 
             <div className="flex items-center gap-6 pt-6">
@@ -43,7 +43,7 @@ const Register: React.FC = () => {
             </div>
           </div>
 
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Service officiel du ministère de l'enseignement supérieur</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Portail Indépendant d'Orientation et d'Admission</p>
         </div>
       </div>
 
