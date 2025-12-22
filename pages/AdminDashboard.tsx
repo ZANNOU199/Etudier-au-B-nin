@@ -19,10 +19,10 @@ const AdminDashboard: React.FC = () => {
   ];
 
   const recentApps = [
-    { id: 'APP-9021', name: 'Aïcha Dossou', uni: 'UAC', major: 'Génie Logiciel', status: 'Pending', date: 'Aujourd\'hui', avatar: 'https://i.pravatar.cc/150?u=aicha', phone: '+229 90 00 11 22', doc: 'Diplôme_BAC.pdf' },
-    { id: 'APP-8842', name: 'Jean Kocou', uni: 'HECM', major: 'Marketing Digital', status: 'Approved', date: 'Il y a 2h', avatar: 'https://i.pravatar.cc/150?u=jean', phone: '+229 97 44 55 66', doc: 'Acte_Naissance.pdf' },
-    { id: 'APP-7731', name: 'Aminata Maiga', uni: 'UP', major: 'Médecine Générale', status: 'Rejected', date: 'Il y a 5h', avatar: 'https://i.pravatar.cc/150?u=ami', phone: '+229 66 11 22 33', doc: 'Releve_Notes.pdf' },
-    { id: 'APP-6650', name: 'Koffi Mensah', uni: 'UAC', major: 'Génie Civil', status: 'Pending', date: 'Hier', avatar: 'https://i.pravatar.cc/150?u=koffi', phone: '+229 95 88 99 00', doc: 'Dossier_Complet.pdf' }
+    { id: 'APP-9021', name: 'Aïcha Dossou', uni: 'UAC', major: 'Génie Logiciel', status: 'Pending', date: '12 Oct 2024', avatar: 'https://i.pravatar.cc/150?u=aicha', phone: '+229 90 00 11 22', doc: 'Diplôme_BAC.pdf' },
+    { id: 'APP-8842', name: 'Jean Kocou', uni: 'HECM', major: 'Marketing Digital', status: 'Approved', date: '10 Oct 2024', avatar: 'https://i.pravatar.cc/150?u=jean', phone: '+229 97 44 55 66', doc: 'Acte_Naissance.pdf' },
+    { id: 'APP-7731', name: 'Aminata Maiga', uni: 'UP', major: 'Médecine Générale', status: 'Rejected', date: '08 Oct 2024', avatar: 'https://i.pravatar.cc/150?u=ami', phone: '+229 66 11 22 33', doc: 'Releve_Notes.pdf' },
+    { id: 'APP-6650', name: 'Koffi Mensah', uni: 'UAC', major: 'Génie Civil', status: 'Pending', date: '07 Oct 2024', avatar: 'https://i.pravatar.cc/150?u=koffi', phone: '+229 95 88 99 00', doc: 'Dossier_Complet.pdf' }
   ];
 
   const getStatusStyle = (status: string) => {
@@ -78,7 +78,7 @@ const AdminDashboard: React.FC = () => {
       </nav>
 
       <div className="pt-10">
-        <button onClick={() => navigate('/login')} className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-all border border-red-500/20">
+        <button onClick={() => navigate('/login')} className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest text-red-400 hover:bg-red-500 hover:text-white hover:bg-red-500/20 transition-all border border-red-500/20">
           <span className="material-symbols-outlined text-xl">logout</span>
           Déconnexion
         </button>
@@ -90,7 +90,7 @@ const AdminDashboard: React.FC = () => {
     <div className="flex h-screen w-full bg-[#f4f7f6] dark:bg-background-dark font-display overflow-hidden relative">
       
       {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex w-80 bg-[#0d1b13] flex-col shrink-0 z-30 shadow-2xl">
+      <aside className="hidden lg:flex w-80 bg-[#0d1b13] flex-col shrink-0 z-30 shadow-2xl border-r border-white/5">
         <SidebarNav />
       </aside>
 
@@ -115,7 +115,9 @@ const AdminDashboard: React.FC = () => {
               </button>
               <div className="hidden sm:block space-y-0.5">
                  <h1 className="text-xl lg:text-2xl font-black dark:text-white tracking-tighter uppercase">
-                    {activeView === 'overview' ? 'Administration' : activeView}
+                    {activeView === 'overview' ? 'Administration' : 
+                     activeView === 'applications' ? 'Candidatures' :
+                     activeView === 'analytics' ? 'Rapports & Stats' : 'Paramètres'}
                  </h1>
                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Pilotage Central Session 2024</p>
               </div>
@@ -126,24 +128,22 @@ const AdminDashboard: React.FC = () => {
                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-primary text-xl">search</span>
                  <input 
                   className="w-64 pl-12 pr-4 py-3 bg-gray-100 dark:bg-white/5 rounded-xl border-none text-sm font-bold dark:text-white focus:ring-4 focus:ring-primary/10 transition-all outline-none" 
-                  placeholder="Rechercher INE..."
+                  placeholder="Rechercher..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div className="size-11 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black text-gray-400 border border-gray-100 dark:border-white/10 shadow-sm">
+              <div className="size-11 rounded-xl bg-primary text-black flex items-center justify-center font-black shadow-lg shadow-primary/20">
                 AD
               </div>
            </div>
         </header>
 
-        <div className="p-6 lg:p-12 space-y-10">
+        <div className="p-4 lg:p-12 space-y-10">
           
           {/* VIEW: OVERVIEW */}
           {activeView === 'overview' && (
             <div className="space-y-12 animate-fade-in">
-               
-               {/* KPI Grid - Responsive Layout */}
                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                   {kpis.map((kpi, idx) => (
                     <div key={idx} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl transition-all group">
@@ -159,20 +159,19 @@ const AdminDashboard: React.FC = () => {
                   ))}
                </div>
 
-               {/* Responsive Table Section */}
                <section className="bg-white dark:bg-surface-dark rounded-[40px] border border-gray-100 dark:border-white/5 shadow-premium overflow-hidden">
                   <div className="p-8 md:p-10 border-b border-gray-50 dark:border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
                      <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-xs">Dossiers Récents</h3>
-                     <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline bg-primary/5 px-6 py-2 rounded-xl">Tout exporter</button>
+                     <button onClick={() => setActiveView('applications')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline bg-primary/5 px-6 py-2 rounded-xl">Voir tout</button>
                   </div>
                   
-                  {/* Conteneur pour défilement horizontal sur mobile */}
                   <div className="overflow-x-auto w-full">
                      <table className="w-full min-w-[800px]">
                         <thead>
                           <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-50 dark:border-white/5">
                              <th className="px-10 py-6 text-left">Candidat</th>
                              <th className="px-10 py-6 text-left">Formation / Institution</th>
+                             <th className="px-10 py-6 text-left">Date</th>
                              <th className="px-10 py-6 text-left">Statut</th>
                              <th className="px-10 py-6 text-center">Actions</th>
                           </tr>
@@ -194,6 +193,9 @@ const AdminDashboard: React.FC = () => {
                                  <p className="text-[9px] font-black text-primary uppercase tracking-widest">{app.uni}</p>
                               </td>
                               <td className="px-10 py-6">
+                                 <p className="text-xs font-bold dark:text-gray-400">{app.date}</p>
+                              </td>
+                              <td className="px-10 py-6">
                                  <span className={`inline-flex px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusStyle(app.status)}`}>
                                     {app.status === 'Approved' ? 'Validé' : app.status === 'Rejected' ? 'Rejeté' : 'En attente'}
                                  </span>
@@ -213,10 +215,155 @@ const AdminDashboard: React.FC = () => {
                         </tbody>
                      </table>
                   </div>
-                  <div className="p-8 border-t border-gray-50 dark:border-white/5 text-center">
-                    <button className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary transition-colors">Afficher plus de résultats</button>
-                  </div>
                </section>
+            </div>
+          )}
+
+          {/* VIEW: APPLICATIONS (FULL LIST) */}
+          {activeView === 'applications' && (
+            <div className="space-y-8 animate-fade-in">
+               <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-6">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                     <h3 className="text-2xl font-black dark:text-white tracking-tighter uppercase tracking-widest text-xs">Gestion Complète des Candidats</h3>
+                     <div className="flex gap-2 w-full md:w-auto">
+                        <input 
+                           className="flex-1 md:w-64 pl-4 pr-4 py-3 bg-gray-100 dark:bg-white/5 rounded-xl border-none text-sm font-bold dark:text-white outline-none" 
+                           placeholder="Filtrer par INE, ID..."
+                           value={searchQuery}
+                           onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <button className="bg-primary text-black px-6 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/10">Filtrer</button>
+                     </div>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                     <table className="w-full min-w-[900px]">
+                        <thead>
+                          <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-50 dark:border-white/5">
+                             <th className="px-8 py-4 text-left">ID</th>
+                             <th className="px-8 py-4 text-left">Candidat</th>
+                             <th className="px-8 py-4 text-left">Filière / Université</th>
+                             <th className="px-8 py-4 text-left">Date</th>
+                             <th className="px-8 py-4 text-left">Statut</th>
+                             <th className="px-8 py-4 text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                           {recentApps.concat(recentApps).map((app, i) => (
+                              <tr key={i} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                                 <td className="px-8 py-5 text-[11px] font-black text-gray-400">{app.id}-{i}</td>
+                                 <td className="px-8 py-5">
+                                    <div className="flex items-center gap-3">
+                                       <img src={app.avatar} className="size-9 rounded-lg" alt="" />
+                                       <p className="text-sm font-bold dark:text-white">{app.name}</p>
+                                    </div>
+                                 </td>
+                                 <td className="px-8 py-5">
+                                    <p className="text-xs font-black dark:text-gray-300">{app.major}</p>
+                                    <p className="text-[10px] text-primary uppercase font-black">{app.uni}</p>
+                                 </td>
+                                 <td className="px-8 py-5 text-xs font-bold text-gray-400">{app.date}</td>
+                                 <td className="px-8 py-5">
+                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusStyle(app.status)}`}>
+                                       {app.status}
+                                    </span>
+                                 </td>
+                                 <td className="px-8 py-5 text-center">
+                                    <button onClick={() => setSelectedApp(app)} className="text-primary hover:scale-110 transition-transform"><span className="material-symbols-outlined">visibility</span></button>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: ANALYTICS (REPORTS) */}
+          {activeView === 'analytics' && (
+            <div className="space-y-10 animate-fade-in">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-6">
+                     <h3 className="text-lg font-black dark:text-white uppercase tracking-widest text-xs">Candidatures par Statut</h3>
+                     <div className="space-y-6">
+                        {[
+                           { label: 'Validées', count: 4500, total: 12450, color: 'bg-primary' },
+                           { label: 'En attente', count: 6800, total: 12450, color: 'bg-amber-400' },
+                           { label: 'Rejetées', count: 1150, total: 12450, color: 'bg-red-500' }
+                        ].map((item, i) => (
+                           <div key={i} className="space-y-2">
+                              <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-gray-400">
+                                 <span>{item.label}</span>
+                                 <span className="dark:text-white">{Math.round((item.count/item.total)*100)}% ({item.count})</span>
+                              </div>
+                              <div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                 <div className={`h-full ${item.color}`} style={{ width: `${(item.count/item.total)*100}%` }}></div>
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+                  
+                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-6">
+                     <h3 className="text-lg font-black dark:text-white uppercase tracking-widest text-xs">Top Universités (Candidatures)</h3>
+                     <div className="space-y-4">
+                        {[
+                           { name: 'UAC', apps: 5200, growth: '+15%' },
+                           { name: 'UP', apps: 3100, growth: '+8%' },
+                           { name: 'HECM', apps: 2400, growth: '+22%' },
+                           { name: 'UNSTIM', apps: 1750, growth: '+5%' }
+                        ].map((uni, i) => (
+                           <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                              <div className="flex items-center gap-4">
+                                 <div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-black">{uni.name[0]}</div>
+                                 <div>
+                                    <p className="text-sm font-black dark:text-white">{uni.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase">{uni.apps} dossiers</p>
+                                 </div>
+                              </div>
+                              <span className="text-[10px] font-black text-primary">{uni.growth}</span>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: SETTINGS */}
+          {activeView === 'settings' && (
+            <div className="space-y-10 animate-fade-in max-w-4xl mx-auto">
+               <div className="bg-white dark:bg-surface-dark p-8 md:p-12 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-12">
+                  <div className="space-y-8">
+                     <h3 className="text-lg font-black dark:text-white uppercase tracking-widest text-xs border-b border-gray-100 dark:border-white/5 pb-4">Configuration Globale</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Frais Dossier Local (CFA)</label>
+                           <input defaultValue="2500" className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary outline-none font-bold dark:text-white" />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Frais Dossier Étranger (CFA)</label>
+                           <input defaultValue="100000" className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary outline-none font-bold dark:text-white" />
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Date Limite Session 1</label>
+                           <input type="date" defaultValue="2024-12-31" className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary outline-none font-bold dark:text-white" />
+                        </div>
+                        <div className="space-y-4 pt-4">
+                           <label className="flex items-center gap-4 cursor-pointer">
+                              <div className="relative w-12 h-6 bg-primary/20 rounded-full transition-all">
+                                 <div className="absolute top-1 left-1 size-4 bg-primary rounded-full translate-x-6"></div>
+                              </div>
+                              <span className="text-xs font-black dark:text-white uppercase tracking-widest">Inscriptions Ouvertes</span>
+                           </label>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="pt-6">
+                     <button className="w-full md:w-auto px-10 py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 hover:scale-105 transition-all">Enregistrer les paramètres</button>
+                  </div>
+               </div>
             </div>
           )}
 
