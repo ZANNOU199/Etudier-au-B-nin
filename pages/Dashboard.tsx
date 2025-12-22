@@ -12,6 +12,7 @@ const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('Toutes les villes');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const navigate = useNavigate();
 
@@ -22,9 +23,10 @@ const Dashboard: React.FC = () => {
       uni: "UAC (EPAC)", 
       major: "Génie Logiciel", 
       status: "En cours", 
+      progress: 65,
       date: "12 Oct 2023",
-      color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
-      icon: "hourglass_empty"
+      color: "from-amber-400 to-orange-500",
+      icon: "pending"
     },
     { 
       id: 'EAB-24-9102',
@@ -32,8 +34,9 @@ const Dashboard: React.FC = () => {
       uni: "HECM Cotonou", 
       major: "Marketing MAC", 
       status: "Validé", 
+      progress: 100,
       date: "15 Oct 2023",
-      color: "text-primary bg-primary/10 border-primary/20",
+      color: "from-primary to-primary-dark",
       icon: "check_circle"
     }
   ];
@@ -49,231 +52,248 @@ const Dashboard: React.FC = () => {
 
   const totalPages = Math.ceil(filteredMajors.length / ITEMS_PER_PAGE);
   const pagedData = filteredMajors.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
   const cities = useMemo(() => ['Toutes les villes', ...Array.from(new Set(MAJORS.map(m => m.location)))], []);
 
+  const menuItems = [
+    { id: 'home', label: 'Vue d\'ensemble', icon: 'grid_view' },
+    { id: 'applications', label: 'Mes Dossiers', icon: 'description', badge: '2' },
+    { id: 'catalogue', label: 'Catalogue', icon: 'explore' },
+    { id: 'profile', label: 'Mon Profil', icon: 'person' },
+  ];
+
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col font-display">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-background-dark flex font-display overflow-hidden">
       
-      {/* Premium Dashboard Header */}
-      <nav className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-b border-gray-100 dark:border-white/5 px-6 md:px-10 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-6">
-           <Link to="/" className="flex items-center gap-3">
-             <div className="size-10 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-               <span className="material-symbols-outlined font-bold text-2xl">school</span>
-             </div>
-             <div className="hidden sm:block">
-                <h2 className="font-black dark:text-white tracking-tighter text-sm uppercase leading-none">Espace Candidat</h2>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Session Académique 2024</p>
-             </div>
-           </Link>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-72 flex-col bg-white dark:bg-surface-dark border-r border-gray-100 dark:border-white/5 py-8 px-6 shrink-0 h-screen sticky top-0 shadow-sm">
+        <div className="flex items-center gap-3 px-2 mb-10">
+          <div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+            <span className="material-symbols-outlined font-bold">school</span>
+          </div>
+          <span className="font-black text-lg dark:text-white tracking-tight">CandidatHub</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-4 mr-6">
-            <div className="text-right">
-              <p className="text-xs font-black dark:text-white">Koffi Mensah</p>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Candidat Certifié</p>
+        <nav className="flex-grow space-y-2">
+          {menuItems.map((item) => (
+            <button 
+              key={item.id}
+              onClick={() => setActiveTab(item.id as DashboardTab)}
+              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
+                activeTab === item.id 
+                ? 'bg-primary text-black shadow-lg shadow-primary/20 scale-[1.02]' 
+                : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                {item.label}
+              </div>
+              {item.badge && (
+                <span className={`size-5 rounded-full flex items-center justify-center text-[9px] ${activeTab === item.id ? 'bg-black text-white' : 'bg-gray-100 dark:bg-white/10'}`}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <div className="mt-auto">
+           <div className="bg-background-dark p-6 rounded-[32px] text-white space-y-4 relative overflow-hidden shadow-2xl border border-white/5">
+              <div className="absolute top-0 right-0 p-4 opacity-10"><span className="material-symbols-outlined text-4xl">support_agent</span></div>
+              <h4 className="text-xs font-black leading-tight">Besoin d'aide ?</h4>
+              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Support prioritaire actif</p>
+              <Link to="/contact" className="block w-full py-3 bg-primary text-black text-center rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 transition-all">Contacter</Link>
+           </div>
+        </div>
+      </aside>
+
+      {/* Main Viewport */}
+      <main className="flex-1 overflow-y-auto h-screen flex flex-col relative">
+        
+        {/* Mobile Top Nav */}
+        <header className="lg:hidden bg-white dark:bg-surface-dark border-b border-gray-100 dark:border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
+           <div className="flex items-center gap-2">
+              <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-black shadow-sm">
+                <span className="material-symbols-outlined text-lg font-bold">school</span>
+              </div>
+              <span className="font-black text-sm uppercase tracking-tighter dark:text-white">CandidatHub</span>
+           </div>
+           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500">
+             <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+           </button>
+        </header>
+
+        {/* Content Area */}
+        <div className="p-6 md:p-10 lg:p-14 space-y-12">
+          
+          {/* Header & Stats Desktop */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-1">
+              <h1 className="text-3xl md:text-5xl font-black dark:text-white tracking-tighter">
+                Hello, <span className="text-primary italic">Koffi</span>.
+              </h1>
+              <p className="text-gray-500 font-bold text-sm">Session 2024 • Statut : Certifié</p>
             </div>
-            <div className="size-11 bg-gray-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-gray-400 border border-gray-200 dark:border-white/10">
-               <span className="material-symbols-outlined">person</span>
+            <div className="flex items-center gap-4">
+               <div className="hidden sm:flex flex-col text-right">
+                  <p className="text-xs font-black dark:text-white">Koffi Mensah</p>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-widest">Candidat #8932</p>
+               </div>
+               <div className="size-12 rounded-2xl bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 flex items-center justify-center text-gray-400 shadow-sm">
+                  <span className="material-symbols-outlined">person</span>
+               </div>
             </div>
           </div>
-          <button onClick={() => navigate('/login')} className="size-11 bg-red-50 dark:bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm">
-             <span className="material-symbols-outlined font-bold">logout</span>
-          </button>
-        </div>
-      </nav>
 
-      {/* Modern Sidebar Layout */}
-      <div className="flex-grow flex flex-col lg:flex-row max-w-[1600px] w-full mx-auto p-4 md:p-10 gap-10">
-        
-        {/* Navigation Sidebar */}
-        <aside className="w-full lg:w-80 space-y-3 shrink-0">
-           {[
-             { id: 'home', label: 'Dashboard', icon: 'grid_view' },
-             { id: 'applications', label: 'Préinscriptions', icon: 'description' },
-             { id: 'profile', label: 'Mon Profil', icon: 'manage_accounts' },
-             { id: 'catalogue', label: 'Filières', icon: 'explore' },
-           ].map((item) => (
-             <button 
-                key={item.id}
-                onClick={() => { setActiveTab(item.id as DashboardTab); setCurrentPage(1); }}
-                className={`w-full flex items-center gap-4 px-8 py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === item.id ? 'bg-primary text-black shadow-xl shadow-primary/20 scale-[1.02]' : 'bg-white dark:bg-surface-dark text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 border border-gray-100 dark:border-white/5'}`}
-             >
-               <span className="material-symbols-outlined text-2xl">{item.icon}</span>
-               {item.label}
-               {activeTab === item.id && <div className="absolute right-6 size-2 bg-black rounded-full"></div>}
-             </button>
-           ))}
-
-           <div className="pt-10 px-6">
-              <div className="p-8 bg-[#0f1a13] rounded-[40px] text-white space-y-4 relative overflow-hidden shadow-2xl">
-                 <div className="absolute -bottom-10 -right-10 size-32 bg-primary/20 rounded-full blur-2xl"></div>
-                 <h4 className="text-xl font-black leading-tight relative z-10">Besoin <br />d'aide ?</h4>
-                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest relative z-10">Assistance prioritaire 24/7</p>
-                 <Link to="/contact" className="block w-full py-4 bg-primary text-black text-center rounded-2xl font-black text-[10px] uppercase tracking-widest relative z-10 hover:scale-105 transition-all">Support</Link>
-              </div>
-           </div>
-        </aside>
-
-        {/* Content View */}
-        <div className="flex-1 min-w-0">
-          
-          {/* VIEW: HOME */}
+          {/* VIEW: HOME / OVERVIEW */}
           {activeTab === 'home' && (
             <div className="space-y-12 animate-fade-in">
-              <div className="bg-white dark:bg-surface-dark rounded-[50px] p-10 md:p-16 relative overflow-hidden shadow-premium border border-gray-100 dark:border-white/5">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] translate-x-1/2 -translate-y-1/2"></div>
-                <div className="relative z-10 space-y-8 max-w-2xl">
-                  <div className="space-y-4">
-                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Candidat officiel • Koffi Mensah</span>
-                    <h1 className="text-4xl md:text-6xl font-black text-text-main dark:text-white tracking-tighter leading-none">
-                      Suivez votre <br/><span className="text-primary italic">succès</span> académique.
-                    </h1>
-                  </div>
-                  <p className="text-gray-500 dark:text-gray-400 text-lg md:text-xl font-medium leading-relaxed">
-                    Vous avez actuellement <span className="text-primary font-black">2 dossiers</span> en cours de traitement. Votre admission est notre priorité.
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    <button 
-                      onClick={() => setActiveTab('catalogue')}
-                      className="bg-primary hover:bg-green-400 text-black font-black px-12 py-5 rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-3 uppercase tracking-widest text-[10px]"
-                    >
-                      NOUVELLE PRÉINSCRIPTION
-                      <span className="material-symbols-outlined font-bold">add_circle</span>
-                    </button>
-                    <button className="px-12 py-5 bg-gray-100 dark:bg-white/5 dark:text-white font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-gray-200 dark:hover:bg-white/10 transition-all">Télécharger ma fiche</button>
-                  </div>
-                </div>
-              </div>
-
-              <section className="space-y-8">
-                <div className="flex items-center justify-between px-4">
-                  <h2 className="text-2xl font-black dark:text-white tracking-tight flex items-center gap-3 uppercase text-sm tracking-[0.2em]">
-                    <span className="size-2 bg-primary rounded-full animate-ping"></span>
-                    Activités récentes
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 gap-6">
-                  {applications.map((app) => (
-                    <div key={app.id} className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-8 group hover:border-primary/30 transition-all hover:shadow-lg">
-                      <div className="flex items-center gap-8 flex-1">
-                        <div className={`size-16 rounded-[24px] flex items-center justify-center border ${app.color}`}>
-                          <span className="material-symbols-outlined text-3xl font-bold">{app.icon}</span>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{app.id}</p>
-                          <h4 className="text-2xl font-black dark:text-white tracking-tight leading-none group-hover:text-primary transition-colors">{app.major}</h4>
-                          <p className="text-sm font-bold text-gray-500 mt-1">{app.uni}</p>
-                        </div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { label: 'Candidatures', val: '02', icon: 'description', color: 'text-primary' },
+                    { label: 'Documents', val: '05', icon: 'folder_zip', color: 'text-blue-500' },
+                    { label: 'Alertes', val: '00', icon: 'campaign', color: 'text-amber-500' }
+                  ].map((s, i) => (
+                    <div key={i} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
+                      <div>
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{s.label}</p>
+                        <p className="text-3xl font-black dark:text-white">{s.val}</p>
                       </div>
-                      <div className="flex items-center gap-10">
-                        <div className="text-right hidden md:block">
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dernière mise à jour</p>
-                           <p className="text-sm font-bold dark:text-white">{app.date}</p>
-                        </div>
-                        <span className={`px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest border ${app.color} shadow-sm`}>
-                          {app.status}
-                        </span>
+                      <div className={`size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center ${s.color} group-hover:scale-110 transition-transform`}>
+                        <span className="material-symbols-outlined text-2xl font-bold">{s.icon}</span>
                       </div>
                     </div>
                   ))}
-                </div>
-              </section>
+               </div>
+
+               <div className="bg-[#0f1a13] rounded-[48px] p-10 md:p-14 text-white relative overflow-hidden shadow-2xl border border-white/5 group">
+                  <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <span className="material-symbols-outlined text-[150px]">auto_awesome</span>
+                  </div>
+                  <div className="max-w-xl space-y-6 relative z-10">
+                    <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tighter">Votre futur <br/><span className="text-primary italic">commence ici</span>.</h2>
+                    <p className="text-gray-400 text-lg font-medium leading-relaxed">
+                      Trouvez la formation idéale parmi nos pôles d'excellence et lancez votre dossier en 5 minutes.
+                    </p>
+                    <button onClick={() => setActiveTab('catalogue')} className="bg-primary text-black font-black px-10 py-5 rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all text-[11px] uppercase tracking-widest">
+                      Explorer le catalogue
+                    </button>
+                  </div>
+               </div>
+
+               <section className="space-y-6">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 px-4">Suivi des candidatures</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {applications.map((app) => (
+                      <div key={app.id} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-8 group hover:border-primary/20 transition-all shadow-sm">
+                        <div className="flex items-center gap-6 flex-1 w-full">
+                           <div className={`size-16 rounded-2xl bg-gradient-to-br ${app.color} flex items-center justify-center text-white shadow-lg`}>
+                              <span className="material-symbols-outlined text-3xl font-bold">{app.icon}</span>
+                           </div>
+                           <div className="space-y-1">
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{app.id}</p>
+                              <h4 className="text-xl font-black dark:text-white leading-none">{app.major}</h4>
+                              <p className="text-xs font-bold text-gray-500">{app.uni}</p>
+                           </div>
+                        </div>
+                        <div className="w-full md:w-64 space-y-2">
+                           <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-400">
+                              <span>Progression</span>
+                              <span className="text-primary">{app.progress}%</span>
+                           </div>
+                           <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                              <div style={{ width: `${app.progress}%` }} className={`h-full bg-gradient-to-r ${app.color} transition-all duration-1000`}></div>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                           <span className={`px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${app.progress === 100 ? 'text-primary bg-primary/10' : 'text-amber-500 bg-amber-500/10'}`}>
+                             {app.status}
+                           </span>
+                           <button onClick={() => navigate(`/apply?id=${app.majorId}`)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all border border-transparent hover:border-primary/20">
+                              <span className="material-symbols-outlined">east</span>
+                           </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+               </section>
             </div>
           )}
 
           {/* VIEW: CATALOGUE */}
           {activeTab === 'catalogue' && (
             <div className="space-y-10 animate-fade-in">
-              <header className="space-y-2 px-2">
-                <h1 className="text-4xl md:text-5xl font-black dark:text-white tracking-tighter">Parcourir les filières</h1>
-                <p className="text-gray-500 font-medium text-lg">Choisissez votre futur parcours académique parmi nos offres certifiées.</p>
+              <header className="space-y-2">
+                <h1 className="text-4xl font-black dark:text-white tracking-tighter">Catalogue de Formations</h1>
+                <p className="text-gray-500 font-medium">Parcourez les offres académiques certifiées par l'État.</p>
               </header>
 
-              <div className="bg-background-dark p-4 rounded-[40px] shadow-2xl">
-                 <div className="flex flex-col md:flex-row gap-4">
-                   <div className="flex-1 flex items-center h-20 bg-white/10 rounded-3xl px-8 focus-within:bg-white/15 transition-all">
-                     <span className="material-symbols-outlined text-primary font-bold text-2xl">search</span>
-                     <input 
-                      className="flex-1 bg-transparent border-none text-white px-5 focus:ring-0 font-bold placeholder:text-gray-500 text-lg" 
-                      placeholder="Domaine, métier ou école..." 
-                      value={searchQuery}
-                      onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                     />
-                   </div>
-                   <div className="md:w-72 flex items-center h-20 bg-white/10 rounded-3xl px-8">
-                     <span className="material-symbols-outlined text-gray-400 text-2xl">location_on</span>
-                     <select 
-                      value={cityFilter}
-                      onChange={(e) => { setCityFilter(e.target.value); setCurrentPage(1); }}
-                      className="flex-1 bg-transparent border-none text-white focus:ring-0 font-black text-xs uppercase cursor-pointer"
-                     >
-                       {cities.map(c => <option key={c} value={c} className="bg-background-dark">{c}</option>)}
-                     </select>
-                   </div>
-                 </div>
+              <div className="bg-white dark:bg-surface-dark p-3 rounded-[32px] shadow-sm border border-gray-100 dark:border-white/5 flex flex-col md:flex-row gap-2">
+                <div className="flex-1 flex items-center px-6 h-16">
+                   <span className="material-symbols-outlined text-gray-400">search</span>
+                   <input 
+                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-bold dark:text-white px-4" 
+                    placeholder="Rechercher une formation..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                   />
+                </div>
+                <div className="md:w-64 flex items-center px-6 h-16 border-l border-gray-100 dark:border-white/5">
+                   <span className="material-symbols-outlined text-gray-400 mr-2">location_on</span>
+                   <select 
+                    value={cityFilter}
+                    onChange={(e) => setCityFilter(e.target.value)}
+                    className="bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest cursor-pointer dark:text-white"
+                   >
+                     {cities.map(c => <option key={c} value={c} className="bg-white dark:bg-surface-dark">{c}</option>)}
+                   </select>
+                </div>
+                <button className="bg-primary text-black font-black px-10 rounded-2xl text-[10px] uppercase tracking-widest h-16 md:h-auto">Appliquer</button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 {pagedData.map(major => (
-                   <div key={major.id} className="group bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 rounded-[50px] overflow-hidden hover:shadow-premium transition-all duration-700 flex flex-col hover:-translate-y-2">
-                      <div className="p-10 space-y-8 flex flex-col h-full">
-                         <div className="flex justify-between items-start">
-                            <span className="px-5 py-2 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-primary/20">
+                {pagedData.map(major => (
+                  <div key={major.id} className="bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 rounded-[40px] overflow-hidden group hover:shadow-xl transition-all flex flex-col">
+                     <div className="p-10 space-y-6 flex-1">
+                        <div className="flex justify-between items-start">
+                           <span className="px-4 py-1.5 bg-gray-50 dark:bg-white/5 text-gray-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10">
                               {major.level}
-                            </span>
-                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                              <span className="material-symbols-outlined text-lg text-primary">location_on</span>
-                              {major.location}
-                            </div>
-                         </div>
-
-                         <div className="space-y-3 flex-1">
-                            <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{major.domain}</p>
-                            <h4 className="text-3xl font-black dark:text-white tracking-tighter leading-none group-hover:text-primary transition-colors">{major.name}</h4>
-                            <p className="text-sm font-bold text-gray-500">{major.universityName}</p>
-                         </div>
-
-                         <button 
-                            onClick={() => navigate(`/apply?id=${major.id}`)}
-                            className="w-full flex items-center justify-center gap-4 py-5 bg-background-dark dark:bg-primary text-white dark:text-black rounded-[24px] font-black text-[11px] uppercase tracking-[0.3em] hover:shadow-xl transition-all"
-                          >
-                            Postuler maintenant
-                            <span className="material-symbols-outlined text-xl">east</span>
-                          </button>
-                      </div>
-                   </div>
-                 ))}
-              </div>
-
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-4 pt-10">
-                  <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center hover:border-primary hover:text-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">west</span></button>
-                  <div className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
-                     <span className="text-sm font-black dark:text-white">Page {currentPage}</span>
-                     <span className="text-gray-400 font-bold">sur {totalPages}</span>
+                           </span>
+                           <span className="text-[9px] font-black text-primary uppercase tracking-widest">{major.domain}</span>
+                        </div>
+                        <h4 className="text-2xl font-black dark:text-white leading-tight group-hover:text-primary transition-colors">{major.name}</h4>
+                        <div className="flex items-center gap-3">
+                           <div className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
+                              <span className="material-symbols-outlined text-xl">location_city</span>
+                           </div>
+                           <p className="text-xs font-bold text-gray-500">{major.universityName}</p>
+                        </div>
+                     </div>
+                     <div className="p-8 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex justify-between items-center group/btn">
+                        <p className="text-lg font-black dark:text-white">{major.fees}</p>
+                        <button onClick={() => navigate(`/apply?id=${major.id}`)} className="size-11 rounded-xl bg-primary text-black flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-110 transition-transform">
+                          <span className="material-symbols-outlined font-bold">add</span>
+                        </button>
+                     </div>
                   </div>
-                  <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center hover:border-primary hover:text-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">east</span></button>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
 
-          {/* VIEW: APPLICATIONS (Simplified and polished) */}
+          {/* VIEW: APPLICATIONS */}
           {activeTab === 'applications' && (
              <div className="space-y-10 animate-fade-in">
-               <header className="space-y-2 px-2">
-                  <h1 className="text-4xl md:text-5xl font-black dark:text-white tracking-tighter">Mes Candidatures</h1>
-                  <p className="text-gray-500 font-medium text-lg">Gérez vos dossiers d'admission et suivez les retours des universités.</p>
+               <header className="space-y-2">
+                  <h1 className="text-4xl font-black dark:text-white tracking-tighter">Mes Candidatures</h1>
+                  <p className="text-gray-500 font-medium">Gérez vos dossiers et suivez les retours d'admission.</p>
                </header>
                
-               <div className="grid grid-cols-1 gap-8">
+               <div className="grid grid-cols-1 gap-6">
                   {applications.map((app) => (
                     <div key={app.id} className="bg-white dark:bg-surface-dark p-10 rounded-[50px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col lg:flex-row gap-10">
                        <div className="flex-1 flex flex-col md:flex-row gap-8 items-center">
-                          <div className={`size-20 rounded-[32px] flex items-center justify-center flex-shrink-0 border ${app.color} shadow-lg shadow-black/5`}>
+                          <div className={`size-20 rounded-[32px] flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${app.color} text-white shadow-xl`}>
                              <span className="material-symbols-outlined text-4xl font-bold">{app.icon}</span>
                           </div>
                           <div className="text-center md:text-left space-y-2">
@@ -287,13 +307,13 @@ const Dashboard: React.FC = () => {
                        
                        <div className="flex flex-col justify-center items-center lg:items-end gap-6">
                           <div className="text-center lg:text-right">
-                             <span className={`px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-[0.2em] border shadow-sm ${app.color}`}>
+                             <span className={`px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-[0.2em] border shadow-sm ${app.progress === 100 ? 'text-primary border-primary/20 bg-primary/5' : 'text-amber-500 border-amber-500/20 bg-amber-500/5'}`}>
                                 {app.status}
                              </span>
                              <p className="text-[10px] text-gray-400 font-black mt-3 uppercase tracking-widest leading-none">Soumis le {app.date}</p>
                           </div>
                           <button onClick={() => navigate(`/apply?id=${app.majorId}`)} className="flex items-center gap-2 px-8 py-3.5 bg-gray-100 dark:bg-white/5 hover:bg-primary hover:text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all group">
-                             Consulter le dossier
+                             Détails du dossier
                              <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">east</span>
                           </button>
                        </div>
@@ -303,69 +323,76 @@ const Dashboard: React.FC = () => {
              </div>
           )}
 
-          {/* VIEW: PROFILE (Modernized forms) */}
+          {/* VIEW: PROFILE */}
           {activeTab === 'profile' && (
-            <div className="space-y-10 animate-fade-in max-w-5xl">
-               <header className="space-y-2 px-2">
-                  <h1 className="text-4xl md:text-5xl font-black dark:text-white tracking-tighter">Mon Profil</h1>
-                  <p className="text-gray-500 font-medium text-lg">Vos informations sécurisées et certifiées par la plateforme.</p>
+            <div className="space-y-10 animate-fade-in max-w-4xl">
+               <header className="space-y-2">
+                  <h1 className="text-4xl font-black dark:text-white tracking-tighter">Mon Profil</h1>
+                  <p className="text-gray-500 font-medium">Vos informations sécurisées et certifiées.</p>
                </header>
 
-               <div className="grid grid-cols-1 gap-10">
-                  <div className="bg-white dark:bg-surface-dark p-10 md:p-16 rounded-[50px] border border-gray-100 dark:border-white/5 shadow-premium space-y-12">
-                     <div className="flex items-center gap-5 pb-8 border-b border-gray-100 dark:border-white/5">
-                        <div className="size-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                           <span className="material-symbols-outlined font-bold">person</span>
-                        </div>
-                        <h3 className="text-xl font-black uppercase tracking-[0.2em] dark:text-white">Informations Générales</h3>
+               <div className="bg-white dark:bg-surface-dark p-10 md:p-14 rounded-[50px] border border-gray-100 dark:border-white/5 shadow-sm space-y-12">
+                  <div className="flex items-center gap-4 pb-6 border-b border-gray-50 dark:border-white/5">
+                     <div className="size-11 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                        <span className="material-symbols-outlined font-bold">person</span>
                      </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="space-y-3">
-                           <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Prénom</label>
-                           <input defaultValue="Koffi" className="w-full p-5 rounded-[24px] bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
-                        </div>
-                        <div className="space-y-3">
-                           <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Nom de famille</label>
-                           <input defaultValue="Mensah" className="w-full p-5 rounded-[24px] bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
-                        </div>
-                        <div className="space-y-3">
-                           <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Adresse Email</label>
-                           <input defaultValue="koffi.mensah@etudiant.bj" readOnly className="w-full p-5 rounded-[24px] bg-gray-200 dark:bg-white/10 border border-transparent opacity-60 font-bold dark:text-white cursor-not-allowed outline-none" />
-                        </div>
-                        <div className="space-y-3">
-                           <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Téléphone</label>
-                           <input defaultValue="+229 97 00 11 22" className="w-full p-5 rounded-[24px] bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
-                        </div>
+                     <h3 className="text-sm font-black uppercase tracking-[0.2em] dark:text-white">Identité Étudiante</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Prénom</label>
+                        <input defaultValue="Koffi" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
                      </div>
-                     <div className="pt-6">
-                        <button className="px-12 py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-[0.2em] text-xs shadow-xl shadow-primary/20 hover:scale-105 transition-all">Enregistrer les modifications</button>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Nom</label>
+                        <input defaultValue="Mensah" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Téléphone</label>
+                        <input defaultValue="+229 97 00 11 22" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] px-2">Ville</label>
+                        <input defaultValue="Cotonou" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-transparent focus:border-primary focus:ring-4 focus:ring-primary/10 font-bold dark:text-white outline-none transition-all" />
                      </div>
                   </div>
-
-                  <div className="bg-white dark:bg-surface-dark p-10 md:p-16 rounded-[50px] border border-gray-100 dark:border-white/5 shadow-premium space-y-12">
-                     <div className="flex items-center gap-5 pb-8 border-b border-gray-100 dark:border-white/5">
-                        <div className="size-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500">
-                           <span className="material-symbols-outlined font-bold">security</span>
-                        </div>
-                        <h3 className="text-xl font-black uppercase tracking-[0.2em] dark:text-white">Sécurité du compte</h3>
-                     </div>
-                     <div className="space-y-8">
-                        <p className="text-gray-500 font-medium">Pour modifier votre mot de passe, un code de validation sera envoyé à votre adresse email.</p>
-                        <button className="px-12 py-5 border-2 border-red-500/30 text-red-500 font-black rounded-2xl uppercase tracking-[0.2em] text-xs hover:bg-red-500 hover:text-white transition-all">Lancer la procédure de changement</button>
-                     </div>
+                  <div className="pt-6">
+                     <button className="px-10 py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-[0.2em] text-[10px] shadow-lg shadow-primary/20">Mettre à jour mon profil</button>
                   </div>
                </div>
             </div>
           )}
 
         </div>
-      </div>
-      
-      <footer className="py-12 px-6 text-center">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.5em]">
-          Système National de Gestion des Admissions • Propulsé par EDEN Communication
-        </p>
-      </footer>
+
+        {/* Mobile Nav Overlay */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm lg:hidden animate-fade-in" onClick={() => setIsMobileMenuOpen(false)}>
+             <div className="absolute right-0 top-0 bottom-0 w-72 bg-white dark:bg-surface-dark p-8 flex flex-col gap-6 animate-in slide-in-from-right-full" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                   <span className="font-black text-lg dark:text-white">Menu</span>
+                   <button onClick={() => setIsMobileMenuOpen(false)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
+                </div>
+                {menuItems.map(item => (
+                  <button 
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id as DashboardTab); setIsMobileMenuOpen(false); }}
+                    className={`flex items-center gap-4 p-5 rounded-2xl font-black text-[10px] uppercase tracking-widest ${activeTab === item.id ? 'bg-primary text-black' : 'text-gray-400 dark:text-gray-500'}`}
+                  >
+                    <span className="material-symbols-outlined text-xl">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+                <div className="mt-auto pt-8 border-t border-gray-100 dark:border-white/5">
+                   <button onClick={() => navigate('/login')} className="w-full flex items-center gap-4 p-5 text-red-500 font-black text-[10px] uppercase tracking-widest">
+                     <span className="material-symbols-outlined text-xl">logout</span>
+                     Déconnexion
+                   </button>
+                </div>
+             </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 };
