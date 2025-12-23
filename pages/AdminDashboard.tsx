@@ -88,7 +88,6 @@ const AdminDashboard: React.FC = () => {
           { id: 'applications', label: 'Candidatures', icon: 'description', badge: applications.length.toString() },
           { id: 'catalog', label: 'Catalogue Acad.', icon: 'category' },
           { id: 'cms', label: 'Gestion CMS', icon: 'auto_fix_high' },
-          { id: 'settings', label: 'Paramètres', icon: 'settings' },
         ].map((item) => (
           <button 
             key={item.id}
