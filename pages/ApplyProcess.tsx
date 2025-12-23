@@ -95,20 +95,69 @@ const ApplyProcess: React.FC = () => {
                   <p className="text-gray-500 font-medium italic text-sm">Confirmez votre filière d'inscription.</p>
                 </div>
                 
-                <div className="p-8 rounded-[40px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800 flex flex-col md:flex-row gap-8 items-center">
-                   <div className="size-20 rounded-2xl bg-white dark:bg-surface-dark flex items-center justify-center shadow-lg text-primary border border-primary/20">
-                     <span className="material-symbols-outlined text-4xl font-bold">school</span>
-                   </div>
-                   <div className="text-center md:text-left space-y-1 flex-1">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Filière</p>
-                      <h3 className="text-3xl font-black dark:text-white leading-tight">{selectedMajor.name}</h3>
-                      <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{selectedMajor.universityName}</p>
-                   </div>
+                <div className="space-y-8">
+                  {/* Carte Info Filière Principale */}
+                  <div className="p-8 rounded-[40px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800 flex flex-col md:flex-row gap-8 items-center shadow-sm">
+                    <div className="size-20 rounded-2xl bg-white dark:bg-surface-dark flex items-center justify-center shadow-lg text-primary border border-primary/20">
+                      <span className="material-symbols-outlined text-4xl font-bold">school</span>
+                    </div>
+                    <div className="text-center md:text-left space-y-1 flex-1">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Filière sélectionnée</p>
+                        <h3 className="text-3xl font-black dark:text-white leading-tight">{selectedMajor.name}</h3>
+                        <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{selectedMajor.universityName}</p>
+                    </div>
+                  </div>
+
+                  {/* Grille des Détails (Débouchés & Diplômes) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Section Débouchés */}
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2 px-2">
+                        <span className="material-symbols-outlined text-primary text-sm font-bold">work_history</span>
+                        Débouchés Professionnels
+                      </h4>
+                      <div className="flex flex-col gap-3">
+                        {selectedMajor.careerProspects && selectedMajor.careerProspects.length > 0 ? (
+                          selectedMajor.careerProspects.map((cp, idx) => (
+                            <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                              <span className="material-symbols-outlined text-primary text-xl font-bold">{cp.icon}</span>
+                              <span className="text-sm font-bold dark:text-white">{cp.title}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-gray-400 italic px-2">Consultez la brochure pour les débouchés.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Section Diplômes */}
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2 px-2">
+                        <span className="material-symbols-outlined text-primary text-sm font-bold">assignment_ind</span>
+                        Diplômes & Conditions
+                      </h4>
+                      <div className="flex flex-col gap-3">
+                        {selectedMajor.requiredDiplomas && selectedMajor.requiredDiplomas.length > 0 ? (
+                          selectedMajor.requiredDiplomas.map((rd, idx) => (
+                            <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                              <span className="material-symbols-outlined text-primary text-xl font-bold">{rd.icon}</span>
+                              <span className="text-sm font-bold dark:text-white">{rd.name}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                            <span className="material-symbols-outlined text-primary text-xl font-bold">history_edu</span>
+                            <span className="text-sm font-bold dark:text-white">BAC toutes séries</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-6 pt-4">
                    <button onClick={() => setStep(2)} className="bg-primary hover:bg-green-400 px-20 py-5 rounded-2xl font-black text-black shadow-2xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-3 group">
-                     Continuer
+                     Confirmer et Continuer
                      <span className="material-symbols-outlined transition-transform group-hover:translate-x-1 font-black">arrow_forward</span>
                    </button>
                 </div>
