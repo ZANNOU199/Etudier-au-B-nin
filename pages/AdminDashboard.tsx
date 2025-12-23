@@ -76,7 +76,7 @@ const AdminDashboard: React.FC = () => {
     setShowWizard(true);
   };
 
-  // CSV Parsing Logic
+  // CSV Parsing Logic - Advanced Global Import
   const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -105,32 +105,77 @@ const AdminDashboard: React.FC = () => {
   };
 
   const processBulkImport = () => {
-    let successCount = 0;
+    let uniCount = 0;
+    let majorCount = 0;
+
     bulkData.forEach(row => {
-      // Find university by Acronym
-      const uni = universities.find(u => u.acronym.toLowerCase() === row.universite_sigle?.toLowerCase());
-      
-      if (uni) {
+      // 1. Identify or Create University
+      let uni = universities.find(u => u.acronym.toLowerCase() === row.sigle_inst?.toLowerCase());
+      let uniId = uni?.id;
+
+      if (!uni) {
+        uniId = 'uni-' + Math.random().toString(36).substr(2, 9);
+        const newUni: University = {
+          id: uniId,
+          name: row.nom_inst || 'Nouvel Établissement',
+          acronym: row.sigle_inst || 'SIGLE',
+          location: row.ville || 'Bénin',
+          type: (row.statut_inst === 'Privé' ? 'Privé' : 'Public'),
+          isStandaloneSchool: row.type_inst === 'E',
+          logo: 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
+          cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
+          description: "Établissement importé via console.",
+          stats: { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
+          faculties: row.nom_faculte ? [{
+            id: 'fac-' + Math.random().toString(36).substr(2, 5),
+            name: row.nom_faculte,
+            description: 'Faculté importée',
+            levels: ['Licence']
+          }] : []
+        };
+        addUniversity(newUni);
+        uniCount++;
+        uni = newUni; // Reference for major creation
+      } else if (row.nom_faculte) {
+        // Ensure faculty exists in existing uni
+        const facExists = uni.faculties.find(f => f.name === row.nom_faculte);
+        if (!facExists) {
+          const updatedUni = {
+            ...uni,
+            faculties: [...uni.faculties, {
+              id: 'fac-' + Math.random().toString(36).substr(2, 5),
+              name: row.nom_faculte,
+              description: 'Faculté ajoutée par import',
+              levels: ['Licence']
+            }]
+          };
+          updateUniversity(updatedUni);
+        }
+      }
+
+      // 2. Create Major
+      if (row.nom_filiere) {
         const major: Major = {
-          id: 'bulk-' + Math.random().toString(36).substr(2, 9),
-          name: row.filiere_nom,
-          universityId: uni.id,
-          universityName: uni.acronym,
-          facultyName: row.faculte_nom || 'Général',
-          domain: row.domaine || 'Académique',
+          id: 'maj-' + Math.random().toString(36).substr(2, 9),
+          name: row.nom_filiere,
+          universityId: uniId || '',
+          universityName: row.sigle_inst || uni.acronym,
+          facultyName: row.nom_faculte || 'Principal',
+          domain: row.domaine || 'Général',
           level: (['Licence', 'Master', 'Doctorat'].includes(row.cycle) ? row.cycle : 'Licence') as any,
           duration: row.duree || '3 Ans',
           fees: row.frais || 'N/A',
-          location: uni.location,
+          location: row.ville || uni.location,
           image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
           careerProspects: [{ title: row.debouche || 'Divers', icon: 'work' }],
-          requiredDiplomas: [{ name: row.diplome_requis || 'BAC', icon: 'school' }]
+          requiredDiplomas: [{ name: row.diplome || 'BAC', icon: 'school' }]
         };
         addMajor(major);
-        successCount++;
+        majorCount++;
       }
     });
-    alert(`${successCount} filières importées avec succès !`);
+
+    alert(`Importation réussie : ${uniCount} établissements créés et ${majorCount} filières ajoutées.`);
     setShowBulkImport(false);
     setBulkData([]);
     setImportStatus('idle');
@@ -297,24 +342,27 @@ const AdminDashboard: React.FC = () => {
 
           {activeView === 'catalog' && (
             <div className="space-y-8 animate-fade-in">
-               <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
-                  <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
-                    <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
-                    <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
+               {/* Main Catalog Header - Import Button always visible here */}
+               <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm">
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-2xl font-black dark:text-white tracking-tighter uppercase">Catalogue Académique</h2>
+                    <div className="flex gap-2 p-1 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 w-fit">
+                      <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
+                      <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
+                    </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    {activeCatalogSection === 'majors' && (
-                       <button 
-                        onClick={() => setShowBulkImport(true)}
-                        className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-500 hover:text-primary transition-all shadow-sm"
-                       >
-                         <span className="material-symbols-outlined text-lg">table_chart</span>
-                         Import Massive (CSV)
-                       </button>
-                    )}
+                  <div className="flex gap-4 w-full lg:w-auto">
+                    <button 
+                      onClick={() => setShowBulkImport(true)}
+                      className="flex-1 lg:flex-none flex items-center justify-center gap-3 px-8 py-4 bg-[#0d1b13] text-primary border border-primary/20 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all shadow-xl shadow-primary/10"
+                    >
+                      <span className="material-symbols-outlined text-xl">table_chart</span>
+                      Import Massive (CSV)
+                    </button>
+                    
                     {activeCatalogSection === 'universities' && (
-                      <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
+                      <div className="hidden sm:flex gap-2 bg-gray-50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-fit self-center">
                         {['all', 'university', 'school'].map(f => (
                           <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
                             {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
@@ -443,14 +491,14 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* MODAL: BULK IMPORT */}
+        {/* MODAL: BULK IMPORT (GLOBAL) */}
         {showBulkImport && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
-             <div className="bg-[#162a1f] w-full max-w-4xl rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5 flex flex-col max-h-[90vh]">
+             <div className="bg-[#162a1f] w-full max-w-5xl rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5 flex flex-col max-h-[90vh]">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5 shrink-0">
                    <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight">Importation Massive de Filières</h3>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Format supporté : CSV UTF-8</p>
+                      <h3 className="text-2xl font-black text-white tracking-tight">Importation Globale Académique</h3>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Établissements, Facultés et Filières en une seule étape</p>
                    </div>
                    <button onClick={() => { setShowBulkImport(false); setBulkData([]); setImportStatus('idle'); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                       <span className="material-symbols-outlined">close</span>
@@ -459,65 +507,91 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
                    {importStatus === 'idle' && (
-                      <div className="space-y-8 text-center py-10">
-                         <div className="max-w-md mx-auto p-8 rounded-[32px] border-2 border-dashed border-white/10 hover:border-primary/50 transition-all group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            <span className="material-symbols-outlined text-6xl text-gray-500 group-hover:text-primary transition-colors mb-4">upload_file</span>
-                            <p className="text-white font-black uppercase text-[11px] tracking-widest">Cliquez pour choisir votre fichier CSV</p>
+                      <div className="space-y-10 text-center py-6">
+                         <div className="max-w-xl mx-auto p-12 rounded-[40px] border-2 border-dashed border-white/10 hover:border-primary/50 transition-all group cursor-pointer bg-white/5 shadow-inner" onClick={() => fileInputRef.current?.click()}>
+                            <div className="size-24 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6 group-hover:scale-110 transition-transform">
+                              <span className="material-symbols-outlined text-5xl font-bold">upload_file</span>
+                            </div>
+                            <p className="text-white font-black uppercase text-xs tracking-widest">Glissez votre fichier CSV Global</p>
+                            <p className="text-gray-500 text-[10px] mt-2 font-bold italic">Le système créera automatiquement les établissements s'ils n'existent pas.</p>
                             <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleBulkFileChange} />
                          </div>
-                         <div className="bg-white/5 p-6 rounded-3xl text-left border border-white/5 space-y-4">
-                            <h4 className="text-primary font-black uppercase text-[10px] tracking-widest">Structure attendue (Colonnes) :</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                               {['filiere_nom', 'universite_sigle', 'faculte_nom', 'cycle', 'duree', 'frais', 'domaine', 'debouche', 'diplome_requis'].map(c => (
-                                  <div key={c} className="p-2 bg-black/20 rounded-lg text-[9px] font-bold text-gray-400 border border-white/5">
+                         
+                         <div className="bg-black/40 p-8 rounded-[32px] text-left border border-white/5 space-y-6">
+                            <div className="flex items-center gap-3">
+                               <span className="material-symbols-outlined text-primary">list_alt</span>
+                               <h4 className="text-primary font-black uppercase text-[11px] tracking-widest">Structure attendue des colonnes (13 colonnes) :</h4>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                               {[
+                                 'type_inst (U/E)', 'statut_inst (P/Pr)', 'nom_inst', 'sigle_inst', 
+                                 'ville', 'nom_faculte', 'nom_filiere', 'cycle', 
+                                 'duree', 'frais', 'domaine', 'debouche', 'diplome'
+                               ].map(c => (
+                                  <div key={c} className="p-2.5 bg-white/5 rounded-xl text-[9px] font-bold text-gray-400 border border-white/5 flex items-center gap-2">
+                                     <span className="size-1.5 rounded-full bg-primary/40"></span>
                                      {c}
                                   </div>
                                ))}
+                            </div>
+                            <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl">
+                               <p className="text-[10px] text-primary font-black uppercase leading-relaxed">
+                                 CONSEIL : Utilisez le sigle (ex: UAC, HECM) pour relier plusieurs filières au même établissement.
+                               </p>
                             </div>
                          </div>
                       </div>
                    )}
 
                    {importStatus === 'parsing' && (
-                      <div className="py-20 flex flex-col items-center gap-6">
-                         <div className="size-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                         <p className="text-white font-black uppercase text-[11px] tracking-widest animate-pulse">Traitement du fichier...</p>
+                      <div className="py-24 flex flex-col items-center gap-6">
+                         <div className="size-20 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
+                         <p className="text-white font-black uppercase text-xs tracking-[0.3em] animate-pulse">Analyse structurelle des données...</p>
                       </div>
                    )}
 
                    {importStatus === 'ready' && (
                       <div className="space-y-8 animate-in fade-in">
-                         <div className="flex justify-between items-center">
-                            <h4 className="text-white font-black uppercase text-[11px] tracking-widest">Aperçu des données ({bulkData.length} lignes)</h4>
-                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="text-[10px] font-black text-red-400 uppercase tracking-widest hover:underline">Changer de fichier</button>
+                         <div className="flex justify-between items-center bg-white/5 p-6 rounded-2xl border border-white/5">
+                            <div className="flex items-center gap-4">
+                               <span className="material-symbols-outlined text-primary text-3xl">check_circle</span>
+                               <h4 className="text-white font-black uppercase text-xs tracking-widest">Fichier validé : {bulkData.length} lignes identifiées</h4>
+                            </div>
+                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="px-6 py-2 bg-red-500/10 text-[10px] font-black text-red-400 uppercase tracking-widest rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">Recommencer</button>
                          </div>
-                         <div className="overflow-x-auto rounded-2xl border border-white/5">
-                            <table className="w-full text-left text-[10px] text-gray-400 font-bold border-collapse">
-                               <thead className="bg-white/5 text-white uppercase tracking-widest">
+                         
+                         <div className="overflow-x-auto rounded-[32px] border border-white/5 shadow-2xl">
+                            <table className="w-full text-left text-[11px] text-gray-400 font-bold border-collapse">
+                               <thead className="bg-[#0d1b13] text-primary uppercase tracking-widest">
                                   <tr>
-                                     <th className="p-4">Filière</th>
-                                     <th className="p-4">Université</th>
-                                     <th className="p-4">Cycle</th>
-                                     <th className="p-4">Frais</th>
+                                     <th className="p-5">Établissement</th>
+                                     <th className="p-5">Faculté / École</th>
+                                     <th className="p-5">Filière</th>
+                                     <th className="p-5">Localisation</th>
                                   </tr>
                                </thead>
-                               <tbody className="divide-y divide-white/5">
-                                  {bulkData.slice(0, 5).map((row, i) => (
-                                     <tr key={i} className="hover:bg-white/5 transition-colors">
-                                        <td className="p-4 text-white truncate max-w-[150px]">{row.filiere_nom}</td>
-                                        <td className="p-4">{row.universite_sigle}</td>
-                                        <td className="p-4">{row.cycle}</td>
-                                        <td className="p-4 text-primary">{row.frais}</td>
+                               <tbody className="divide-y divide-white/5 bg-white/5">
+                                  {bulkData.slice(0, 10).map((row, i) => (
+                                     <tr key={i} className="hover:bg-white/10 transition-colors">
+                                        <td className="p-5">
+                                          <div className="flex items-center gap-2">
+                                            <span className="size-6 bg-primary/20 text-primary rounded-md flex items-center justify-center text-[9px]">{row.type_inst}</span>
+                                            <span className="text-white font-black">{row.sigle_inst}</span>
+                                          </div>
+                                        </td>
+                                        <td className="p-5 italic">{row.nom_faculte || 'Principal'}</td>
+                                        <td className="p-5 text-gray-200">{row.nom_filiere}</td>
+                                        <td className="p-5 text-[10px] uppercase">{row.ville}</td>
                                      </tr>
                                   ))}
                                </tbody>
                             </table>
                          </div>
-                         {bulkData.length > 5 && <p className="text-center text-[10px] text-gray-500 font-bold italic">Et {bulkData.length - 5} autres lignes...</p>}
+                         {bulkData.length > 10 && <p className="text-center text-[11px] text-gray-500 font-bold uppercase tracking-[0.2em]">... + {bulkData.length - 10} entrées supplémentaires</p>}
                          
-                         <div className="flex gap-4">
-                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="flex-1 py-4 bg-white/5 text-white font-black rounded-2xl text-[11px] uppercase tracking-widest hover:bg-white/10 transition-all">Annuler</button>
-                            <button onClick={processBulkImport} className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">Confirmer l'importation</button>
+                         <div className="flex gap-4 pt-4">
+                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="flex-1 py-5 bg-white/5 text-white font-black rounded-3xl text-xs uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5">Annuler l'opération</button>
+                            <button onClick={processBulkImport} className="flex-1 py-5 bg-primary text-black font-black rounded-3xl text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all">Démarrer l'importation global</button>
                          </div>
                       </div>
                    )}
