@@ -23,11 +23,10 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { translate, languages, currentLang, setLanguage, user, logout } = useCMS();
   
-  const isAppPage = location.pathname.startsWith('/dashboard') || 
-                    location.pathname.startsWith('/admin') || 
+  const isAppPage = location.pathname.startsWith('/admin') || 
                     location.pathname.startsWith('/apply');
 
-  // Si on est sur une page d'application pure, on ne rend rien car elles ont leur propre header interne
+  // Sur les pages d'administration pure ou de processus d'inscription, on peut masquer le header global
   if (isAppPage) return null;
 
   const handleLogout = () => {
@@ -35,15 +34,15 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  // HEADER POUR UTILISATEUR CONNECTÉ (Minimaliste & Dashboard Style)
+  // HEADER POUR UTILISATEUR CONNECTÉ (Minimaliste & Dashboard Style selon maquette)
   if (user) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-border-light dark:border-white/5 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-white/5 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl">
         <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto w-full">
-          {/* Section Gauche : Salutations & État */}
+          {/* Section Gauche : Grid View + Salutations */}
           <div className="flex items-center gap-5">
-            <Link to="/dashboard" className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary hover:scale-105 transition-transform group">
-              <span className="material-symbols-outlined font-black text-2xl group-hover:rotate-12 transition-transform">grid_view</span>
+            <Link to="/dashboard" className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined font-black text-2xl">grid_view</span>
             </Link>
             <div className="flex flex-col">
               <h2 className="text-lg font-black dark:text-white leading-none tracking-tight">Bonjour, {user.firstName}</h2>
@@ -51,21 +50,24 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Section Droite : Profil & Logout */}
+          {/* Section Droite : Identité & Logout */}
           <div className="flex items-center gap-6">
-            <div className="hidden sm:flex flex-col items-end text-right">
-              <p className="text-[11px] font-black dark:text-white uppercase tracking-wider leading-none">{user.firstName} {user.lastName}</p>
-              <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1.5">ID #{user.id.split('-')[1]}</p>
+            <div className="hidden sm:flex items-center gap-3">
+               <div className="flex flex-col items-end text-right">
+                  <p className="text-[11px] font-black dark:text-white uppercase tracking-wider leading-none">{user.firstName} {user.lastName}</p>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1.5">ID #{user.id.split('-')[1] || '6329'}</p>
+               </div>
+               <span className="material-symbols-outlined text-gray-300 text-3xl">account_circle</span>
             </div>
             
-            <div className="h-10 w-px bg-gray-100 dark:bg-white/10 hidden md:block"></div>
+            <div className="h-8 w-px bg-gray-100 dark:bg-white/10 hidden md:block"></div>
 
             <button 
               onClick={handleLogout}
-              className="flex items-center justify-center gap-3 h-12 px-6 rounded-2xl bg-red-500/5 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/10 transition-all font-black text-[11px] uppercase tracking-widest group"
+              className="flex items-center justify-center gap-2 h-11 px-5 rounded-2xl bg-red-500/5 hover:bg-red-500 text-red-500 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest border border-red-500/10 group"
             >
-              <span className="hidden sm:inline">Déconnexion</span>
-              <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">logout</span>
+              <span>Déconnexion</span>
+              <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">logout</span>
             </button>
           </div>
         </div>
@@ -141,11 +143,10 @@ const Navbar = () => {
 
 const Footer = () => {
   const location = useLocation();
-  const { translate, user } = useCMS();
+  const { translate } = useCMS();
   
-  // Cache le footer uniquement sur les pages d'application (Dashboard complet, Admin, Formulaire d'inscription)
-  const isAppPage = location.pathname.startsWith('/dashboard') || 
-                    location.pathname.startsWith('/admin') || 
+  // Cache le footer sur les pages d'application (Admin, Formulaire d'inscription)
+  const isAppPage = location.pathname.startsWith('/admin') || 
                     location.pathname.startsWith('/apply');
 
   if (isAppPage) return null;

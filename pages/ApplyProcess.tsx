@@ -48,14 +48,15 @@ const ApplyProcess: React.FC = () => {
              <span className="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
            </button>
            <div>
-             <h2 className="font-black dark:text-white tracking-tighter text-sm uppercase">Préinscription</h2>
-             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Candidat: {user.firstName} {user.lastName}</p>
+             <h2 className="font-black dark:text-white tracking-tighter text-sm uppercase leading-none">Préinscription</h2>
+             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Candidat: {user.firstName} {user.lastName}</p>
            </div>
         </div>
       </nav>
 
       <div className="flex-grow flex flex-col items-center p-6 md:p-10">
         <div className="max-w-4xl w-full space-y-12">
+          {/* Steps Indicator */}
           <div className="relative flex items-center justify-between max-w-xl mx-auto mb-10 pt-4">
             <div className="absolute top-10 left-0 w-full h-1 bg-gray-200 dark:bg-gray-800 -z-10 rounded-full"></div>
             <div className="absolute top-10 left-0 h-1 bg-primary -z-10 rounded-full transition-all duration-700" style={{ width: `${(step - 1) * 33.3}%` }}></div>
@@ -72,6 +73,7 @@ const ApplyProcess: React.FC = () => {
             ))}
           </div>
 
+          {/* Form Content */}
           <div className="bg-white dark:bg-surface-dark rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
             {step === 1 && (
               <div className="p-8 md:p-16 space-y-12 animate-in fade-in slide-in-from-bottom-4">
@@ -94,7 +96,7 @@ const ApplyProcess: React.FC = () => {
                 <div className="flex flex-col items-center gap-6 pt-4">
                    <button onClick={() => setStep(2)} className="bg-primary hover:bg-green-400 px-20 py-5 rounded-2xl font-black text-black shadow-2xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-3 group">
                      Continuer
-                     <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+                     <span className="material-symbols-outlined transition-transform group-hover:translate-x-1 font-black">arrow_forward</span>
                    </button>
                 </div>
               </div>
@@ -118,8 +120,8 @@ const ApplyProcess: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex justify-between pt-8">
-                   <button onClick={() => setStep(1)} className="text-xs font-black text-gray-400 uppercase tracking-widest">Retour</button>
-                   <button onClick={() => setStep(3)} className="bg-primary px-10 py-4 rounded-2xl font-black text-black uppercase tracking-widest text-xs">Suivant</button>
+                   <button onClick={() => setStep(1)} className="text-xs font-black text-gray-400 uppercase tracking-widest hover:text-primary transition-colors">Retour</button>
+                   <button onClick={() => setStep(3)} className="bg-primary px-10 py-4 rounded-2xl font-black text-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Suivant</button>
                 </div>
               </div>
             )}
@@ -128,13 +130,13 @@ const ApplyProcess: React.FC = () => {
               <div className="p-10 md:p-16 space-y-10 animate-in fade-in slide-in-from-right-4 text-center">
                 <h2 className="text-3xl font-black dark:text-white tracking-tighter">Documents Numériques</h2>
                 <p className="text-gray-500 font-medium">Glissez-déposez vos justificatifs (Relevé BAC, Identité).</p>
-                <div className="py-20 border-4 border-dashed border-gray-100 dark:border-gray-800 rounded-[32px] flex flex-col items-center gap-4 text-gray-300 hover:text-primary hover:border-primary transition-all cursor-pointer">
-                   <span className="material-symbols-outlined text-6xl">cloud_upload</span>
+                <div className="py-20 border-4 border-dashed border-gray-100 dark:border-gray-800 rounded-[32px] flex flex-col items-center gap-4 text-gray-300 hover:text-primary hover:border-primary transition-all cursor-pointer group">
+                   <span className="material-symbols-outlined text-6xl group-hover:scale-110 transition-transform">cloud_upload</span>
                    <p className="font-bold uppercase text-[10px] tracking-widest">Télécharger les fichiers</p>
                 </div>
                 <div className="flex justify-between pt-8">
-                   <button onClick={() => setStep(2)} className="text-xs font-black text-gray-400 uppercase tracking-widest">Retour</button>
-                   <button onClick={handleFinalSubmit} className="bg-primary px-10 py-4 rounded-2xl font-black text-black uppercase tracking-widest text-xs">Soumettre mon dossier</button>
+                   <button onClick={() => setStep(2)} className="text-xs font-black text-gray-400 uppercase tracking-widest hover:text-primary transition-colors">Retour</button>
+                   <button onClick={handleFinalSubmit} className="bg-primary px-10 py-4 rounded-2xl font-black text-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Soumettre mon dossier</button>
                 </div>
               </div>
             )}
@@ -142,7 +144,7 @@ const ApplyProcess: React.FC = () => {
             {step === 4 && (
               <div className="p-10 md:p-20 flex flex-col items-center text-center gap-8 animate-in zoom-in-95">
                 <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center text-primary mb-4">
-                   <span className="material-symbols-outlined text-6xl font-bold">verified</span>
+                   <span className="material-symbols-outlined text-6xl font-black">verified</span>
                 </div>
                 <div className="space-y-4">
                   <h2 className="text-5xl font-black dark:text-white tracking-tighter">Félicitations !</h2>

@@ -1,13 +1,16 @@
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Login: React.FC = () => {
   const { login } = useCMS();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const redirectPath = searchParams.get('redirect');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,17 +24,17 @@ const Login: React.FC = () => {
         email: 'admin@eden.bj',
         role: 'super_admin'
       });
-      navigate('/admin');
+      navigate(redirectPath || '/admin');
     } else {
       login({
-        id: 'USR-' + Math.floor(Math.random() * 10000),
-        firstName: email.split('@')[0],
+        id: 'USR-6329', // ID statique pour correspondre à la maquette
+        firstName: 'staff',
         lastName: 'Candidat',
         email: email,
         role: 'student',
         ine: '2024' + Math.floor(Math.random() * 100000)
       });
-      navigate('/dashboard');
+      navigate(redirectPath || '/dashboard');
     }
   };
 
