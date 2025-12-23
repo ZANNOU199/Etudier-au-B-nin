@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, ThemeConfig, CMSContent, UserRole } from './types';
+import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major } from './types';
+import { UNIVERSITIES as STATIC_UNIS, MAJORS as STATIC_MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -9,6 +10,10 @@ interface CMSContextType {
   currentLang: string;
   activeTheme: ThemeConfig;
   userRole: UserRole;
+  user: User | null;
+  applications: Application[];
+  universities: University[];
+  majors: Major[];
   translate: (key: string) => string;
   updateContent: (key: string, lang: string, value: string) => void;
   setLanguage: (code: string) => void;
@@ -16,6 +21,18 @@ interface CMSContextType {
   applyTheme: (themeId: string) => void;
   updateTheme: (themeId: string, updates: Partial<ThemeConfig>) => void;
   setUserRole: (role: UserRole) => void;
+  login: (userData: User) => void;
+  logout: () => void;
+  addApplication: (app: Application) => void;
+  updateApplicationStatus: (id: string, status: Application['status']) => void;
+  deleteApplication: (id: string) => void;
+  // Admin Methods
+  addUniversity: (uni: University) => void;
+  updateUniversity: (uni: University) => void;
+  deleteUniversity: (id: string) => void;
+  addMajor: (major: Major) => void;
+  updateMajor: (major: Major) => void;
+  deleteMajor: (id: string) => void;
 }
 
 const DEFAULT_CONTENT: CMSContent = {
@@ -49,6 +66,26 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : DEFAULT_CONTENT;
   });
 
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('auth_user_v1');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [universities, setUniversities] = useState<University[]>(() => {
+    const saved = localStorage.getItem('db_universities_v1');
+    return saved ? JSON.parse(saved) : STATIC_UNIS;
+  });
+
+  const [majors, setMajors] = useState<Major[]>(() => {
+    const saved = localStorage.getItem('db_majors_v1');
+    return saved ? JSON.parse(saved) : STATIC_MAJORS;
+  });
+
+  const [applications, setApplications] = useState<Application[]>(() => {
+    const saved = localStorage.getItem('db_applications_v1');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [languages, setLanguages] = useState<Language[]>([
     { code: 'fr', label: 'Français', isActive: true },
     { code: 'en', label: 'English', isActive: true }
@@ -61,16 +98,20 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : DEFAULT_THEMES;
   });
 
-  const [userRole, setUserRole] = useState<UserRole>('super_admin');
+  const [userRole, setUserRole] = useState<UserRole>(user?.role || 'student');
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
   useEffect(() => {
     localStorage.setItem('cms_content_v1', JSON.stringify(content));
-  }, [content]);
+    localStorage.setItem('db_universities_v1', JSON.stringify(universities));
+    localStorage.setItem('db_majors_v1', JSON.stringify(majors));
+    localStorage.setItem('db_applications_v1', JSON.stringify(applications));
+    if (user) localStorage.setItem('auth_user_v1', JSON.stringify(user));
+    else localStorage.removeItem('auth_user_v1');
+  }, [content, universities, majors, applications, user]);
 
   useEffect(() => {
-    localStorage.setItem('cms_themes_v1', JSON.stringify(themes));
     const root = document.documentElement;
     root.style.setProperty('--primary-color', activeTheme.primary);
     root.style.setProperty('--bg-color', activeTheme.background);
@@ -80,6 +121,29 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const translate = (key: string) => content[key]?.[currentLang] || content[key]?.fr || key;
 
+  const login = (userData: User) => {
+    setUser(userData);
+    setUserRole(userData.role);
+  };
+
+  const logout = () => {
+    setUser(null);
+    setUserRole('student');
+  };
+
+  const addApplication = (app: Application) => setApplications(prev => [app, ...prev]);
+  const updateApplicationStatus = (id: string, status: Application['status']) => 
+    setApplications(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  const deleteApplication = (id: string) => setApplications(prev => prev.filter(a => a.id !== id));
+
+  const addUniversity = (uni: University) => setUniversities(prev => [uni, ...prev]);
+  const updateUniversity = (uni: University) => setUniversities(prev => prev.map(u => u.id === uni.id ? uni : u));
+  const deleteUniversity = (id: string) => setUniversities(prev => prev.filter(u => u.id !== id));
+
+  const addMajor = (major: Major) => setMajors(prev => [major, ...prev]);
+  const updateMajor = (major: Major) => setMajors(prev => prev.map(m => m.id === major.id ? major : m));
+  const deleteMajor = (id: string) => setMajors(prev => prev.filter(m => m.id !== id));
+
   const updateContent = (key: string, lang: string, value: string) => {
     setContent(prev => ({
       ...prev,
@@ -88,7 +152,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setLanguage = (code: string) => setCurrentLang(code);
-
   const toggleLanguage = (code: string) => {
     setLanguages(prev => prev.map(l => l.code === code ? { ...l, isActive: !l.isActive } : l));
   };
@@ -103,9 +166,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <CMSContext.Provider value={{ 
-      content, languages, themes, currentLang, activeTheme, userRole,
+      content, languages, themes, currentLang, activeTheme, userRole, user, applications, universities, majors,
       translate, updateContent, setLanguage, toggleLanguage,
-      applyTheme, updateTheme, setUserRole
+      applyTheme, updateTheme, setUserRole, login, logout, addApplication, updateApplicationStatus, deleteApplication,
+      addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor
     }}>
       {children}
     </CMSContext.Provider>

@@ -9,6 +9,7 @@ export interface University {
   cover: string;
   description: string;
   isStandaloneSchool?: boolean;
+  // Fix: Making cities optional as not all institutions have multiple campuses across different cities
   cities?: string[];
   stats: {
     students: string;
@@ -53,6 +54,19 @@ export interface Major {
   requiredDiplomas?: RequiredDiploma[];
 }
 
+export interface Application {
+  id: string;
+  studentId: string;
+  studentName: string;
+  majorId: string;
+  majorName: string;
+  universityName: string;
+  status: 'En attente' | 'Validé' | 'Rejeté' | 'En cours';
+  date: string;
+  progress: number;
+  documents: string[];
+}
+
 export type UserRole = 'super_admin' | 'editor' | 'student';
 
 export interface User {
@@ -65,7 +79,6 @@ export interface User {
   ine?: string;
 }
 
-// CMS SPECIFIC TYPES
 export interface Language {
   code: string;
   label: string;

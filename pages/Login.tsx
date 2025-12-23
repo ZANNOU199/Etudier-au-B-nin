@@ -1,11 +1,42 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useCMS } from '../CMSContext';
 
 const Login: React.FC = () => {
+  const { login } = useCMS();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Simulation simple d'authentification
+    if (email === 'admin@eden.bj') {
+      login({
+        id: 'ADM-001',
+        firstName: 'Admin',
+        lastName: 'Principal',
+        email: 'admin@eden.bj',
+        role: 'super_admin'
+      });
+      navigate('/admin');
+    } else {
+      login({
+        id: 'USR-' + Math.floor(Math.random() * 10000),
+        firstName: email.split('@')[0],
+        lastName: 'Candidat',
+        email: email,
+        role: 'student',
+        ine: '2024' + Math.floor(Math.random() * 100000)
+      });
+      navigate('/dashboard');
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex bg-white dark:bg-background-dark">
-      {/* Left side: Image & Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative min-h-screen bg-gray-900 overflow-hidden">
         <img 
           src="https://images.unsplash.com/photo-1523050335192-ce11558cd97d?q=80&w=1600&auto=format&fit=crop" 
@@ -13,7 +44,6 @@ const Login: React.FC = () => {
           alt="Campus étudiant" 
         />
         <div className="absolute inset-0 bg-black/40"></div>
-        
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
           <div className="flex items-center gap-3">
             <div className="size-12 bg-[#13ec6d] rounded-xl flex items-center justify-center shadow-lg">
@@ -21,7 +51,6 @@ const Login: React.FC = () => {
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Etudier au Bénin</h1>
           </div>
-
           <div className="space-y-6 max-w-lg">
             <p className="text-4xl font-bold text-white leading-tight drop-shadow-2xl">
               "L'éducation est l'arme la plus puissante qu'on puisse utiliser pour changer le monde."
@@ -34,22 +63,24 @@ const Login: React.FC = () => {
         </div>
       </div>
 
-      {/* Right side: Login Form */}
       <div className="flex-1 flex flex-col justify-center items-center p-8 md:p-16 lg:p-24 bg-[#f9fafb] dark:bg-background-dark">
         <div className="w-full max-w-md space-y-10">
           <div className="space-y-4">
             <h2 className="text-5xl font-black text-[#0f1a13] dark:text-white tracking-tighter">Connexion</h2>
             <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed">
-              Bienvenue sur votre espace étudiant. Entrez vos identifiants pour accéder à votre compte.
+              Bienvenue sur votre espace personnel.
             </p>
           </div>
 
-          <div className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Adresse Email</label>
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-[#13ec6d] transition-colors">mail</span>
                 <input 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
                   type="email" 
                   placeholder="etudiant@exemple.bj" 
@@ -62,6 +93,9 @@ const Login: React.FC = () => {
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-[#13ec6d] transition-colors">lock</span>
                 <input 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
                   type="password" 
                   placeholder="••••••••" 
@@ -77,12 +111,11 @@ const Login: React.FC = () => {
               <Link to="#" className="font-bold text-[#13ec6d] hover:underline">Mot de passe oublié ?</Link>
             </div>
 
-            {/* FIXED: Changed to Link for navigation */}
-            <Link to="/dashboard" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">
+            <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">
               Se connecter
               <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
-            </Link>
-          </div>
+            </button>
+          </form>
 
           <div className="relative flex items-center py-4">
             <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
@@ -93,11 +126,6 @@ const Login: React.FC = () => {
           <p className="text-center font-bold text-gray-500 text-lg">
             Nouveau bachelier ? <Link to="/register" className="text-[#13ec6d] hover:underline">Créer un compte</Link>
           </p>
-
-          <div className="flex justify-center gap-8 pt-10 text-[10px] font-black uppercase tracking-widest text-gray-400">
-            <Link to="#" className="hover:text-[#13ec6d] transition-colors">Aide & Support</Link>
-            <Link to="#" className="hover:text-[#13ec6d] transition-colors">Politique de confidentialité</Link>
-          </div>
         </div>
       </div>
     </div>
