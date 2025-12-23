@@ -505,7 +505,7 @@ const AdminDashboard: React.FC = () => {
                               name: fd.get('mName') as string,
                               universityId: currentInstId || '',
                               universityName: currentUni?.name || '',
-                              facultyName: fd.get('fName') as string || 'Principal',
+                              facultyName: fd.get('facultySelect') as string || 'Principal',
                               domain: fd.get('domain') as string || 'Général',
                               level: selectedWizardLevel,
                               duration: fd.get('duration') as string || '3 Ans',
@@ -518,9 +518,31 @@ const AdminDashboard: React.FC = () => {
                            addMajor(majorData);
                            e.currentTarget.reset();
                         }} className="space-y-6 p-6 bg-white/5 rounded-[32px] border border-white/5">
+                           
+                           {currentUni && currentUni.faculties.length > 0 && (
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Choix de l'école / faculté</label>
+                                 <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary text-lg">domain</span>
+                                    <select 
+                                       name="facultySelect" 
+                                       required 
+                                       className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                                    >
+                                       {currentUni.faculties.map(f => (
+                                          <option key={f.id} value={f.name} className="bg-[#162a1f] text-white">
+                                             {f.name}
+                                          </option>
+                                       ))}
+                                    </select>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 pointer-events-none">expand_more</span>
+                                 </div>
+                              </div>
+                           )}
+
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom de la filière</label>
-                              <input name="mName" required placeholder="Ex: Informatique de Gestion" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
+                              <input name="mName" required placeholder="Ex: Informatique de Gestion" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
 
                            <div className="space-y-3">
@@ -556,9 +578,12 @@ const AdminDashboard: React.FC = () => {
                         <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                            {currentInstMajors.map(m => (
                               <div key={m.id} className="p-3 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
-                                 <div className="flex items-center gap-3">
-                                    <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-primary uppercase">{m.level[0]}</span>
-                                    <p className="font-black text-xs text-white">{m.name}</p>
+                                 <div className="flex flex-col">
+                                    <div className="flex items-center gap-3">
+                                       <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-primary uppercase">{m.level[0]}</span>
+                                       <p className="font-black text-xs text-white">{m.name}</p>
+                                    </div>
+                                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">Établi: {m.facultyName}</p>
                                  </div>
                                  <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm">delete</button>
                               </div>
