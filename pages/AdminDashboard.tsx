@@ -64,7 +64,7 @@ const AdminDashboard: React.FC = () => {
               setActiveView(item.id as AdminView);
               setIsSidebarOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
+            className={` Kaplan w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
               activeView === item.id 
               ? 'bg-primary text-black shadow-lg shadow-primary/20' 
               : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -186,8 +186,14 @@ const AdminDashboard: React.FC = () => {
 
               {/* Application Details Modal */}
               {selectedApp && (
-                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
-                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl">
+                <div 
+                  className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+                  onClick={() => setSelectedApp(null)}
+                >
+                   <div 
+                    className=" Kaplan bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                   >
                       <div className="p-10 space-y-8">
                          <div className="flex justify-between items-start">
                             <div>
@@ -226,22 +232,29 @@ const AdminDashboard: React.FC = () => {
                             </div>
                          </div>
 
-                         <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-white/10">
+                         <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-100 dark:border-white/10">
                             <button 
                               onClick={() => { updateApplicationStatus(selectedApp.id, 'Validé'); setSelectedApp(null); }}
-                              className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                              className="flex-1 min-w-[140px] py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                             >
-                              Valider le dossier
+                              Valider
                             </button>
                             <button 
                               onClick={() => { updateApplicationStatus(selectedApp.id, 'Rejeté'); setSelectedApp(null); }}
-                              className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 transition-all"
+                              className="flex-1 min-w-[140px] py-4 bg-red-500 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 transition-all"
                             >
                               Rejeter
                             </button>
                             <button 
+                              onClick={() => setSelectedApp(null)}
+                              className="flex-1 min-w-[140px] py-4 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-white/20 transition-all"
+                            >
+                              Fermer
+                            </button>
+                            <button 
                               onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }}
                               className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"
+                              title="Supprimer la candidature"
                             >
                               <span className="material-symbols-outlined">delete</span>
                             </button>
@@ -366,10 +379,10 @@ const AdminDashboard: React.FC = () => {
 
                {/* Major Form Modal */}
                {showMajorForm && (
-                 <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
-                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                 <div className=" Kaplan fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
+                   <div className=" Kaplan bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
                      <div className="flex justify-between items-center">
-                       <h3 className="text-2xl font-black dark:text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une Filière</h3>
+                       <h3 className=" Kaplan text-2xl font-black dark:text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une Filière</h3>
                        <button onClick={() => setShowMajorForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
                      </div>
                      <form onSubmit={(e) => {
@@ -503,23 +516,23 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeView === 'cms' && (
-             <div className="space-y-10 animate-fade-in max-w-4xl">
+             <div className=" Kaplan space-y-10 animate-fade-in max-w-4xl">
                <div className="space-y-2">
-                  <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
+                  <h2 className=" Kaplan text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
                   <p className="text-gray-500 font-medium">Modifiez les textes statiques de la plateforme.</p>
                </div>
-               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10 space-y-8">
+               <div className=" Kaplan bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10 space-y-8">
                   {Object.keys(content).map(key => (
-                    <div key={key} className="space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl">
+                    <div key={key} className=" Kaplan space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl">
                        <h4 className="font-black text-primary uppercase text-[10px] tracking-widest">ID: {key}</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className=" Kaplan grid grid-cols-1 md:grid-cols-2 gap-4">
                           {languages.filter(l => l.isActive).map(l => (
-                            <div key={l.code} className="space-y-1">
+                            <div key={l.code} className=" Kaplan space-y-1">
                                <label className="text-[9px] font-bold text-gray-400 uppercase">{l.label}</label>
                                <textarea 
                                   value={content[key][l.code]} 
                                   onChange={(e) => updateContent(key, l.code, e.target.value)}
-                                  className="w-full p-4 rounded-xl border-none font-bold text-sm bg-white dark:bg-surface-dark resize-none"
+                                  className=" Kaplan w-full p-4 rounded-xl border-none font-bold text-sm bg-white dark:bg-surface-dark resize-none"
                                />
                             </div>
                           ))}
