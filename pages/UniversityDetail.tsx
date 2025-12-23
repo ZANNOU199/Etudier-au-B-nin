@@ -1,20 +1,18 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { UNIVERSITIES } from '../constants';
 import { useCMS } from '../CMSContext';
 
 const UniversityDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useCMS();
+  const { user, universities } = useCMS();
   const [showAllFaculties, setShowAllFaculties] = useState(false);
   
-  const uni = UNIVERSITIES.find(u => u.id === id);
+  const uni = universities.find(u => u.id === id);
 
-  if (!uni) return <div className="p-20 text-center">Université non trouvée.</div>;
+  if (!uni) return <div className="p-20 text-center dark:text-white font-bold">Établissement non trouvé ou supprimé.</div>;
 
-  // Si c'est une école autonome (isStandaloneSchool), on crée une "faculté virtuelle" représentant l'école elle-même
   const facultiesToDisplay = useMemo(() => {
     if (uni.isStandaloneSchool && uni.faculties.length === 0) {
       return [{
@@ -33,10 +31,8 @@ const UniversityDetail: React.FC = () => {
   const handlePreRegistration = () => {
     const targetPath = `/majors?search=${encodeURIComponent(uni.acronym)}`;
     if (!user) {
-      // Redirige vers login avec le retour prévu vers le catalogue filtré
       navigate(`/login?redirect=${encodeURIComponent(targetPath)}`);
     } else {
-      // Si déjà connecté, go directement au catalogue filtré
       navigate(targetPath);
     }
   };
@@ -174,11 +170,6 @@ const UniversityDetail: React.FC = () => {
                     </div>
                   </li>
                 </ul>
-                <div className="pt-4">
-                   <Link to="/contact" className="w-full flex items-center justify-center gap-2 py-4 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800 rounded-2xl font-black text-sm uppercase tracking-widest hover:border-primary transition-all dark:text-white">
-                      Demander Conseil
-                   </Link>
-                </div>
               </div>
             </div>
           </div>

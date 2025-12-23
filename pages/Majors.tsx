@@ -1,20 +1,21 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { MAJORS } from '../constants';
+import { useCMS } from '../CMSContext';
 
 const ITEMS_PER_PAGE = 4;
 
 const Majors: React.FC = () => {
+  const { majors } = useCMS();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [cityFilter, setCityFilter] = useState('Toutes les villes');
   const [currentPage, setCurrentPage] = useState(1);
 
   const cities = useMemo(() => {
-    const allCities = MAJORS.map(m => m.location);
+    const allCities = majors.map(m => m.location);
     return ['Toutes les villes', ...Array.from(new Set(allCities))];
-  }, []);
+  }, [majors]);
 
   useEffect(() => {
     const urlSearch = searchParams.get('search');
@@ -26,7 +27,7 @@ const Majors: React.FC = () => {
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase().trim();
-    return MAJORS.filter(m => {
+    return majors.filter(m => {
       const matchesSearch = 
         m.name.toLowerCase().includes(query) || 
         m.facultyName.toLowerCase().includes(query) || 
@@ -35,7 +36,7 @@ const Majors: React.FC = () => {
       const matchesCity = cityFilter === 'Toutes les villes' || m.location === cityFilter;
       return matchesSearch && matchesCity;
     });
-  }, [search, cityFilter]);
+  }, [search, cityFilter, majors]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const pagedData = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -68,9 +69,6 @@ const Majors: React.FC = () => {
       <div className="container mx-auto px-4 py-16 max-w-7xl">
           <div className="flex flex-col md:flex-row justify-between items-center mb-10 pb-6 border-b border-gray-100 dark:border-gray-800">
              <h2 className="text-2xl font-black dark:text-white tracking-tight">{filtered.length} Formations disponibles</h2>
-             <div className="flex gap-2">
-                <span className="px-3 py-1 bg-gray-50 dark:bg-white/5 rounded-full text-[10px] font-black uppercase text-gray-400 border border-gray-100 dark:border-gray-800">Pagination: {ITEMS_PER_PAGE} par page</span>
-             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -112,13 +110,12 @@ const Majors: React.FC = () => {
 
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-3 mt-16">
-              <button onClick={() => { setCurrentPage(prev => Math.max(1, prev - 1)); window.scrollTo(0, 400); }} disabled={currentPage === 1} className="size-12 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center disabled:opacity-20 hover:border-primary transition-all"><span className="material-symbols-outlined font-bold">chevron_left</span></button>
+              {/* Pagination controls */}
               <div className="flex gap-2">
                 {Array.from({ length: totalPages }).map((_, i) => (
                   <button key={i} onClick={() => { setCurrentPage(i + 1); window.scrollTo(0, 400); }} className={`size-12 rounded-2xl font-black text-xs transition-all border ${currentPage === i + 1 ? 'bg-primary border-primary text-black' : 'bg-white dark:bg-white/5 dark:text-white border-gray-100 dark:border-gray-800'}`}>{i + 1}</button>
                 ))}
               </div>
-              <button onClick={() => { setCurrentPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo(0, 400); }} disabled={currentPage === totalPages} className="size-12 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center disabled:opacity-20 hover:border-primary transition-all"><span className="material-symbols-outlined font-bold">chevron_right</span></button>
             </div>
           )}
       </div>

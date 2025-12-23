@@ -1,13 +1,14 @@
 
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MAJORS } from '../constants';
+import { useCMS } from '../CMSContext';
 
 const MajorDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const major = MAJORS.find(m => m.id === id);
+  const { majors } = useCMS();
+  const major = majors.find(m => m.id === id);
 
-  if (!major) return <div className="p-20 text-center font-black">Filière non trouvée.</div>;
+  if (!major) return <div className="p-20 text-center font-black dark:text-white">Filière non trouvée ou supprimée.</div>;
 
   return (
     <div className="w-full flex flex-col items-center font-display bg-[#f8faf9] dark:bg-background-dark min-h-screen">
@@ -43,7 +44,6 @@ const MajorDetail: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 pt-4">
-               {/* Passage de l'ID en paramètre pour rendre le processus d'inscription dynamique */}
                <Link to={`/apply?id=${major.id}`} className="px-12 py-5 bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all text-center uppercase tracking-widest text-xs">
                  DÉBUTER LA PRÉ-INSCRIPTION
                </Link>
@@ -74,13 +74,6 @@ const MajorDetail: React.FC = () => {
                     <p className="text-xl font-black">{major.location}</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-4">
-                  <span className="material-symbols-outlined text-primary font-bold">verified_user</span>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Type de Diplôme</p>
-                    <p className="text-xl font-black">Diplôme d'État</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -89,24 +82,7 @@ const MajorDetail: React.FC = () => {
         <section className="prose prose-stone dark:prose-invert max-w-none bg-white dark:bg-surface-dark p-10 md:p-16 rounded-[48px] border border-gray-100 dark:border-gray-800">
           <h2 className="text-3xl font-black dark:text-white tracking-tight mb-8">Présentation du programme</h2>
           <div className="text-gray-600 dark:text-gray-400 font-medium text-lg leading-relaxed space-y-6">
-            <p>
-              Cette formation est une référence nationale pour les bacheliers souhaitant s'orienter vers les métiers d'avenir. Le cursus combine rigueur théorique et immersion professionnelle dès la première année.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
-              <div className="p-8 rounded-3xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800">
-                <h4 className="font-black dark:text-white uppercase text-xs tracking-widest mb-4 text-primary">Débouchés</h4>
-                <ul className="list-disc pl-5 space-y-2 text-sm font-bold">
-                  <li>Consultant Junior</li>
-                  <li>Chef de projet</li>
-                  <li>Cadre administratif</li>
-                  <li>Poursuite en Master</li>
-                </ul>
-              </div>
-              <div className="p-8 rounded-3xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-800">
-                <h4 className="font-black dark:text-white uppercase text-xs tracking-widest mb-4 text-primary">Admission</h4>
-                <p className="text-sm font-bold">Ouvert aux bacheliers de toutes séries (selon profil). Sélection sur étude de dossier via cette plateforme.</p>
-              </div>
-            </div>
+            <p>Cette formation est une référence nationale pour les bacheliers souhaitant s'orienter vers les métiers d'avenir.</p>
           </div>
         </section>
       </div>

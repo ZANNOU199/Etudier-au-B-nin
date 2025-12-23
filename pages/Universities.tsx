@@ -1,21 +1,22 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { UNIVERSITIES } from '../constants';
+import { useCMS } from '../CMSContext';
 
 const ITEMS_PER_PAGE = 4;
 
 const Universities: React.FC = () => {
+  const { universities } = useCMS();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
 
   const filtered = useMemo(() => {
-    return UNIVERSITIES.filter(u => 
+    return universities.filter(u => 
       (u.name.toLowerCase().includes(search.toLowerCase()) || u.acronym.toLowerCase().includes(search.toLowerCase())) &&
       (typeFilter === 'All' || u.type === typeFilter)
     );
-  }, [search, typeFilter]);
+  }, [search, typeFilter, universities]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const pagedData = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -66,7 +67,7 @@ const Universities: React.FC = () => {
                   className={`flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all border ${
                     typeFilter === type 
                     ? 'bg-primary text-black border-primary shadow-lg shadow-primary/10' 
-                    : 'bg-gray-50 dark:bg-white/5 text-gray-500 border-transparent hover:border-gray-200 dark:hover:border-white/10'
+                    : 'bg-gray-50 dark:bg-white/5 text-gray-400 border-transparent hover:border-gray-200 dark:hover:border-white/10'
                   }`}
                 >
                   {type === 'All' ? 'Tout' : type}
