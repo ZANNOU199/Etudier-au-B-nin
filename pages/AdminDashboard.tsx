@@ -29,10 +29,16 @@ const AdminDashboard: React.FC = () => {
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
   const [majorPage, setMajorPage] = useState(1);
+  
+  // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
   const [isSchoolKind, setIsSchoolKind] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // State for single Major editing (outside the main wizard flow)
+  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
 
   const navigate = useNavigate();
 
@@ -52,6 +58,14 @@ const AdminDashboard: React.FC = () => {
 
   const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
   const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
+
+  const openWizardForEdit = (uni: University) => {
+    setCurrentInstId(uni.id);
+    setIsSchoolKind(!!uni.isStandaloneSchool);
+    setIsEditing(true);
+    setWizardStep('institution');
+    setShowWizard(true);
+  };
 
   const SidebarNav = () => (
     <div className="flex flex-col h-full py-10 px-6">
@@ -250,6 +264,9 @@ const AdminDashboard: React.FC = () => {
                               </div>
                            </div>
                            <div className="flex gap-3">
+                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5">
+                                 <span className="material-symbols-outlined">edit</span>
+                              </button>
                               <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
                                  <span className="material-symbols-outlined">delete</span>
                               </button>
@@ -257,7 +274,7 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       ))}
                       
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add</span>
                         </div>
@@ -289,9 +306,14 @@ const AdminDashboard: React.FC = () => {
                               </div>
                               <div className="pt-6 border-t border-white/5 flex justify-between items-center">
                                  <span className="text-primary font-black text-xs">{major.fees}</span>
-                                 <button onClick={() => deleteMajor(major.id)} className="text-gray-500 hover:text-red-500 transition-colors">
-                                    <span className="material-symbols-outlined text-lg">delete</span>
-                                 </button>
+                                 <div className="flex gap-4">
+                                   <button onClick={() => setEditingMajor(major)} className="text-gray-500 hover:text-primary transition-colors">
+                                      <span className="material-symbols-outlined text-lg">edit</span>
+                                   </button>
+                                   <button onClick={() => deleteMajor(major.id)} className="text-gray-500 hover:text-red-500 transition-colors">
+                                      <span className="material-symbols-outlined text-lg">delete</span>
+                                   </button>
+                                 </div>
                               </div>
                            </div>
                         ))}
@@ -341,12 +363,13 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
 
+        {/* MODAL: INSTITUTION WIZARD (Creation & Edit) */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
                    <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">Nouvel Établissement</h3>
+                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
                       <div className="flex items-center gap-2 mt-2">
                          <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
@@ -367,35 +390,42 @@ const AdminDashboard: React.FC = () => {
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
-                           const id = (isSchoolKind ? 'sch-' : 'uni-') + Date.now();
+                           const id = isEditing && currentInstId ? currentInstId : ((isSchoolKind ? 'sch-' : 'uni-') + Date.now());
+                           
                            const data: University = {
                               id,
                               name: fd.get('name') as string,
                               acronym: fd.get('acronym') as string,
                               location: fd.get('location') as string,
                               type: fd.get('type') as any,
-                              description: 'Nouveau pôle académique.',
+                              description: currentUni?.description || 'Établissement académique.',
                               isStandaloneSchool: isSchoolKind,
-                              logo: 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
-                              cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
-                              stats: { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
-                              faculties: []
+                              logo: currentUni?.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
+                              cover: currentUni?.cover || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
+                              stats: currentUni?.stats || { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
+                              faculties: currentUni?.faculties || []
                            };
-                           addUniversity(data);
+
+                           if (isEditing) {
+                              updateUniversity(data);
+                           } else {
+                              addUniversity(data);
+                           }
+                           
                            setCurrentInstId(id);
                            setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
                         }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="md:col-span-2 space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label>
-                              <input name="name" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input name="name" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label>
-                              <input name="acronym" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input name="acronym" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label>
-                              <input name="location" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input name="location" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
                            <div className="md:col-span-2 pt-6">
                               <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all">Continuer</button>
@@ -431,7 +461,11 @@ const AdminDashboard: React.FC = () => {
                            {currentUni?.faculties.map(f => (
                               <div key={f.id} className="p-3 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
                                  <p className="font-black text-xs text-white">{f.name}</p>
-                                 <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
+                                 <button onClick={() => {
+                                   if (currentUni) {
+                                      updateUniversity({...currentUni, faculties: currentUni.faculties.filter(fac => fac.id !== f.id)});
+                                   }
+                                 }} className="material-symbols-outlined text-red-400 text-sm">delete</button>
                               </div>
                            ))}
                         </div>
@@ -470,8 +504,8 @@ const AdminDashboard: React.FC = () => {
                         }} className="space-y-4 p-6 bg-white/5 rounded-[32px] border border-white/5">
                            <input name="mName" required placeholder="Nom Filière" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
                            <div className="grid grid-cols-2 gap-4">
-                              <input name="career" required placeholder="Débouché principal (obligatoire)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                              <input name="diploma" required placeholder="Diplôme requis (obligatoire)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
+                              <input name="career" required placeholder="Débouché principal" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
+                              <input name="diploma" required placeholder="Diplôme requis" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
                            </div>
                            <button type="submit" className="w-full py-3 bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">Enregistrer la filière</button>
                         </form>
@@ -479,7 +513,7 @@ const AdminDashboard: React.FC = () => {
                            {currentInstMajors.map(m => (
                               <div key={m.id} className="p-3 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
                                  <p className="font-black text-xs text-white">{m.name}</p>
-                                 <span className="material-symbols-outlined text-primary text-sm">check</span>
+                                 <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm">delete</button>
                               </div>
                            ))}
                         </div>
@@ -494,7 +528,61 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* MODAL: APPLICATION DOSSIER (REAL DATA VIEW) */}
+        {/* MODAL: SINGLE MAJOR EDIT */}
+        {editingMajor && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+             <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
+                <div className="bg-white/5 px-10 py-8 border-b border-white/5 flex justify-between items-center">
+                   <h3 className="text-2xl font-black text-white tracking-tight">Modifier la filière</h3>
+                   <button onClick={() => setEditingMajor(null)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+                      <span className="material-symbols-outlined">close</span>
+                   </button>
+                </div>
+                <div className="p-10 space-y-6">
+                   <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const fd = new FormData(e.currentTarget);
+                      if (editingMajor) {
+                        updateMajor({
+                          ...editingMajor,
+                          name: fd.get('name') as string,
+                          fees: fd.get('fees') as string,
+                          level: fd.get('level') as any,
+                          duration: fd.get('duration') as string
+                        });
+                        setEditingMajor(null);
+                      }
+                   }} className="space-y-6 text-white">
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-gray-400 tracking-widest">Nom de la filière</label>
+                        <input name="name" defaultValue={editingMajor.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-xs font-black uppercase text-gray-400 tracking-widest">Frais scolarité</label>
+                          <input name="fees" defaultValue={editingMajor.fees} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-black uppercase text-gray-400 tracking-widest">Durée</label>
+                          <input name="duration" defaultValue={editingMajor.duration} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-black uppercase text-gray-400 tracking-widest">Niveau</label>
+                        <select name="level" defaultValue={editingMajor.level} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none">
+                          <option value="Licence">Licence</option>
+                          <option value="Master">Master</option>
+                          <option value="Doctorat">Doctorat</option>
+                        </select>
+                      </div>
+                      <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl">Enregistrer les modifications</button>
+                   </form>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* MODAL: APPLICATION DOSSIER */}
         {selectedApp && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedApp(null)}>
              <div className="bg-white dark:bg-[#162a1f] w-full max-w-4xl rounded-[48px] overflow-hidden shadow-2xl my-auto animate-in zoom-in-95 duration-300 border border-white/5" onClick={(e) => e.stopPropagation()}>
@@ -529,9 +617,7 @@ const AdminDashboard: React.FC = () => {
                    </div>
                 </div>
 
-                {/* Modal Content */}
                 <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
-                   {/* Col 1: Academic & Student Info */}
                    <div className="space-y-8">
                       <div className="space-y-6">
                         <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Formation Demandée</h4>
@@ -561,7 +647,6 @@ const AdminDashboard: React.FC = () => {
                       </div>
                    </div>
 
-                   {/* Col 2: Documents */}
                    <div className="space-y-8">
                       <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Pièces Justificatives ({selectedApp.documents.length})</h4>
                       <div className="grid grid-cols-1 gap-3">
@@ -595,7 +680,6 @@ const AdminDashboard: React.FC = () => {
         {previewDoc && (
           <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setPreviewDoc(null)}>
              <div className="w-full max-w-5xl h-[85vh] bg-white dark:bg-[#0d1b13] rounded-[48px] overflow-hidden flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-300 border border-white/10" onClick={(e) => e.stopPropagation()}>
-                {/* Preview Header */}
                 <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
                    <div className="flex items-center gap-4">
                       <div className="size-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
@@ -610,8 +694,6 @@ const AdminDashboard: React.FC = () => {
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
-
-                {/* Preview Body (Simulated Document Content) */}
                 <div className="flex-1 overflow-y-auto p-12 bg-[#f0f2f1] dark:bg-black/20 flex justify-center">
                    <div className="w-full max-w-4xl bg-white dark:bg-surface-dark shadow-2xl p-12 md:p-20 min-h-[1000px] border border-gray-200 dark:border-white/5 flex flex-col gap-10">
                       <div className="flex justify-between items-start border-b-2 border-gray-100 dark:border-white/10 pb-10">
@@ -623,34 +705,21 @@ const AdminDashboard: React.FC = () => {
                             <p className="text-[10px] font-bold text-gray-400">Ministère de l'Enseignement Supérieur</p>
                          </div>
                       </div>
-
                       <div className="py-20 flex flex-col items-center gap-10 text-center">
                          <span className="material-symbols-outlined text-[100px] text-primary/40">description</span>
-                         <div className="space-y-4">
-                            <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">{previewDoc.split('.')[1] === 'png' || previewDoc.split('.')[1] === 'jpg' ? 'PIÈCE D\'IDENTITÉ / SCAN' : 'DOCUMENT ACADÉMIQUE'}</h2>
-                            <p className="text-gray-400 font-medium max-w-md">Ce document est une simulation pour la prévisualisation de l'administration. En production, le fichier réel serait rendu ici.</p>
-                         </div>
-                         <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl">
-                            <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">Fichier vérifié par le système</p>
-                         </div>
+                         <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">DOCUMENT NUMÉRISÉ</h2>
+                         <p className="text-gray-400 font-medium max-w-md">Prévisualisation administrative du fichier {previewDoc}.</p>
                       </div>
-
                       <div className="mt-auto pt-10 border-t border-gray-100 dark:border-white/10 flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">
                          <p>EtudierAuBenin.com</p>
                          <p>Session 2024</p>
                       </div>
                    </div>
                 </div>
-
-                {/* Preview Footer Controls */}
                 <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 flex justify-center gap-4">
                    <button className="flex items-center gap-2 px-8 py-3 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest dark:text-white hover:border-primary transition-all">
                       <span className="material-symbols-outlined text-sm">download</span>
                       Télécharger
-                   </button>
-                   <button className="flex items-center gap-2 px-8 py-3 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest dark:text-white hover:border-primary transition-all">
-                      <span className="material-symbols-outlined text-sm">print</span>
-                      Imprimer
                    </button>
                 </div>
              </div>
