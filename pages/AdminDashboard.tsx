@@ -24,6 +24,7 @@ const AdminDashboard: React.FC = () => {
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<string | null>(null);
   
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
@@ -570,7 +571,12 @@ const AdminDashboard: React.FC = () => {
                                  <span className="material-symbols-outlined text-primary">description</span>
                                  <p className="text-xs font-black dark:text-white truncate">{doc}</p>
                               </div>
-                              <button className="px-4 py-2 bg-white/10 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-black transition-all">Voir</button>
+                              <button 
+                                onClick={() => setPreviewDoc(doc)}
+                                className="px-4 py-2 bg-white/10 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-black transition-all"
+                              >
+                                Voir
+                              </button>
                            </div>
                          ))}
                       </div>
@@ -580,6 +586,72 @@ const AdminDashboard: React.FC = () => {
                          <button onClick={() => setSelectedApp(null)} className="flex-1 py-4 bg-gray-900 dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl transition-all">Fermer</button>
                       </div>
                    </div>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* MODAL: DOCUMENT PREVIEW */}
+        {previewDoc && (
+          <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6" onClick={() => setPreviewDoc(null)}>
+             <div className="w-full max-w-5xl h-[85vh] bg-white dark:bg-[#0d1b13] rounded-[48px] overflow-hidden flex flex-col shadow-2xl relative animate-in zoom-in-95 duration-300 border border-white/10" onClick={(e) => e.stopPropagation()}>
+                {/* Preview Header */}
+                <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
+                   <div className="flex items-center gap-4">
+                      <div className="size-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                         <span className="material-symbols-outlined font-bold">visibility</span>
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black dark:text-white tracking-tight leading-none">{previewDoc}</h4>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Prévisualisation sécurisée</p>
+                      </div>
+                   </div>
+                   <button onClick={() => setPreviewDoc(null)} className="size-11 rounded-xl bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-white hover:bg-red-500 hover:text-white transition-all">
+                      <span className="material-symbols-outlined">close</span>
+                   </button>
+                </div>
+
+                {/* Preview Body (Simulated Document Content) */}
+                <div className="flex-1 overflow-y-auto p-12 bg-[#f0f2f1] dark:bg-black/20 flex justify-center">
+                   <div className="w-full max-w-4xl bg-white dark:bg-surface-dark shadow-2xl p-12 md:p-20 min-h-[1000px] border border-gray-200 dark:border-white/5 flex flex-col gap-10">
+                      <div className="flex justify-between items-start border-b-2 border-gray-100 dark:border-white/10 pb-10">
+                         <div className="size-16 bg-gray-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-gray-300">
+                            <span className="material-symbols-outlined text-4xl">domain</span>
+                         </div>
+                         <div className="text-right space-y-1">
+                            <p className="text-xs font-black dark:text-white uppercase tracking-widest">RÉPUBLIQUE DU BÉNIN</p>
+                            <p className="text-[10px] font-bold text-gray-400">Ministère de l'Enseignement Supérieur</p>
+                         </div>
+                      </div>
+
+                      <div className="py-20 flex flex-col items-center gap-10 text-center">
+                         <span className="material-symbols-outlined text-[100px] text-primary/40">description</span>
+                         <div className="space-y-4">
+                            <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">{previewDoc.split('.')[1] === 'png' || previewDoc.split('.')[1] === 'jpg' ? 'PIÈCE D\'IDENTITÉ / SCAN' : 'DOCUMENT ACADÉMIQUE'}</h2>
+                            <p className="text-gray-400 font-medium max-w-md">Ce document est une simulation pour la prévisualisation de l'administration. En production, le fichier réel serait rendu ici.</p>
+                         </div>
+                         <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl">
+                            <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">Fichier vérifié par le système</p>
+                         </div>
+                      </div>
+
+                      <div className="mt-auto pt-10 border-t border-gray-100 dark:border-white/10 flex justify-between text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">
+                         <p>EtudierAuBenin.com</p>
+                         <p>Session 2024</p>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Preview Footer Controls */}
+                <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 flex justify-center gap-4">
+                   <button className="flex items-center gap-2 px-8 py-3 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest dark:text-white hover:border-primary transition-all">
+                      <span className="material-symbols-outlined text-sm">download</span>
+                      Télécharger
+                   </button>
+                   <button className="flex items-center gap-2 px-8 py-3 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded-xl font-black text-[10px] uppercase tracking-widest dark:text-white hover:border-primary transition-all">
+                      <span className="material-symbols-outlined text-sm">print</span>
+                      Imprimer
+                   </button>
                 </div>
              </div>
           </div>
