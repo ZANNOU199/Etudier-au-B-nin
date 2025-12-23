@@ -43,7 +43,8 @@ const MajorDetail: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 pt-4">
-               <Link to="/apply" className="px-12 py-5 bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all text-center uppercase tracking-widest text-xs">
+               {/* Passage de l'ID en paramètre pour rendre le processus d'inscription dynamique */}
+               <Link to={`/apply?id=${major.id}`} className="px-12 py-5 bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all text-center uppercase tracking-widest text-xs">
                  DÉBUTER LA PRÉ-INSCRIPTION
                </Link>
                <button className="px-12 py-5 border-2 border-gray-100 dark:border-gray-800 font-black rounded-2xl hover:bg-white dark:hover:bg-white/5 dark:text-white transition-all uppercase tracking-widest text-xs">

@@ -9,7 +9,6 @@ type CatalogSection = 'universities' | 'majors';
 type EstablishmentFilter = 'all' | 'university' | 'school';
 type CreationStep = 'institution' | 'faculties' | 'majors';
 
-// Pagination Constants - Strict compliance
 const UNI_PER_PAGE = 4;
 const MAJOR_PER_PAGE = 3;
 
@@ -26,7 +25,6 @@ const AdminDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   
-  // CATALOG SPECIFIC STATE (Isolated Logic)
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
   const [majorPage, setMajorPage] = useState(1);
@@ -37,7 +35,6 @@ const AdminDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Logic: Catalog Filtering & Pagination (Frontend only, no impact on existing data)
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -70,7 +67,7 @@ const AdminDashboard: React.FC = () => {
       <nav className="flex-grow space-y-2">
         {[
           { id: 'overview', label: 'Dashboard', icon: 'grid_view' },
-          { id: 'applications', label: 'Candidatures', icon: 'description', badge: '2' }, // Mocking requested value "2"
+          { id: 'applications', label: 'Candidatures', icon: 'description', badge: applications.length.toString() },
           { id: 'catalog', label: 'Catalogue Acad.', icon: 'category' },
           { id: 'cms', label: 'Gestion CMS', icon: 'auto_fix_high' },
           { id: 'settings', label: 'Paramètres', icon: 'settings' },
@@ -91,7 +88,7 @@ const AdminDashboard: React.FC = () => {
               <span className="material-symbols-outlined text-xl">{item.icon}</span>
               {item.label}
             </div>
-            {item.badge && (
+            {item.badge && item.badge !== '0' && (
               <span className={`px-2 py-0.5 rounded-lg text-[9px] ${activeView === item.id ? 'bg-black text-white' : 'bg-white/10 text-gray-400'}`}>
                 {item.badge}
               </span>
@@ -139,7 +136,6 @@ const AdminDashboard: React.FC = () => {
 
         <div className="p-4 lg:p-12 space-y-10">
           
-          {/* VIEW: OVERVIEW (RESTORED AS BEFORE) */}
           {activeView === 'overview' && (
             <div className="space-y-10 animate-fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -168,43 +164,55 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* VIEW: APPLICATIONS (RESTORED AS REQUESTED) */}
           {activeView === 'applications' && (
             <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Flux de Candidatures</h2>
+               <div className="flex justify-between items-center">
+                 <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Flux de Candidatures ({applications.length})</h2>
+               </div>
                <div className="grid grid-cols-1 gap-4">
-                  {[
-                    { id: 'EAB-2024-7362', name: 'REUIII • LOKOSSA', status: 'En attente' },
-                    { id: 'EAB-2024-146', name: 'Génie Logiciel & Systèmes • UAC (EPAC)', status: 'Rejeté' }
-                  ].map((mockApp, idx) => (
-                    <div key={idx} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:shadow-lg transition-all">
-                       <div className="flex items-center gap-6 flex-1 w-full">
-                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
-                             <span className="material-symbols-outlined text-2xl">description</span>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[9px] font-black text-primary uppercase tracking-widest">{mockApp.id}</p>
-                             <h4 className="text-lg font-black dark:text-white leading-tight">Candidat</h4>
-                             <p className="text-xs font-bold text-gray-500">{mockApp.name}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-4 w-full md:w-auto">
-                          <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${
-                             mockApp.status === 'En attente' ? 'text-amber-500 bg-amber-500/10' : 'text-red-500 bg-red-500/10'
-                          }`}>
-                             {mockApp.status}
-                          </span>
-                       </div>
+                  {applications.length > 0 ? (
+                    applications.map((app) => (
+                      <div key={app.id} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:shadow-lg transition-all cursor-pointer" onClick={() => setSelectedApp(app)}>
+                         <div className="flex items-center gap-6 flex-1 w-full">
+                            <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                               <span className="material-symbols-outlined text-2xl">description</span>
+                            </div>
+                            <div className="space-y-1">
+                               <p className="text-[9px] font-black text-primary uppercase tracking-widest">{app.id}</p>
+                               <h4 className="text-lg font-black dark:text-white leading-tight">{app.studentName}</h4>
+                               <p className="text-xs font-bold text-gray-500">{app.majorName} • {app.universityName}</p>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-6 w-full md:w-auto">
+                            <div className="text-right hidden sm:block">
+                               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Date de soumission</p>
+                               <p className="text-xs font-bold dark:text-white">{app.date}</p>
+                            </div>
+                            <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${
+                               app.status === 'Validé' ? 'text-primary bg-primary/10' : 
+                               app.status === 'Rejeté' ? 'text-red-500 bg-red-500/10' : 
+                               'text-amber-500 bg-amber-500/10'
+                            }`}>
+                               {app.status}
+                            </span>
+                            <button className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:text-primary transition-all">
+                               <span className="material-symbols-outlined">chevron_right</span>
+                            </button>
+                         </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-20 bg-white dark:bg-surface-dark rounded-[40px] border border-dashed border-gray-100 dark:border-white/5">
+                       <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">folder_open</span>
+                       <p className="text-gray-400 font-bold">Aucune candidature n'a été soumise pour le moment.</p>
                     </div>
-                  ))}
+                  )}
                </div>
             </div>
           )}
 
-          {/* VIEW: CATALOG (REFACTORED - ONLY ALLOWED SCOPE) */}
           {activeView === 'catalog' && (
             <div className="space-y-8 animate-fade-in">
-               {/* Filtrage Dynamique (Requirement 1) */}
                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
                   <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
                     <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
@@ -222,7 +230,6 @@ const AdminDashboard: React.FC = () => {
                   )}
                </div>
 
-               {/* Section Universités & Écoles - Specific Dark Theme (Requirement 4) */}
                {activeCatalogSection === 'universities' && (
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -231,7 +238,6 @@ const AdminDashboard: React.FC = () => {
                            <div className="flex items-center gap-6 flex-1 w-full">
                               <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
                                  <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
-                                 {/* Badges (Requirement 2 & 4) */}
                                  <span className={`absolute -top-3 -right-3 size-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
                                     {uni.isStandaloneSchool ? 'E' : 'U'}
                                  </span>
@@ -250,7 +256,6 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       ))}
                       
-                      {/* Bouton Wizard Trigger (Requirement 3) */}
                       <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add</span>
@@ -259,7 +264,6 @@ const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Pagination 4/page (Requirement 4) */}
                     {totalUniPages > 1 && (
                       <div className="flex justify-center items-center gap-3 pt-6 border-t border-white/5">
                          {Array.from({ length: totalUniPages }).map((_, i) => (
@@ -270,7 +274,6 @@ const AdminDashboard: React.FC = () => {
                   </div>
                )}
 
-               {/* Section Filières - Specific Dark Theme (Requirement 4) */}
                {activeCatalogSection === 'majors' && (
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -292,7 +295,6 @@ const AdminDashboard: React.FC = () => {
                            </div>
                         ))}
                      </div>
-                     {/* Pagination 3/page (Requirement 4) */}
                      {totalMajorPages > 1 && (
                         <div className="flex justify-center items-center gap-3 pt-6 border-t border-white/5">
                            {Array.from({ length: totalMajorPages }).map((_, i) => (
@@ -305,7 +307,6 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* VIEW: CMS (RESTORED AS BEFORE) */}
           {activeView === 'cms' && (
             <div className="space-y-8 animate-fade-in">
                <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
@@ -327,7 +328,6 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* VIEW: SETTINGS (RESTORED AS BEFORE) */}
           {activeView === 'settings' && (
             <div className="space-y-8 animate-fade-in">
                <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres Système</h2>
@@ -340,7 +340,6 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* 🧩 WIZARD DE CRÉATION GUIDÉ (Requirement 3) */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
@@ -494,12 +493,93 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* MODAL: APPLICATION DOSSIER (RESTORED) */}
+        {/* MODAL: APPLICATION DOSSIER (REAL DATA VIEW) */}
         {selectedApp && (
-          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setSelectedApp(null)}>
-             <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                <div className="p-10 space-y-8 text-gray-400">
-                   <p>Détails de la candidature...</p>
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedApp(null)}>
+             <div className="bg-white dark:bg-[#162a1f] w-full max-w-4xl rounded-[48px] overflow-hidden shadow-2xl my-auto animate-in zoom-in-95 duration-300 border border-white/5" onClick={(e) => e.stopPropagation()}>
+                {/* Modal Header */}
+                <div className="px-10 py-10 bg-white dark:bg-white/5 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                   <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">{selectedApp.id}</span>
+                        <span className="px-3 py-1 bg-gray-100 dark:bg-white/10 text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-full">Session 2024</span>
+                      </div>
+                      <h3 className="text-3xl font-black dark:text-white tracking-tighter">Dossier de {selectedApp.studentName}</h3>
+                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Soumis le {selectedApp.date}</p>
+                   </div>
+                   <div className="flex flex-col items-end gap-3">
+                      <select 
+                        value={selectedApp.status}
+                        onChange={(e) => {
+                          updateApplicationStatus(selectedApp.id, e.target.value as any);
+                          setSelectedApp({...selectedApp, status: e.target.value as any});
+                        }}
+                        className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border-none focus:ring-4 outline-none transition-all ${
+                          selectedApp.status === 'Validé' ? 'bg-primary text-black focus:ring-primary/20' : 
+                          selectedApp.status === 'Rejeté' ? 'bg-red-500 text-white focus:ring-red-500/20' : 
+                          'bg-amber-400 text-black focus:ring-amber-400/20'
+                        }`}
+                      >
+                         <option value="En attente">En attente</option>
+                         <option value="Validé">Approuvé (Validé)</option>
+                         <option value="Rejeté">Refusé (Rejeté)</option>
+                         <option value="En cours">En cours d'examen</option>
+                      </select>
+                   </div>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+                   {/* Col 1: Academic & Student Info */}
+                   <div className="space-y-8">
+                      <div className="space-y-6">
+                        <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Formation Demandée</h4>
+                        <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 space-y-3">
+                           <div className="flex items-center gap-4">
+                              <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary"><span className="material-symbols-outlined font-bold">school</span></div>
+                              <div>
+                                 <p className="text-lg font-black dark:text-white leading-tight">{selectedApp.majorName}</p>
+                                 <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{selectedApp.universityName}</p>
+                              </div>
+                           </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Informations Candidat</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">ID Étudiant</p>
+                              <p className="text-xs font-black dark:text-white">{selectedApp.studentId}</p>
+                           </div>
+                           <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Status Cursus</p>
+                              <p className="text-xs font-black dark:text-white">Nouveau Candidat</p>
+                           </div>
+                        </div>
+                      </div>
+                   </div>
+
+                   {/* Col 2: Documents */}
+                   <div className="space-y-8">
+                      <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Pièces Justificatives ({selectedApp.documents.length})</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                         {selectedApp.documents.map((doc, i) => (
+                           <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 group hover:border-primary/40 transition-all">
+                              <div className="flex items-center gap-4 overflow-hidden">
+                                 <span className="material-symbols-outlined text-primary">description</span>
+                                 <p className="text-xs font-black dark:text-white truncate">{doc}</p>
+                              </div>
+                              <button className="px-4 py-2 bg-white/10 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary hover:text-black transition-all">Voir</button>
+                           </div>
+                         ))}
+                      </div>
+                      
+                      <div className="pt-10 border-t border-gray-100 dark:border-white/5 flex gap-4">
+                         <button onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }} className="flex-1 py-4 text-red-500 font-black uppercase text-[10px] tracking-widest hover:bg-red-500/10 rounded-2xl transition-all border border-red-500/20">Supprimer Dossier</button>
+                         <button onClick={() => setSelectedApp(null)} className="flex-1 py-4 bg-gray-900 dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl transition-all">Fermer</button>
+                      </div>
+                   </div>
                 </div>
              </div>
           </div>
