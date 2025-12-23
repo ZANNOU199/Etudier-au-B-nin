@@ -10,7 +10,7 @@ type EstablishmentFilter = 'all' | 'university' | 'school';
 type CreationStep = 'institution' | 'faculties' | 'majors';
 
 const UNI_PER_PAGE = 4;
-const MAJOR_PER_PAGE = 3;
+const MAJOR_PER_PAGE = 6;
 
 const AdminDashboard: React.FC = () => {
   const { 
@@ -24,7 +24,6 @@ const AdminDashboard: React.FC = () => {
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [previewDoc, setPreviewDoc] = useState<string | null>(null);
   
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
@@ -37,7 +36,6 @@ const AdminDashboard: React.FC = () => {
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedWizardLevel, setSelectedWizardLevel] = useState<'Licence' | 'Master' | 'Doctorat'>('Licence');
   
   // Bulk Import State
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -45,7 +43,8 @@ const AdminDashboard: React.FC = () => {
   const [importStatus, setImportStatus] = useState<'idle' | 'parsing' | 'ready'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // State for single Major editing
+  // State for single Major editing/creation
+  const [showMajorModal, setShowMajorModal] = useState(false);
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
 
   const navigate = useNavigate();
@@ -65,7 +64,6 @@ const AdminDashboard: React.FC = () => {
   const pagedMajors = majors.slice((majorPage - 1) * MAJOR_PER_PAGE, majorPage * MAJOR_PER_PAGE);
 
   const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
-  const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
@@ -76,23 +74,19 @@ const AdminDashboard: React.FC = () => {
     setShowWizard(true);
   };
 
-  // CSV Parsing Logic - Advanced with delimiter detection
   const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setImportStatus('parsing');
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       const lines = text.split(/\r?\n/);
       if (lines.length < 2) return;
-
       const firstLine = lines[0];
       const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
       const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
       const result: any[] = [];
-
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
@@ -129,7 +123,7 @@ const AdminDashboard: React.FC = () => {
           isStandaloneSchool: row.type_inst?.toUpperCase() === 'E',
           logo: 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
           cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
-          description: "Établissement importé massivement.",
+          description: "Importé via console.",
           stats: { students: 'N/A', majors: 1, founded: '2024', ranking: 'N/A' },
           faculties: row.nom_faculte ? [{
             id: 'fac-' + Math.random().toString(36).substr(2, 5),
@@ -142,22 +136,6 @@ const AdminDashboard: React.FC = () => {
         currentUnis.push(newUni);
         uniCount++;
         uni = newUni;
-      } else if (uni && row.nom_faculte) {
-        const facExists = uni.faculties.find(f => f.name.toLowerCase() === row.nom_faculte.toLowerCase());
-        if (!facExists) {
-          const updatedUni = {
-            ...uni,
-            faculties: [...uni.faculties, {
-              id: 'fac-' + Math.random().toString(36).substr(2, 5),
-              name: row.nom_faculte,
-              description: 'Ajoutée par import',
-              levels: [row.cycle || 'Licence']
-            }]
-          };
-          updateUniversity(updatedUni);
-          const idx = currentUnis.findIndex(u => u.id === uni?.id);
-          if (idx !== -1) currentUnis[idx] = updatedUni;
-        }
       }
 
       if (row.nom_filiere && (uniId || uni?.id)) {
@@ -173,15 +151,15 @@ const AdminDashboard: React.FC = () => {
           fees: row.frais || 'N/A',
           location: row.ville || uni?.location || 'Bénin',
           image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
-          careerProspects: row.debouche ? row.debouche.split(',').map((d: string) => ({ title: d.trim(), icon: 'work' })) : [{ title: 'Formation Pro', icon: 'work' }],
-          requiredDiplomas: row.diplome ? row.diplome.split(',').map((d: string) => ({ name: d.trim(), icon: 'school' })) : [{ name: 'BAC', icon: 'school' }]
+          careerProspects: row.debouche ? row.debouche.split(',').map((d: string) => ({ title: d.trim(), icon: 'work' })) : [],
+          requiredDiplomas: row.diplome ? row.diplome.split(',').map((d: string) => ({ name: d.trim(), icon: 'school' })) : []
         };
         addMajor(major);
         majorCount++;
       }
     });
 
-    alert(`Importation réussie : ${uniCount} établissements et ${majorCount} filières créés.`);
+    alert(`Succès : ${uniCount} établissements et ${majorCount} filières synchronisés.`);
     setShowBulkImport(false);
     setBulkData([]);
     setImportStatus('idle');
@@ -209,14 +187,9 @@ const AdminDashboard: React.FC = () => {
         ].map((item) => (
           <button 
             key={item.id}
-            onClick={() => {
-              setActiveView(item.id as AdminView);
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => { setActiveView(item.id as AdminView); setIsSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
-              activeView === item.id 
-              ? 'bg-primary text-black shadow-lg shadow-primary/20' 
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
+              activeView === item.id ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             <div className="flex items-center gap-4">
@@ -264,13 +237,9 @@ const AdminDashboard: React.FC = () => {
               </button>
               <h1 className="text-xl lg:text-2xl font-black dark:text-white tracking-tighter uppercase">Admin Console</h1>
            </div>
-           <div className="flex items-center gap-4">
-              <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-black font-black text-xs shadow-lg">AD</div>
-           </div>
         </header>
 
         <div className="p-4 lg:p-12 space-y-10">
-          
           {activeView === 'overview' && (
             <div className="space-y-10 animate-fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -289,37 +258,27 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div className="bg-[#0d1b13] p-10 rounded-[40px] text-white flex items-center justify-between relative overflow-hidden">
-                 <div className="space-y-4 relative z-10">
-                    <h2 className="text-4xl font-black tracking-tight leading-none">Console de Contrôle <br/><span className="text-primary italic">EDEN Communication</span></h2>
-                    <p className="text-gray-400 font-medium max-w-lg">Interface de gestion unifiée.</p>
-                 </div>
-                 <span className="material-symbols-outlined text-[120px] opacity-10 absolute -right-10 top-0">security</span>
-              </div>
             </div>
           )}
 
           {activeView === 'applications' && (
             <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion des Candidatures ({applications.length})</h2>
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Candidatures ({applications.length})</h2>
                <div className="grid grid-cols-1 gap-4">
                   {applications.map(app => (
-                    <div key={app.id} onClick={() => setSelectedApp(app)} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between cursor-pointer hover:shadow-lg transition-all group">
+                    <div key={app.id} onClick={() => setSelectedApp(app)} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between cursor-pointer hover:shadow-lg transition-all">
                        <div className="flex items-center gap-6">
-                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
                              <span className="material-symbols-outlined">description</span>
                           </div>
-                          <div>
+                          <div className="text-left">
                              <h4 className="font-black dark:text-white">{app.studentName}</h4>
                              <p className="text-xs text-gray-500 font-bold">{app.majorName} • {app.universityName}</p>
                           </div>
                        </div>
-                       <div className="flex items-center gap-6">
-                          <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                            app.status === 'Validé' ? 'bg-primary/10 text-primary' : app.status === 'Rejeté' ? 'bg-red-500/10 text-red-500' : 'bg-amber-400/10 text-amber-500'
-                          }`}>{app.status}</span>
-                          <span className="material-symbols-outlined text-gray-400">chevron_right</span>
-                       </div>
+                       <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                         app.status === 'Validé' ? 'bg-primary/10 text-primary' : app.status === 'Rejeté' ? 'bg-red-500/10 text-red-500' : 'bg-amber-400/10 text-amber-500'
+                       }`}>{app.status}</span>
                     </div>
                   ))}
                </div>
@@ -330,57 +289,56 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8 animate-fade-in">
                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm">
                   <div className="flex flex-col gap-2">
-                    <h2 className="text-2xl font-black dark:text-white tracking-tighter uppercase">Catalogue Académique</h2>
+                    <h2 className="text-2xl font-black dark:text-white tracking-tighter uppercase text-left">Catalogue Académique</h2>
                     <div className="flex gap-2 p-1 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 w-fit">
-                      <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
-                      <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
+                      <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'}`}>Établissements</button>
+                      <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'}`}>Filières</button>
                     </div>
                   </div>
 
-                  <div className="flex gap-4 w-full lg:w-auto">
-                    <button 
-                      onClick={() => setShowBulkImport(true)}
-                      className="flex-1 lg:flex-none flex items-center justify-center gap-3 px-8 py-4 bg-[#0d1b13] text-primary border border-primary/20 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all shadow-xl shadow-primary/10"
-                    >
-                      <span className="material-symbols-outlined text-xl">table_chart</span>
-                      Import Massive (CSV)
+                  <div className="flex gap-4">
+                    <button onClick={() => setShowBulkImport(true)} className="flex items-center gap-3 px-8 py-4 bg-[#0d1b13] text-primary border border-primary/20 rounded-2xl font-black text-[11px] uppercase hover:bg-primary hover:text-black transition-all">
+                      <span className="material-symbols-outlined text-xl">table_chart</span> Import CSV Global
                     </button>
+                    {activeCatalogSection === 'majors' && (
+                      <button onClick={() => { setEditingMajor(null); setShowMajorModal(true); }} className="flex items-center gap-3 px-8 py-4 bg-primary text-black rounded-2xl font-black text-[11px] uppercase">
+                        <span className="material-symbols-outlined text-xl">add</span> Nouvelle Filière
+                      </button>
+                    )}
                   </div>
                </div>
 
                {activeCatalogSection === 'universities' && (
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
+                    <div className="flex gap-2 bg-white/5 p-1 rounded-xl w-fit mb-6">
+                      {['all', 'university', 'school'].map(f => (
+                        <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-white text-black' : 'text-gray-400'}`}>
+                          {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
+                        </button>
+                      ))}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {pagedUnis.map(uni => (
-                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all h-full">
-                           <div className="flex items-center gap-6 flex-1 w-full">
-                              <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
+                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 hover:bg-white/10 transition-all">
+                           <div className="flex items-center gap-6 flex-1 text-left">
+                              <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3">
                                  <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
-                                 <span className={`absolute -top-3 -right-3 size-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
-                                    {uni.isStandaloneSchool ? 'E' : 'U'}
-                                 </span>
                               </div>
-                              <div className="space-y-1 flex-1 text-left">
+                              <div className="space-y-1">
                                  <h3 className="text-2xl font-black text-white tracking-tighter leading-none">{uni.acronym}</h3>
                                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
                                  <p className="text-sm font-black text-gray-300 line-clamp-1">{uni.name}</p>
                               </div>
                            </div>
                            <div className="flex gap-3">
-                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5">
-                                 <span className="material-symbols-outlined">edit</span>
-                              </button>
-                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
-                                 <span className="material-symbols-outlined">delete</span>
-                              </button>
+                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">edit</span></button>
+                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">delete</span></button>
                            </div>
                         </div>
                       ))}
                       <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
-                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                           <span className="material-symbols-outlined text-3xl font-bold">add</span>
-                        </div>
-                        <span className="font-black uppercase text-[10px] tracking-widest text-primary">Nouvel établissement</span>
+                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-3xl font-bold">add</span></div>
+                        <span className="font-black uppercase text-[10px] tracking-widest text-primary">Ajouter établissement</span>
                       </button>
                     </div>
                   </div>
@@ -390,7 +348,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {pagedMajors.map(major => (
-                           <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between group hover:bg-white/10 transition-all h-full text-left">
+                           <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between hover:bg-white/10 transition-all text-left">
                               <div className="flex items-center gap-4 mb-6">
                                  <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase">{major.level[0]}</div>
                                  <div className="space-y-1">
@@ -401,12 +359,8 @@ const AdminDashboard: React.FC = () => {
                               <div className="pt-6 border-t border-white/5 flex justify-between items-center">
                                  <span className="text-primary font-black text-xs">{major.fees}</span>
                                  <div className="flex gap-4">
-                                   <button onClick={() => setEditingMajor(major)} className="text-gray-500 hover:text-primary transition-colors">
-                                      <span className="material-symbols-outlined text-lg">edit</span>
-                                   </button>
-                                   <button onClick={() => deleteMajor(major.id)} className="text-gray-500 hover:text-red-500 transition-colors">
-                                      <span className="material-symbols-outlined text-lg">delete</span>
-                                   </button>
+                                   <button onClick={() => { setEditingMajor(major); setShowMajorModal(true); }} className="text-gray-500 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
+                                   <button onClick={() => deleteMajor(major.id)} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
                                  </div>
                               </div>
                            </div>
@@ -419,36 +373,25 @@ const AdminDashboard: React.FC = () => {
 
           {activeView === 'cms' && (
             <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6">
-                     <h3 className="text-xl font-black dark:text-white">Langues actives</h3>
-                     <div className="space-y-4">
-                        {languages.map(lang => (
-                           <div key={lang.code} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
-                              <span className="font-black dark:text-white">{lang.label} ({lang.code.toUpperCase()})</span>
-                              <button onClick={() => toggleLanguage(lang.code)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang.isActive ? 'bg-primary text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
-                                 {lang.isActive ? 'Active' : 'Inactive'}
-                              </button>
-                           </div>
-                        ))}
-                     </div>
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase text-left">Gestion CMS</h2>
+               <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6 max-w-xl">
+                  <h3 className="text-xl font-black dark:text-white text-left">Langues actives</h3>
+                  <div className="space-y-4">
+                     {languages.map(lang => (
+                        <div key={lang.code} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
+                           <span className="font-black dark:text-white">{lang.label} ({lang.code.toUpperCase()})</span>
+                           <button onClick={() => toggleLanguage(lang.code)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang.isActive ? 'bg-primary text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
+                              {lang.isActive ? 'Active' : 'Inactive'}
+                           </button>
+                        </div>
+                     ))}
                   </div>
-               </div>
-            </div>
-          )}
-
-          {activeView === 'settings' && (
-            <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres</h2>
-               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/5">
-                  <p className="text-gray-400 font-bold italic">Aucune configuration supplémentaire requise pour le moment.</p>
                </div>
             </div>
           )}
         </div>
 
-        {/* MODALS SECTION */}
+        {/* --- MODALS --- */}
 
         {/* BULK IMPORT MODAL */}
         {showBulkImport && (
@@ -457,19 +400,16 @@ const AdminDashboard: React.FC = () => {
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5 shrink-0">
                    <div>
                       <h3 className="text-2xl font-black text-white tracking-tight">Importation Massive Globale</h3>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Établissements, Facultés et Filières en une seule étape</p>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Créez tout en une seule étape via CSV</p>
                    </div>
-                   <button onClick={() => { setShowBulkImport(false); setBulkData([]); setImportStatus('idle'); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
+                   <button onClick={() => setShowBulkImport(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500"><span className="material-symbols-outlined">close</span></button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar text-center">
                    {importStatus === 'idle' && (
-                      <div className="space-y-10 py-6">
+                      <div className="py-20 space-y-8">
                          <div className="max-w-xl mx-auto p-12 rounded-[40px] border-2 border-dashed border-white/10 hover:border-primary/50 transition-all cursor-pointer bg-white/5" onClick={() => fileInputRef.current?.click()}>
                             <div className="size-24 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6"><span className="material-symbols-outlined text-5xl">upload_file</span></div>
                             <p className="text-white font-black uppercase text-xs tracking-widest">Cliquez pour charger le CSV</p>
-                            <p className="text-gray-500 text-[10px] mt-2 font-bold italic">Le format doit être : type_inst;statut_inst;nom_inst;sigle_inst;ville...</p>
                             <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleBulkFileChange} />
                          </div>
                       </div>
@@ -477,20 +417,20 @@ const AdminDashboard: React.FC = () => {
                    {importStatus === 'ready' && (
                       <div className="space-y-8 animate-in fade-in">
                          <div className="flex justify-between items-center bg-white/5 p-6 rounded-2xl border border-white/5">
-                            <h4 className="text-white font-black uppercase text-xs tracking-widest">Données prêtes : {bulkData.length} lignes</h4>
-                            <button onClick={processBulkImport} className="px-10 py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">Lancer l'importation</button>
+                            <h4 className="text-white font-black uppercase text-xs tracking-widest">Données validées : {bulkData.length} lignes</h4>
+                            <button onClick={processBulkImport} className="px-10 py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest">Lancer l'importation</button>
                          </div>
                          <div className="overflow-x-auto rounded-[32px] border border-white/5 shadow-2xl">
                             <table className="w-full text-left text-[11px] text-gray-400 font-bold border-collapse">
                                <thead className="bg-[#0d1b13] text-primary uppercase tracking-widest">
-                                  <tr><th className="p-5">Établissement</th><th className="p-5">Filière</th><th className="p-5">Ville</th></tr>
+                                  <tr><th className="p-5">Établissement</th><th className="p-5">Filière</th><th className="p-5">Cycle</th></tr>
                                </thead>
                                <tbody className="divide-y divide-white/5 bg-white/5">
-                                  {bulkData.slice(0, 8).map((row, i) => (
+                                  {bulkData.slice(0, 10).map((row, i) => (
                                      <tr key={i} className="hover:bg-white/10 transition-colors">
                                         <td className="p-5 text-white font-black">{row.sigle_inst}</td>
                                         <td className="p-5 text-gray-300">{row.nom_filiere}</td>
-                                        <td className="p-5">{row.ville}</td>
+                                        <td className="p-5">{row.cycle}</td>
                                      </tr>
                                   ))}
                                </tbody>
@@ -519,62 +459,60 @@ const AdminDashboard: React.FC = () => {
                           updateApplicationStatus(selectedApp.id, e.target.value as any);
                           setSelectedApp({...selectedApp, status: e.target.value as any});
                         }}
-                        className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border-none focus:ring-4 outline-none transition-all ${
-                          selectedApp.status === 'Validé' ? 'bg-primary text-black focus:ring-primary/20' : 
-                          selectedApp.status === 'Rejeté' ? 'bg-red-500 text-white focus:ring-red-500/20' : 
-                          'bg-amber-400 text-black focus:ring-amber-400/20'
+                        className={`px-6 py-3 rounded-2xl font-black text-xs uppercase border-none focus:ring-4 outline-none transition-all ${
+                          selectedApp.status === 'Validé' ? 'bg-primary text-black' : 
+                          selectedApp.status === 'Rejeté' ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'
                         }`}
                       >
                          <option value="En attente">En attente</option>
-                         <option value="Validé">Approuvé (Validé)</option>
-                         <option value="Rejeté">Refusé (Rejeté)</option>
-                         <option value="En cours">En cours d'examen</option>
+                         <option value="Validé">Approuvé</option>
+                         <option value="Rejeté">Refusé</option>
+                         <option value="En cours">En cours</option>
                       </select>
                    </div>
                 </div>
-
                 <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
                    <div className="space-y-8">
-                      <div className="space-y-6">
+                      <div className="space-y-4">
                         <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Formation Demandée</h4>
                         <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 space-y-3">
                            <p className="text-lg font-black dark:text-white leading-tight">{selectedApp.majorName}</p>
                            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{selectedApp.universityName}</p>
                         </div>
                       </div>
-                      <div className="space-y-6">
+                      <div className="space-y-4">
                         <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Pièces Jointes</h4>
                         <div className="grid grid-cols-1 gap-2">
                            {selectedApp.documents.map((doc, i) => (
                              <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                                 <p className="text-xs font-black dark:text-white truncate">{doc}</p>
-                                <button onClick={() => setPreviewDoc(doc)} className="px-4 py-2 bg-primary/10 text-primary text-[9px] font-black rounded-lg">VOIR</button>
+                                <button className="px-4 py-2 bg-primary/10 text-primary text-[9px] font-black rounded-lg">OUVRIR</button>
                              </div>
                            ))}
                         </div>
                       </div>
                    </div>
-                   <div className="space-y-10 pt-10 border-t lg:border-t-0 lg:border-l lg:pl-12 border-gray-100 dark:border-white/5 flex flex-col justify-end">
-                      <button onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }} className="w-full py-5 text-red-500 font-black uppercase text-[10px] tracking-widest border border-red-500/20 rounded-2xl hover:bg-red-500/10 transition-all">Supprimer le Dossier</button>
-                      <button onClick={() => setSelectedApp(null)} className="w-full py-5 bg-gray-900 dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl">Fermer la vue</button>
+                   <div className="space-y-10 pt-10 border-t lg:border-t-0 lg:border-l lg:pl-12 border-gray-100 dark:border-white/5 flex flex-col justify-end gap-4">
+                      <button onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }} className="w-full py-5 text-red-500 font-black uppercase text-[10px] border border-red-500/20 rounded-2xl hover:bg-red-500/10 transition-all">Supprimer Dossier</button>
+                      <button onClick={() => setSelectedApp(null)} className="w-full py-5 bg-gray-900 dark:bg-white text-white dark:text-black font-black uppercase text-[10px] rounded-2xl">Fermer la vue</button>
                    </div>
                 </div>
              </div>
           </div>
         )}
 
-        {/* MANUAL WIZARD MODAL */}
+        {/* MANUAL CREATION WIZARD MODAL */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
                    <div>
                       <h3 className="text-2xl font-black text-white tracking-tight">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">{wizardStep === 'institution' ? 'Identité' : wizardStep === 'faculties' ? 'Composantes' : 'Filières'}</p>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">
+                        Étape : {wizardStep === 'institution' ? 'Identité' : wizardStep === 'faculties' ? 'Composantes' : 'Filières'}
+                      </p>
                    </div>
-                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
+                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500"><span className="material-symbols-outlined">close</span></button>
                 </div>
                 <div className="p-12 text-white">
                    {wizardStep === 'institution' && (
@@ -600,10 +538,10 @@ const AdminDashboard: React.FC = () => {
                        setWizardStep('faculties');
                      }} className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
-                           <button type="button" onClick={() => setIsSchoolKind(false)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${!isSchoolKind ? 'bg-primary text-black' : 'bg-white/5 text-gray-400'}`}>Université</button>
-                           <button type="button" onClick={() => setIsSchoolKind(true)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${isSchoolKind ? 'bg-amber-400 text-black' : 'bg-white/5 text-gray-400'}`}>École / Institut</button>
+                           <button type="button" onClick={() => setIsSchoolKind(false)} className={`py-4 rounded-xl text-[10px] font-black uppercase ${!isSchoolKind ? 'bg-primary text-black' : 'bg-white/5 text-gray-400'}`}>Université</button>
+                           <button type="button" onClick={() => setIsSchoolKind(true)} className={`py-4 rounded-xl text-[10px] font-black uppercase ${isSchoolKind ? 'bg-amber-400 text-black' : 'bg-white/5 text-gray-400'}`}>École / Institut</button>
                         </div>
-                        <input name="name" placeholder="Nom Complet" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input name="name" placeholder="Nom Complet" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
                         <div className="grid grid-cols-2 gap-4">
                            <input name="acronym" placeholder="Sigle" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
                            <input name="location" placeholder="Ville" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
@@ -612,28 +550,98 @@ const AdminDashboard: React.FC = () => {
                      </form>
                    )}
                    {wizardStep === 'faculties' && (
-                     <div className="space-y-10 text-center">
-                        <p className="text-gray-400 font-bold">Ajoutez les composantes rattachées à cet établissement.</p>
+                     <div className="space-y-8">
+                        <h4 className="text-xl font-black mb-6 text-left">Composantes / Facultés</h4>
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
                            if (currentUni) {
                               updateUniversity({...currentUni, faculties: [...currentUni.faculties, {
-                                id: 'fac-'+Date.now(), name: fd.get('fn') as string, description: 'Formation', levels: ['Licence']
+                                id: 'fac-'+Date.now(), name: fd.get('fn') as string, description: 'Formation', levels: ['Licence', 'Master']
                               }]});
                               e.currentTarget.reset();
                            }
                         }} className="space-y-4">
                            <input name="fn" placeholder="Nom de l'entité (ex: FASEG, IFRI...)" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
-                           <button type="submit" className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase">+ Ajouter</button>
+                           <button type="submit" className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase">+ Ajouter la faculté</button>
                         </form>
+                        <div className="space-y-3 mt-8">
+                           {currentUni?.faculties.map(f => (
+                              <div key={f.id} className="p-4 bg-white/5 rounded-2xl border border-white/5 flex justify-between items-center">
+                                 <span className="font-bold text-sm">{f.name}</span>
+                                 <button onClick={() => updateUniversity({...currentUni, faculties: currentUni.faculties.filter(fac => fac.id !== f.id)})} className="text-red-400"><span className="material-symbols-outlined text-sm">delete</span></button>
+                              </div>
+                           ))}
+                        </div>
                         <div className="flex gap-4 pt-10 border-t border-white/5">
                            <button onClick={() => setWizardStep('institution')} className="flex-1 text-gray-500 font-black text-[10px] uppercase">Retour</button>
-                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase">Terminer</button>
+                           <button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase">Ajouter des filières</button>
                         </div>
                      </div>
                    )}
+                   {wizardStep === 'majors' && (
+                     <div className="space-y-8">
+                        <h4 className="text-xl font-black mb-6 text-left">Filières rattachées</h4>
+                        <div className="p-6 bg-white/5 rounded-3xl space-y-4">
+                           <p className="text-xs text-gray-400">Pour ajouter une filière plus tard, utilisez le bouton "Nouvelle Filière" dans le catalogue.</p>
+                        </div>
+                        <button onClick={() => setShowWizard(false)} className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl">Terminer la configuration</button>
+                     </div>
+                   )}
                 </div>
+             </div>
+          </div>
+        )}
+
+        {/* MODAL: ADD/EDIT SINGLE MAJOR */}
+        {showMajorModal && (
+          <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+             <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5">
+                <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
+                   <h3 className="text-2xl font-black text-white tracking-tight">{editingMajor ? 'Modifier' : 'Nouvelle'} Filière</h3>
+                   <button onClick={() => setShowMajorModal(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500"><span className="material-symbols-outlined">close</span></button>
+                </div>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget);
+                  const inst = universities.find(u => u.id === fd.get('uni'));
+                  const data: Major = {
+                    id: editingMajor?.id || 'maj-'+Date.now(),
+                    name: fd.get('name') as string,
+                    universityId: fd.get('uni') as string,
+                    universityName: inst?.acronym || 'Unknown',
+                    facultyName: fd.get('fac') as string || 'Général',
+                    domain: fd.get('domain') as string,
+                    level: fd.get('level') as any,
+                    duration: fd.get('duration') as string,
+                    fees: fd.get('fees') as string,
+                    location: inst?.location || 'Bénin',
+                    image: editingMajor?.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400'
+                  };
+                  if (editingMajor) updateMajor(data); else addMajor(data);
+                  setShowMajorModal(false);
+                }} className="p-12 space-y-6 text-left">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Établissement</label>
+                      <select name="uni" defaultValue={editingMajor?.universityId} className="w-full p-4 rounded-xl bg-white/5 text-white border-none outline-none font-bold">
+                         {universities.map(u => <option key={u.id} value={u.id} className="bg-[#162a1f]">{u.acronym}</option>)}
+                      </select>
+                   </div>
+                   <input name="name" placeholder="Nom de la filière" defaultValue={editingMajor?.name} required className="w-full p-4 rounded-xl bg-white/5 text-white border-none outline-none font-bold" />
+                   <div className="grid grid-cols-2 gap-4">
+                      <input name="domain" placeholder="Domaine (ex: Informatique)" defaultValue={editingMajor?.domain} className="w-full p-4 rounded-xl bg-white/5 text-white border-none outline-none font-bold" />
+                      <select name="level" defaultValue={editingMajor?.level} className="w-full p-4 rounded-xl bg-white/5 text-white border-none outline-none font-bold">
+                         <option value="Licence" className="bg-[#162a1f]">Licence</option>
+                         <option value="Master" className="bg-[#162a1f]">Master</option>
+                         <option value="Doctorat" className="bg-[#162a1f]">Doctorat</option>
+                      </select>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <input name="duration" placeholder="Durée (ex: 3 Ans)" defaultValue={editingMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 text-white border-none outline-none font-bold" />
+                      <input name="fees" placeholder="Frais (ex: 50.000 FCFA)" defaultValue={editingMajor?.fees} className="w-full p-4 rounded-xl bg-white/5 text-white border-none outline-none font-bold" />
+                   </div>
+                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest">Enregistrer</button>
+                </form>
              </div>
           </div>
         )}
