@@ -6,6 +6,7 @@ import { University, Major, Application } from '../types';
 
 type AdminView = 'overview' | 'applications' | 'catalog' | 'cms' | 'settings';
 type CatalogSection = 'universities' | 'majors';
+type EstablishmentFilter = 'all' | 'university' | 'school';
 
 const AdminDashboard: React.FC = () => {
   const { 
@@ -20,12 +21,17 @@ const AdminDashboard: React.FC = () => {
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   
   // Catalog Form States
   const [showUniForm, setShowUniForm] = useState(false);
   const [showMajorForm, setShowMajorForm] = useState(false);
   const [editingUni, setEditingUni] = useState<University | null>(null);
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
+
+  // Modal logic states
+  const [isSchoolKind, setIsSchoolKind] = useState(false);
+  const [parentUniId, setParentUniId] = useState<string>('');
 
   const navigate = useNavigate();
 
@@ -37,6 +43,14 @@ const AdminDashboard: React.FC = () => {
     { label: 'Établissements', val: universities.length.toString(), change: '+2', icon: 'account_balance', color: 'bg-blue-500/10 text-blue-500' },
     { label: 'Filières', val: majors.length.toString(), change: '+8', icon: 'library_books', color: 'bg-purple-500/10 text-purple-500' }
   ];
+
+  const filteredUniversities = useMemo(() => {
+    return universities.filter(u => {
+      if (establishmentFilter === 'university') return !u.isStandaloneSchool;
+      if (establishmentFilter === 'school') return u.isStandaloneSchool;
+      return true;
+    });
+  }, [universities, establishmentFilter]);
 
   const SidebarNav = () => (
     <div className="flex flex-col h-full py-10 px-6">
@@ -64,7 +78,7 @@ const AdminDashboard: React.FC = () => {
               setActiveView(item.id as AdminView);
               setIsSidebarOpen(false);
             }}
-            className={` Kaplan w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
+            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
               activeView === item.id 
               ? 'bg-primary text-black shadow-lg shadow-primary/20' 
               : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -191,7 +205,7 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setSelectedApp(null)}
                 >
                    <div 
-                    className=" Kaplan bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl"
+                    className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl"
                     onClick={(e) => e.stopPropagation()}
                    >
                       <div className="p-10 space-y-8">
@@ -268,29 +282,64 @@ const AdminDashboard: React.FC = () => {
 
           {activeView === 'catalog' && (
             <div className="space-y-10 animate-fade-in">
-               <div className="flex gap-4 p-2 bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/10 w-fit">
-                  <button onClick={() => setActiveCatalogSection('universities')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>Universités & Écoles</button>
-                  <button onClick={() => setActiveCatalogSection('majors')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>Filières</button>
+               <div className="flex flex-col sm:flex-row gap-6 justify-between items-start sm:items-center">
+                 <div className="flex gap-4 p-2 bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/10 w-fit">
+                    <button onClick={() => setActiveCatalogSection('universities')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>Universités & Écoles</button>
+                    <button onClick={() => setActiveCatalogSection('majors')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>Filières</button>
+                 </div>
+
+                 {activeCatalogSection === 'universities' && (
+                   <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
+                      {[
+                        { id: 'all', label: 'Tout' },
+                        { id: 'university', label: 'Universités' },
+                        { id: 'school', label: 'Écoles' }
+                      ].map(filter => (
+                        <button
+                          key={filter.id}
+                          onClick={() => setEstablishmentFilter(filter.id as EstablishmentFilter)}
+                          className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === filter.id ? 'bg-primary text-black' : 'text-gray-400 hover:text-white'}`}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                   </div>
+                 )}
                </div>
 
                {activeCatalogSection === 'universities' && (
                   <div className="grid grid-cols-1 gap-4">
-                     {universities.map(uni => (
+                     {filteredUniversities.map(uni => (
                         <div key={uni.id} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between group">
                            <div className="flex items-center gap-6">
-                              <img src={uni.logo} className="size-12 rounded-xl object-contain bg-gray-50" alt="" />
+                              <div className="relative">
+                                <img src={uni.logo} className="size-14 rounded-xl object-contain bg-gray-50 border border-gray-100" alt="" />
+                                <span className={`absolute -top-2 -right-2 size-5 rounded-full flex items-center justify-center text-[8px] font-black ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`} title={uni.isStandaloneSchool ? 'École' : 'Université'}>
+                                   {uni.isStandaloneSchool ? 'E' : 'U'}
+                                </span>
+                              </div>
                               <div>
                                  <h3 className="font-black dark:text-white text-xl">{uni.name} ({uni.acronym})</h3>
-                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{uni.type} • {uni.location}</p>
+                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    {uni.isStandaloneSchool ? 'École' : 'Université'} • {uni.type} • {uni.location}
+                                 </p>
                               </div>
                            </div>
                            <div className="flex gap-2">
-                              <button onClick={() => { setEditingUni(uni); setShowUniForm(true); }} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
+                              <button onClick={() => { 
+                                setEditingUni(uni); 
+                                setIsSchoolKind(uni.isStandaloneSchool || false);
+                                setShowUniForm(true); 
+                              }} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
                               <button onClick={() => deleteUniversity(uni.id)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center"><span className="material-symbols-outlined text-xl">delete</span></button>
                            </div>
                         </div>
                      ))}
-                     <button onClick={() => { setEditingUni(null); setShowUniForm(true); }} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
+                     <button onClick={() => { 
+                       setEditingUni(null); 
+                       setIsSchoolKind(false);
+                       setShowUniForm(true); 
+                     }} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
                         + Ajouter un établissement
                      </button>
                   </div>
@@ -319,70 +368,117 @@ const AdminDashboard: React.FC = () => {
                   </div>
                )}
 
-               {/* University Form Modal */}
+               {/* University/School Form Modal */}
                {showUniForm && (
                  <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
-                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8 my-10">
                      <div className="flex justify-between items-center">
                        <h3 className="text-2xl font-black dark:text-white">{editingUni ? 'Modifier' : 'Ajouter'} un Établissement</h3>
                        <button onClick={() => setShowUniForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
                      </div>
+
+                     <div className="flex gap-4 p-1.5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
+                        <button 
+                          onClick={() => setIsSchoolKind(false)} 
+                          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg' : 'text-gray-400'}`}
+                        >
+                          Université
+                        </button>
+                        <button 
+                          onClick={() => setIsSchoolKind(true)} 
+                          className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg' : 'text-gray-400'}`}
+                        >
+                          École
+                        </button>
+                     </div>
+
                      <form onSubmit={(e) => {
                        e.preventDefault();
                        const formData = new FormData(e.currentTarget);
                        const uniData: Partial<University> = {
-                         id: editingUni?.id || 'uni-' + Date.now(),
+                         id: editingUni?.id || (isSchoolKind ? 'sch-' : 'uni-') + Date.now(),
                          name: formData.get('name') as string,
                          acronym: formData.get('acronym') as string,
                          location: formData.get('location') as string,
                          type: formData.get('type') as any,
                          description: formData.get('description') as string,
+                         isStandaloneSchool: isSchoolKind,
                          logo: editingUni?.logo || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=100',
                          cover: editingUni?.cover || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
                          stats: editingUni?.stats || { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
                          faculties: editingUni?.faculties || []
                        };
+                       
+                       // Si c'est une école rattachée (parentUniId sélectionné)
+                       if (isSchoolKind && parentUniId) {
+                          // Logique de rattachement : on pourrait soit l'ajouter au faculties de l'uni parent
+                          // soit gérer via un champ parentId (pour l'instant on reste simple : Standalone = Ecole)
+                       }
+
                        if (editingUni) updateUniversity(uniData as University);
                        else addUniversity(uniData as University);
                        setShowUniForm(false);
                      }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black uppercase text-gray-400">Nom</label>
-                         <input name="name" required defaultValue={editingUni?.name} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       <div className="md:col-span-2 space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Nom Complet</label>
+                         <input name="name" required defaultValue={editingUni?.name} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 dark:text-white font-bold outline-none focus:ring-2 focus:ring-primary/20" />
                        </div>
+                       
                        <div className="space-y-2">
-                         <label className="text-[10px] font-black uppercase text-gray-400">Sigle</label>
-                         <input name="acronym" required defaultValue={editingUni?.acronym} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                         <label className="text-[10px] font-black uppercase text-gray-400">Sigle (Acronyme)</label>
+                         <input name="acronym" required defaultValue={editingUni?.acronym} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 dark:text-white font-bold outline-none focus:ring-2 focus:ring-primary/20" />
                        </div>
+
                        <div className="space-y-2">
-                         <label className="text-[10px] font-black uppercase text-gray-400">Ville</label>
-                         <input name="location" required defaultValue={editingUni?.location} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
-                       </div>
-                       <div className="space-y-2">
-                         <label className="text-[10px] font-black uppercase text-gray-400">Type</label>
-                         <select name="type" required defaultValue={editingUni?.type} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Statut Financier</label>
+                         <select name="type" required defaultValue={editingUni?.type} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 dark:text-white font-bold outline-none focus:ring-2 focus:ring-primary/20">
                            <option value="Public">Public</option>
                            <option value="Privé">Privé</option>
                          </select>
                        </div>
-                       <div className="md:col-span-2 space-y-2">
-                         <label className="text-[10px] font-black uppercase text-gray-400">Description</label>
-                         <textarea name="description" rows={3} defaultValue={editingUni?.description} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold resize-none" />
+
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Ville principale</label>
+                         <input name="location" required defaultValue={editingUni?.location} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 dark:text-white font-bold outline-none focus:ring-2 focus:ring-primary/20" />
                        </div>
+
+                       {isSchoolKind && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-gray-400">Université de rattachement</label>
+                          <select 
+                            value={parentUniId} 
+                            onChange={(e) => setParentUniId(e.target.value)}
+                            className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 dark:text-white font-bold outline-none focus:ring-2 focus:ring-primary/20"
+                          >
+                            <option value="">Aucune (École Autonome)</option>
+                            {universities.filter(u => !u.isStandaloneSchool).map(u => (
+                              <option key={u.id} value={u.id}>{u.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                       )}
+
+                       <div className="md:col-span-2 space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Description / Présentation</label>
+                         <textarea name="description" rows={3} defaultValue={editingUni?.description} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 dark:text-white font-bold resize-none outline-none focus:ring-2 focus:ring-primary/20" />
+                       </div>
+
                        <div className="md:col-span-2 pt-4">
-                         <button type="submit" className="w-full py-4 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl">Sauvegarder</button>
+                         <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl hover:scale-[1.02] transition-all">
+                           {editingUni ? 'Enregistrer les modifications' : 'Créer l\'établissement'}
+                         </button>
                        </div>
                      </form>
                    </div>
                  </div>
                )}
 
-               {/* Major Form Modal */}
+               {/* Major Form Modal (Same as before but ensures university list is updated) */}
                {showMajorForm && (
-                 <div className=" Kaplan fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
-                   <div className=" Kaplan bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                 <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
+                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
                      <div className="flex justify-between items-center">
-                       <h3 className=" Kaplan text-2xl font-black dark:text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une Filière</h3>
+                       <h3 className="text-2xl font-black dark:text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une Filière</h3>
                        <button onClick={() => setShowMajorForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
                      </div>
                      <form onSubmit={(e) => {
@@ -413,7 +509,7 @@ const AdminDashboard: React.FC = () => {
                        <div className="space-y-2">
                          <label className="text-[10px] font-black uppercase text-gray-400">Établissement</label>
                          <select name="universityId" required defaultValue={editingMajor?.universityId} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
-                           {universities.map(u => <option key={u.id} value={u.id}>{u.acronym}</option>)}
+                           {universities.map(u => <option key={u.id} value={u.id}>{u.acronym} - {u.name}</option>)}
                          </select>
                        </div>
                        <div className="space-y-2">
@@ -516,23 +612,23 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeView === 'cms' && (
-             <div className=" Kaplan space-y-10 animate-fade-in max-w-4xl">
+             <div className="space-y-10 animate-fade-in max-w-4xl">
                <div className="space-y-2">
-                  <h2 className=" Kaplan text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
                   <p className="text-gray-500 font-medium">Modifiez les textes statiques de la plateforme.</p>
                </div>
-               <div className=" Kaplan bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10 space-y-8">
+               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10 space-y-8">
                   {Object.keys(content).map(key => (
-                    <div key={key} className=" Kaplan space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl">
+                    <div key={key} className="space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl">
                        <h4 className="font-black text-primary uppercase text-[10px] tracking-widest">ID: {key}</h4>
-                       <div className=" Kaplan grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {languages.filter(l => l.isActive).map(l => (
-                            <div key={l.code} className=" Kaplan space-y-1">
+                            <div key={l.code} className="space-y-1">
                                <label className="text-[9px] font-bold text-gray-400 uppercase">{l.label}</label>
                                <textarea 
                                   value={content[key][l.code]} 
                                   onChange={(e) => updateContent(key, l.code, e.target.value)}
-                                  className=" Kaplan w-full p-4 rounded-xl border-none font-bold text-sm bg-white dark:bg-surface-dark resize-none"
+                                  className="w-full p-4 rounded-xl border-none font-bold text-sm bg-white dark:bg-surface-dark resize-none"
                                />
                             </div>
                           ))}
