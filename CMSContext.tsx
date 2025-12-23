@@ -138,7 +138,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addUniversity = (uni: University) => setUniversities(prev => [uni, ...prev]);
   const updateUniversity = (uni: University) => setUniversities(prev => prev.map(u => u.id === uni.id ? uni : u));
-  const deleteUniversity = (id: string) => setUniversities(prev => prev.filter(u => u.id !== id));
+  
+  // CASCADE DELETE IMPLEMENTATION
+  const deleteUniversity = (id: string) => {
+    // 1. Remove the university
+    setUniversities(prev => prev.filter(u => u.id !== id));
+    // 2. Cascade remove all related majors
+    setMajors(prevMajors => prevMajors.filter(m => m.universityId !== id));
+    // 3. Optional: Remove related applications if desired (usually kept for audit, but here we clean up)
+    setApplications(prevApps => prevApps.filter(a => {
+       const relatedMajor = majors.find(m => m.id === a.majorId);
+       return relatedMajor ? relatedMajor.universityId !== id : true;
+    }));
+  };
 
   const addMajor = (major: Major) => setMajors(prev => [major, ...prev]);
   const updateMajor = (major: Major) => setMajors(prev => prev.map(m => m.id === major.id ? major : m));

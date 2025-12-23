@@ -21,7 +21,7 @@ const Home: React.FC = () => {
       const matchesCity = cityFilter === 'Toutes les villes' || uni.location === cityFilter;
       if (!matchesCity) return false;
       
-      // Si pas de recherche textuelle, on affiche tout (limité à 2 pour la section Recommandés)
+      // Si pas de recherche textuelle, on affiche tout (limité à 4 pour la section Recommandés)
       if (!query) return true;
 
       // Recherche par Nom ou Sigle d'établissement
@@ -33,7 +33,7 @@ const Home: React.FC = () => {
       const matchesMajor = institutionMajors.some(m => m.name.toLowerCase().includes(query));
       
       return matchesMajor;
-    }).slice(0, 4); // Augmenté à 4 pour montrer plus de résultats dynamiques
+    }).slice(0, 4); 
   }, [searchQuery, cityFilter, universities, majors]);
 
   const handleSearchClick = () => {
