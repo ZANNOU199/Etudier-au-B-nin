@@ -2,22 +2,18 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
-import { University, Major, Application, Faculty, CareerProspect, RequiredDiploma } from '../types';
+import { University, Major, Application } from '../types';
 
 type AdminView = 'overview' | 'applications' | 'catalog' | 'cms' | 'settings';
 type CatalogSection = 'universities' | 'majors';
-type EstablishmentFilter = 'all' | 'university' | 'school';
-type CreationStep = 'institution' | 'faculties' | 'majors';
-
-const UNI_PER_PAGE = 4;
-const MAJOR_PER_PAGE = 3;
 
 const AdminDashboard: React.FC = () => {
   const { 
+    content, translate, updateContent, languages, 
+    toggleLanguage, themes, applyTheme, activeTheme, updateTheme, userRole,
     applications, updateApplicationStatus, deleteApplication,
     universities, addUniversity, updateUniversity, deleteUniversity,
-    majors, addMajor, updateMajor, deleteMajor, logout, user,
-    languages, toggleLanguage, themes, applyTheme, content, updateContent
+    majors, addMajor, updateMajor, deleteMajor, logout, user
   } = useCMS();
   
   const [activeView, setActiveView] = useState<AdminView>('overview');
@@ -25,36 +21,22 @@ const AdminDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   
-  // LOGIQUE CATALOGUE UNIQUEMENT (Périmètre autorisé)
-  const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
-  const [uniPage, setUniPage] = useState(1);
-  const [majorPage, setMajorPage] = useState(1);
-  const [showWizard, setShowWizard] = useState(false);
-  const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
-  const [currentInstId, setCurrentInstId] = useState<string | null>(null);
-  const [isSchoolKind, setIsSchoolKind] = useState(false);
+  // Catalog Form States
+  const [showUniForm, setShowUniForm] = useState(false);
+  const [showMajorForm, setShowMajorForm] = useState(false);
+  const [editingUni, setEditingUni] = useState<University | null>(null);
+  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
 
   const navigate = useNavigate();
 
-  // Filtrage Etablissements
-  const filteredUnis = useMemo(() => {
-    return universities.filter(u => {
-      if (establishmentFilter === 'university') return !u.isStandaloneSchool;
-      if (establishmentFilter === 'school') return u.isStandaloneSchool;
-      return true;
-    });
-  }, [universities, establishmentFilter]);
+  const isSuperAdmin = userRole === 'super_admin';
 
-  // Pagination Etablissements (4 par page)
-  const totalUniPages = Math.ceil(filteredUnis.length / UNI_PER_PAGE);
-  const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
-
-  // Pagination Filières (3 par page)
-  const totalMajorPages = Math.ceil(majors.length / MAJOR_PER_PAGE);
-  const pagedMajors = majors.slice((majorPage - 1) * MAJOR_PER_PAGE, majorPage * MAJOR_PER_PAGE);
-
-  const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
-  const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
+  const kpis = [
+    { label: 'Candidatures', val: applications.length.toString(), change: '+12%', icon: 'school', color: 'bg-primary/10 text-primary' },
+    { label: 'Revenus', val: '12.4M', change: '+5%', icon: 'payments', color: 'bg-emerald-500/10 text-emerald-500' },
+    { label: 'Établissements', val: universities.length.toString(), change: '+2', icon: 'account_balance', color: 'bg-blue-500/10 text-blue-500' },
+    { label: 'Filières', val: majors.length.toString(), change: '+8', icon: 'library_books', color: 'bg-purple-500/10 text-purple-500' }
+  ];
 
   const SidebarNav = () => (
     <div className="flex flex-col h-full py-10 px-6">
@@ -82,7 +64,7 @@ const AdminDashboard: React.FC = () => {
               setActiveView(item.id as AdminView);
               setIsSidebarOpen(false);
             }}
-            className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
+            className={` Kaplan w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
               activeView === item.id 
               ? 'bg-primary text-black shadow-lg shadow-primary/20' 
               : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -101,7 +83,7 @@ const AdminDashboard: React.FC = () => {
         ))}
       </nav>
 
-      <div className="pt-10 border-t border-white/5">
+      <div className="pt-10">
         <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest text-red-400 hover:bg-red-500 hover:text-white transition-all border border-red-500/20">
           <span className="material-symbols-outlined text-xl">logout</span>
           Déconnexion
@@ -118,7 +100,7 @@ const AdminDashboard: React.FC = () => {
 
       {isSidebarOpen && (
         <>
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
           <aside className="fixed left-0 top-0 bottom-0 w-80 bg-[#0d1b13] z-[60] lg:hidden animate-in slide-in-from-left duration-300">
             <SidebarNav />
           </aside>
@@ -139,332 +121,428 @@ const AdminDashboard: React.FC = () => {
         </header>
 
         <div className="p-4 lg:p-12 space-y-10">
-          
-          {/* VUE: DASHBOARD (INTACTE) */}
           {activeView === 'overview' && (
             <div className="space-y-10 animate-fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                {[
-                  { label: 'Candidatures', val: applications.length.toString(), icon: 'description', color: 'bg-primary/10 text-primary' },
-                  { label: 'Établissements', val: universities.length.toString(), icon: 'account_balance', color: 'bg-blue-500/10 text-blue-500' },
-                  { label: 'Filières', val: majors.length.toString(), icon: 'library_books', color: 'bg-purple-500/10 text-purple-500' },
-                  { label: 'Activité', val: '89%', icon: 'trending_up', color: 'bg-amber-500/10 text-amber-500' }
-                ].map((kpi, idx) => (
-                  <div key={idx} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm">
-                    <div className={`size-12 rounded-xl flex items-center justify-center ${kpi.color} mb-6`}>
-                      <span className="material-symbols-outlined font-bold text-2xl">{kpi.icon}</span>
-                    </div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
-                    <p className="text-3xl font-black dark:text-white tracking-tighter">{kpi.val}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-[#0d1b13] p-10 rounded-[40px] text-white flex items-center justify-between relative overflow-hidden">
-                 <div className="space-y-4 relative z-10">
-                    <h2 className="text-4xl font-black tracking-tight leading-none">Console de Contrôle <br/><span className="text-primary italic">EDEN Communication</span></h2>
-                    <p className="text-gray-400 font-medium max-w-lg">Gérez l'ensemble des établissements, filières et candidatures depuis cette interface sécurisée.</p>
-                 </div>
-                 <span className="material-symbols-outlined text-[120px] opacity-10 absolute -right-10 top-0">security</span>
-              </div>
-            </div>
-          )}
-
-          {/* VUE: APPLICATIONS (INTACTE) */}
-          {activeView === 'applications' && (
-            <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Flux de Candidatures</h2>
-               <div className="grid grid-cols-1 gap-4">
-                  {applications.map(app => (
-                    <div key={app.id} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:shadow-lg transition-all">
-                       <div className="flex items-center gap-6 flex-1 w-full">
-                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
-                             <span className="material-symbols-outlined text-2xl">description</span>
-                          </div>
-                          <div className="space-y-1">
-                             <p className="text-[9px] font-black text-primary uppercase tracking-widest">{app.id}</p>
-                             <h4 className="text-lg font-black dark:text-white leading-tight">{app.studentName}</h4>
-                             <p className="text-xs font-bold text-gray-500">{app.majorName} • {app.universityName}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-4 w-full md:w-auto">
-                          <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${
-                             app.status === 'Validé' ? 'text-primary bg-primary/10' : 
-                             app.status === 'Rejeté' ? 'text-red-500 bg-red-500/10' : 'text-amber-500 bg-amber-500/10'
-                          }`}>
-                             {app.status}
-                          </span>
-                       </div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                  {kpis.map((kpi, idx) => (
+                    <div key={idx} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm group">
+                      <div className="flex justify-between items-start mb-6">
+                        <div className={`size-12 rounded-xl flex items-center justify-center ${kpi.color} group-hover:scale-110 transition-transform`}>
+                          <span className="material-symbols-outlined font-bold text-2xl">{kpi.icon}</span>
+                        </div>
+                        <span className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full">{kpi.change}</span>
+                      </div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
+                      <p className="text-3xl font-black dark:text-white tracking-tighter">{kpi.val}</p>
                     </div>
                   ))}
                </div>
             </div>
           )}
 
-          {/* VUE: CATALOGUE ACADÉMIQUE (REFAITE SELON OBJECTIFS) */}
-          {activeView === 'catalog' && (
+          {activeView === 'applications' && (
             <div className="space-y-8 animate-fade-in">
-               {/* Filtrage Dynamique */}
-               <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
-                  <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
-                    <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
-                    <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
-                  </div>
+              <div className="flex justify-between items-center px-2">
+                <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion des Dossiers</h2>
+                <div className="flex gap-4">
+                   <span className="px-4 py-1.5 bg-amber-400 text-black text-[10px] font-black rounded-full uppercase tracking-widest">En attente : {applications.filter(a => a.status === 'En attente').length}</span>
+                   <span className="px-4 py-1.5 bg-primary text-black text-[10px] font-black rounded-full uppercase tracking-widest">Validés : {applications.filter(a => a.status === 'Validé').length}</span>
+                </div>
+              </div>
 
-                  {activeCatalogSection === 'universities' && (
-                    <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
-                       {['all', 'university', 'school'].map(f => (
-                         <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
-                           {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
-                         </button>
-                       ))}
+              <div className="grid grid-cols-1 gap-4">
+                {applications.map(app => (
+                  <div key={app.id} className="bg-white dark:bg-surface-dark p-6 md:p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 group hover:border-primary/20 transition-all">
+                    <div className="flex items-center gap-6 flex-1 w-full">
+                       <div className="size-16 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-primary shrink-0 border border-gray-100 dark:border-white/10">
+                          <span className="material-symbols-outlined text-3xl font-bold">person_outline</span>
+                       </div>
+                       <div className="space-y-1">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{app.id} • {app.studentName}</p>
+                          <h4 className="text-2xl font-black dark:text-white leading-tight">{app.majorName}</h4>
+                          <p className="text-sm font-bold text-gray-500 uppercase">{app.universityName}</p>
+                       </div>
                     </div>
-                  )}
-               </div>
-
-               {/* Section Universités (Style sombre spécifique catalogue) */}
-               {activeCatalogSection === 'universities' && (
-                  <div className="bg-[#0d1b13] p-8 rounded-[48px] border border-white/5 space-y-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {pagedUnis.map(uni => (
-                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all h-full">
-                           <div className="flex items-center gap-6 flex-1 w-full">
-                              <div className="size-20 rounded-2xl bg-white/5 flex items-center justify-center p-3 border border-white/10 relative">
-                                 <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
-                                 <span className={`absolute -top-3 -right-3 size-7 rounded-full flex items-center justify-center text-[11px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
-                                    {uni.isStandaloneSchool ? 'E' : 'U'}
-                                 </span>
-                              </div>
-                              <div className="space-y-1 flex-1">
-                                 <h3 className="text-2xl font-black text-white tracking-tighter leading-none">{uni.acronym}</h3>
-                                 <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
-                                 <p className="text-sm font-black text-gray-300 line-clamp-1">{uni.name}</p>
-                              </div>
-                           </div>
-                           <div className="flex gap-3 shrink-0">
-                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">delete</span></button>
-                           </div>
-                        </div>
-                      ))}
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
-                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                           <span className="material-symbols-outlined text-2xl font-bold">add</span>
-                        </div>
-                        <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Ajouter un établissement</span>
-                      </button>
+                    
+                    <div className="flex items-center gap-3 w-full md:w-auto md:border-l md:pl-8 border-gray-100 dark:border-white/10">
+                       <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                         app.status === 'Validé' ? 'bg-primary/10 text-primary' : 
+                         app.status === 'Rejeté' ? 'bg-red-500/10 text-red-500' : 'bg-amber-400/10 text-amber-500'
+                       }`}>
+                         {app.status}
+                       </span>
+                       <button onClick={() => setSelectedApp(app)} className="size-11 rounded-xl bg-primary text-black hover:bg-green-400 transition-all flex items-center justify-center shadow-lg">
+                          <span className="material-symbols-outlined font-bold">visibility</span>
+                       </button>
                     </div>
-
-                    {/* Pagination 4/page */}
-                    {totalUniPages > 1 && (
-                      <div className="flex justify-center items-center gap-3 pt-4">
-                         {Array.from({ length: totalUniPages }).map((_, i) => (
-                           <button key={i} onClick={() => setUniPage(i + 1)} className={`size-12 rounded-2xl font-black text-xs transition-all border ${uniPage === i + 1 ? 'bg-primary border-primary text-black' : 'bg-white/5 border-white/10 text-white'}`}>{i + 1}</button>
-                         ))}
-                      </div>
-                    )}
                   </div>
-               )}
+                ))}
+                {applications.length === 0 && (
+                   <div className="text-center py-20 bg-white dark:bg-surface-dark rounded-[48px] border-2 border-dashed border-gray-100 dark:border-white/10">
+                      <p className="text-gray-400 font-bold">Aucune candidature pour le moment.</p>
+                   </div>
+                )}
+              </div>
 
-               {/* Section Filières (Style sombre spécifique catalogue) */}
-               {activeCatalogSection === 'majors' && (
-                  <div className="bg-[#0d1b13] p-8 rounded-[48px] border border-white/5 space-y-10">
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {pagedMajors.map(major => (
-                           <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between group hover:bg-white/10 transition-all h-full">
-                              <div className="flex items-center gap-4 mb-6">
-                                 <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase">{major.level[0]}</div>
-                                 <div className="space-y-1">
-                                    <h3 className="text-lg font-black text-white tracking-tight leading-none">{major.name}</h3>
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{major.universityName}</p>
+              {/* Application Details Modal */}
+              {selectedApp && (
+                <div 
+                  className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in"
+                  onClick={() => setSelectedApp(null)}
+                >
+                   <div 
+                    className=" Kaplan bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                   >
+                      <div className="p-10 space-y-8">
+                         <div className="flex justify-between items-start">
+                            <div>
+                               <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Dossier N° {selectedApp.id}</p>
+                               <h3 className="text-3xl font-black dark:text-white tracking-tighter leading-none">{selectedApp.studentName}</h3>
+                               <p className="text-gray-500 font-bold mt-2">Candidat pour : {selectedApp.majorName}</p>
+                            </div>
+                            <button onClick={() => setSelectedApp(null)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                               <span className="material-symbols-outlined">close</span>
+                            </button>
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/10">
+                               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Établissement</p>
+                               <p className="font-black dark:text-white">{selectedApp.universityName}</p>
+                            </div>
+                            <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/10">
+                               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Soumis le</p>
+                               <p className="font-black dark:text-white">{selectedApp.date}</p>
+                            </div>
+                         </div>
+
+                         <div className="space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Documents du dossier</h4>
+                            <div className="grid grid-cols-1 gap-2">
+                               {selectedApp.documents.map((doc, i) => (
+                                 <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 group">
+                                    <div className="flex items-center gap-3">
+                                       <span className="material-symbols-outlined text-primary">article</span>
+                                       <span className="text-sm font-bold dark:text-white">{doc}</span>
+                                    </div>
+                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-primary cursor-pointer">download</span>
                                  </div>
-                              </div>
-                              <div className="pt-6 border-t border-white/5 flex justify-between items-center">
-                                 <span className="text-primary font-black text-xs">{major.fees}</span>
-                                 <button onClick={() => deleteMajor(major.id)} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                     {/* Pagination 3/page */}
-                     {totalMajorPages > 1 && (
-                        <div className="flex justify-center items-center gap-3 pt-4">
-                           {Array.from({ length: totalMajorPages }).map((_, i) => (
-                              <button key={i} onClick={() => setMajorPage(i + 1)} className={`size-12 rounded-2xl font-black text-xs transition-all border ${majorPage === i + 1 ? 'bg-primary border-primary text-black' : 'bg-white/5 border-white/10 text-white'}`}>{i + 1}</button>
-                           ))}
-                        </div>
-                     )}
-                  </div>
-               )}
-            </div>
-          )}
+                               ))}
+                            </div>
+                         </div>
 
-          {/* VUE: CMS (INTACTE) */}
-          {activeView === 'cms' && (
-            <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestionnaire de Contenu</h2>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6">
-                     <h3 className="text-xl font-black dark:text-white">Traductions & Langues</h3>
-                     <div className="space-y-4">
-                        {languages.map(lang => (
-                           <div key={lang.code} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
-                              <span className="font-black dark:text-white">{lang.label} ({lang.code.toUpperCase()})</span>
-                              <button onClick={() => toggleLanguage(lang.code)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang.isActive ? 'bg-primary text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
-                                 {lang.isActive ? 'Active' : 'Inactive'}
-                              </button>
-                           </div>
-                        ))}
-                     </div>
-                  </div>
-                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6">
-                     <h3 className="text-xl font-black dark:text-white">Identité Visuelle</h3>
-                     <div className="space-y-4">
-                        {themes.map(theme => (
-                           <button key={theme.id} onClick={() => applyTheme(theme.id)} className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${theme.isActive ? 'border-primary bg-primary/5' : 'border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5'}`}>
-                              <span className="font-black dark:text-white">{theme.name}</span>
-                              <div className="size-6 rounded-full" style={{ backgroundColor: theme.primary }}></div>
-                           </button>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {/* VUE: SETTINGS (INTACTE) */}
-          {activeView === 'settings' && (
-            <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres Système</h2>
-               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/5 space-y-10">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                     <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Maintenance du Site</label>
-                        <div className="flex items-center gap-4">
-                           <div className="size-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center"><span className="material-symbols-outlined">construction</span></div>
-                           <div className="flex-1">
-                              <h4 className="font-black dark:text-white">Mode Maintenance</h4>
-                              <p className="text-xs text-gray-400">Restreindre l'accès au site public.</p>
-                           </div>
-                        </div>
-                     </div>
-                     <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sauvegarde des données</label>
-                        <button className="w-full py-4 bg-gray-50 dark:bg-white/5 text-gray-500 font-black rounded-2xl border border-gray-200 dark:border-white/10 uppercase tracking-widest text-[10px] hover:bg-primary hover:text-black transition-all">Exporter la base de données (JSON)</button>
-                     </div>
-                  </div>
-               </div>
-            </div>
-          )}
-        </div>
-
-        {/* 🧩 WIZARD DE CRÉATION GUIDÉ (Catalogue uniquement) */}
-        {showWizard && (
-          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
-                <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
-                   <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">Nouvel Établissement</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                         <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
-                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
+                         <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-100 dark:border-white/10">
+                            <button 
+                              onClick={() => { updateApplicationStatus(selectedApp.id, 'Validé'); setSelectedApp(null); }}
+                              className="flex-1 min-w-[140px] py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                            >
+                              Valider
+                            </button>
+                            <button 
+                              onClick={() => { updateApplicationStatus(selectedApp.id, 'Rejeté'); setSelectedApp(null); }}
+                              className="flex-1 min-w-[140px] py-4 bg-red-500 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 transition-all"
+                            >
+                              Rejeter
+                            </button>
+                            <button 
+                              onClick={() => setSelectedApp(null)}
+                              className="flex-1 min-w-[140px] py-4 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-white/20 transition-all"
+                            >
+                              Fermer
+                            </button>
+                            <button 
+                              onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }}
+                              className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"
+                              title="Supprimer la candidature"
+                            >
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                         </div>
                       </div>
                    </div>
-                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
                 </div>
+              )}
+            </div>
+          )}
 
-                <div className="p-8 md:p-12 space-y-10">
-                   {wizardStep === 'institution' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4">
-                        <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
-                           <button onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400'}`}>Université</button>
-                           <button onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-400'}`}>École / Institut</button>
+          {activeView === 'catalog' && (
+            <div className="space-y-10 animate-fade-in">
+               <div className="flex gap-4 p-2 bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/10 w-fit">
+                  <button onClick={() => setActiveCatalogSection('universities')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>Universités & Écoles</button>
+                  <button onClick={() => setActiveCatalogSection('majors')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}>Filières</button>
+               </div>
+
+               {activeCatalogSection === 'universities' && (
+                  <div className="grid grid-cols-1 gap-4">
+                     {universities.map(uni => (
+                        <div key={uni.id} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between group">
+                           <div className="flex items-center gap-6">
+                              <img src={uni.logo} className="size-12 rounded-xl object-contain bg-gray-50" alt="" />
+                              <div>
+                                 <h3 className="font-black dark:text-white text-xl">{uni.name} ({uni.acronym})</h3>
+                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{uni.type} • {uni.location}</p>
+                              </div>
+                           </div>
+                           <div className="flex gap-2">
+                              <button onClick={() => { setEditingUni(uni); setShowUniForm(true); }} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
+                              <button onClick={() => deleteUniversity(uni.id)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center"><span className="material-symbols-outlined text-xl">delete</span></button>
+                           </div>
                         </div>
-                        <form onSubmit={(e) => {
-                           e.preventDefault();
-                           const fd = new FormData(e.currentTarget);
-                           const id = (isSchoolKind ? 'sch-' : 'uni-') + Date.now();
-                           const data: University = {
-                              id,
-                              name: fd.get('name') as string,
-                              acronym: fd.get('acronym') as string,
-                              location: fd.get('location') as string,
-                              type: fd.get('type') as any,
-                              description: 'Établissement académique supérieur.',
-                              isStandaloneSchool: isSchoolKind,
-                              logo: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=100',
-                              cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
-                              stats: { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
-                              faculties: []
-                           };
-                           addUniversity(data);
-                           setCurrentInstId(id);
-                           setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
-                        }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div className="md:col-span-2 space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label>
-                              <input name="name" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                     ))}
+                     <button onClick={() => { setEditingUni(null); setShowUniForm(true); }} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
+                        + Ajouter un établissement
+                     </button>
+                  </div>
+               )}
+
+               {activeCatalogSection === 'majors' && (
+                  <div className="grid grid-cols-1 gap-4">
+                     {majors.map(major => (
+                        <div key={major.id} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between group">
+                           <div className="flex items-center gap-6">
+                              <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">{major.level[0]}</div>
+                              <div>
+                                 <h3 className="font-black dark:text-white text-xl">{major.name}</h3>
+                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{major.universityName} • {major.fees}</p>
+                              </div>
                            </div>
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label>
-                              <input name="acronym" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           <div className="flex gap-2">
+                              <button onClick={() => { setEditingMajor(major); setShowMajorForm(true); }} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
+                              <button onClick={() => deleteMajor(major.id)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center"><span className="material-symbols-outlined text-xl">delete</span></button>
                            </div>
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label>
-                              <input name="location" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                           </div>
-                           <div className="md:col-span-2 pt-6">
-                              <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all">Continuer</button>
-                           </div>
-                        </form>
+                        </div>
+                     ))}
+                     <button onClick={() => { setEditingMajor(null); setShowMajorForm(true); }} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
+                        + Ajouter une filière
+                     </button>
+                  </div>
+               )}
+
+               {/* University Form Modal */}
+               {showUniForm && (
+                 <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
+                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                     <div className="flex justify-between items-center">
+                       <h3 className="text-2xl font-black dark:text-white">{editingUni ? 'Modifier' : 'Ajouter'} un Établissement</h3>
+                       <button onClick={() => setShowUniForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
                      </div>
-                   )}
-                   {wizardStep === 'faculties' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
-                        <div className="text-center space-y-2">
-                           <h4 className="text-2xl font-black text-white tracking-tight">Composantes rattachées</h4>
+                     <form onSubmit={(e) => {
+                       e.preventDefault();
+                       const formData = new FormData(e.currentTarget);
+                       const uniData: Partial<University> = {
+                         id: editingUni?.id || 'uni-' + Date.now(),
+                         name: formData.get('name') as string,
+                         acronym: formData.get('acronym') as string,
+                         location: formData.get('location') as string,
+                         type: formData.get('type') as any,
+                         description: formData.get('description') as string,
+                         logo: editingUni?.logo || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=100',
+                         cover: editingUni?.cover || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
+                         stats: editingUni?.stats || { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
+                         faculties: editingUni?.faculties || []
+                       };
+                       if (editingUni) updateUniversity(uniData as University);
+                       else addUniversity(uniData as University);
+                       setShowUniForm(false);
+                     }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Nom</label>
+                         <input name="name" required defaultValue={editingUni?.name} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Sigle</label>
+                         <input name="acronym" required defaultValue={editingUni?.acronym} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Ville</label>
+                         <input name="location" required defaultValue={editingUni?.location} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Type</label>
+                         <select name="type" required defaultValue={editingUni?.type} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                           <option value="Public">Public</option>
+                           <option value="Privé">Privé</option>
+                         </select>
+                       </div>
+                       <div className="md:col-span-2 space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Description</label>
+                         <textarea name="description" rows={3} defaultValue={editingUni?.description} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold resize-none" />
+                       </div>
+                       <div className="md:col-span-2 pt-4">
+                         <button type="submit" className="w-full py-4 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl">Sauvegarder</button>
+                       </div>
+                     </form>
+                   </div>
+                 </div>
+               )}
+
+               {/* Major Form Modal */}
+               {showMajorForm && (
+                 <div className=" Kaplan fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
+                   <div className=" Kaplan bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                     <div className="flex justify-between items-center">
+                       <h3 className=" Kaplan text-2xl font-black dark:text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une Filière</h3>
+                       <button onClick={() => setShowMajorForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
+                     </div>
+                     <form onSubmit={(e) => {
+                       e.preventDefault();
+                       const formData = new FormData(e.currentTarget);
+                       const selectedUni = universities.find(u => u.id === formData.get('universityId'));
+                       const majorData: Partial<Major> = {
+                         id: editingMajor?.id || 'maj-' + Date.now(),
+                         name: formData.get('name') as string,
+                         universityId: formData.get('universityId') as string,
+                         universityName: selectedUni?.name || 'Inconnu',
+                         facultyName: formData.get('facultyName') as string,
+                         domain: formData.get('domain') as string,
+                         level: formData.get('level') as any,
+                         duration: formData.get('duration') as string,
+                         fees: formData.get('fees') as string,
+                         location: selectedUni?.location || 'Cotonou',
+                         image: editingMajor?.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
+                       };
+                       if (editingMajor) updateMajor(majorData as Major);
+                       else addMajor(majorData as Major);
+                       setShowMajorForm(false);
+                     }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Nom de la filière</label>
+                         <input name="name" required defaultValue={editingMajor?.name} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Établissement</label>
+                         <select name="universityId" required defaultValue={editingMajor?.universityId} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                           {universities.map(u => <option key={u.id} value={u.id}>{u.acronym}</option>)}
+                         </select>
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Niveau</label>
+                         <select name="level" required defaultValue={editingMajor?.level} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                           <option value="Licence">Licence</option>
+                           <option value="Master">Master</option>
+                           <option value="Doctorat">Doctorat</option>
+                         </select>
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Domaine</label>
+                         <input name="domain" required defaultValue={editingMajor?.domain} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Coûts annuels</label>
+                         <input name="fees" required defaultValue={editingMajor?.fees} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Durée (Cycle)</label>
+                         <input name="duration" required defaultValue={editingMajor?.duration} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="md:col-span-2 pt-4">
+                         <button type="submit" className="w-full py-4 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl">Sauvegarder</button>
+                       </div>
+                     </form>
+                   </div>
+                 </div>
+               )}
+            </div>
+          )}
+
+          {activeView === 'settings' && (
+            <div className="space-y-10 animate-fade-in max-w-4xl">
+               <div className="space-y-2">
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres Système</h2>
+                  <p className="text-gray-500 font-medium">Configurez l'apparence et les préférences globales de la plateforme.</p>
+               </div>
+
+               <div className="grid grid-cols-1 gap-8">
+                  {/* Appearance Settings */}
+                  <div className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-8">
+                     <div className="flex items-center gap-4 border-b border-gray-50 dark:border-white/5 pb-6">
+                        <span className="material-symbols-outlined text-primary font-bold">palette</span>
+                        <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-[11px]">Apparence & Thème</h3>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {themes.map(t => (
+                          <button 
+                            key={t.id}
+                            onClick={() => applyTheme(t.id)}
+                            className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${t.isActive ? 'border-primary bg-primary/5' : 'border-gray-50 dark:border-white/5'}`}
+                          >
+                             <div className="size-10 rounded-xl shadow-inner" style={{ backgroundColor: t.primary }}></div>
+                             <span className="font-black text-[10px] uppercase tracking-widest dark:text-white">{t.name}</span>
+                             {t.isActive && <span className="material-symbols-outlined text-primary text-sm font-bold">check_circle</span>}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Language Settings */}
+                  <div className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-8">
+                     <div className="flex items-center gap-4 border-b border-gray-50 dark:border-white/5 pb-6">
+                        <span className="material-symbols-outlined text-primary font-bold">translate</span>
+                        <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-[11px]">Langues de la plateforme</h3>
+                     </div>
+                     <div className="flex gap-4">
+                        {languages.map(l => (
+                          <button 
+                            key={l.code}
+                            onClick={() => toggleLanguage(l.code)}
+                            className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${l.isActive ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-white/5 text-gray-400'}`}
+                          >
+                            {l.label}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Profile Settings (Admin Only) */}
+                  <div className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-8">
+                     <div className="flex items-center gap-4 border-b border-gray-50 dark:border-white/5 pb-6">
+                        <span className="material-symbols-outlined text-primary font-bold">admin_panel_settings</span>
+                        <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-[11px]">Mon Profil Administrateur</h3>
+                     </div>
+                     <div className="space-y-4">
+                        <div className="flex justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
+                           <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Connecté en tant que</span>
+                           <span className="font-black dark:text-white">{user?.firstName} {user?.lastName}</span>
                         </div>
-                        <form onSubmit={(e) => {
-                           e.preventDefault();
-                           const fd = new FormData(e.currentTarget);
-                           const newFac: Faculty = { id: 'fac-' + Date.now(), name: fd.get('fName') as string, description: 'Formation spécialisée', levels: ['Licence', 'Master'], type: fd.get('fType') as any };
-                           if (currentUni) { updateUniversity({ ...currentUni, faculties: [...currentUni.faculties, newFac] }); e.currentTarget.reset(); }
-                        }} className="p-6 bg-white/5 rounded-[32px] border border-white/5 space-y-4">
-                           <input name="fName" required placeholder="Nom (ex: ENEAM)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                           <button type="submit" className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">+ Ajouter</button>
-                        </form>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
-                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest">Retour</button>
-                           <button onClick={() => setWizardStep('majors')} disabled={!currentUni?.faculties.length} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20">Filières</button>
+                        <div className="flex justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
+                           <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Rôle Master</span>
+                           <span className="font-black text-primary uppercase text-[10px] tracking-widest">{user?.role}</span>
                         </div>
                      </div>
-                   )}
-                   {wizardStep === 'majors' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
-                        <div className="text-center space-y-2"><h4 className="text-2xl font-black text-white tracking-tight">Offre Académique</h4></div>
-                        <form onSubmit={(e) => {
-                           e.preventDefault();
-                           const fd = new FormData(e.currentTarget);
-                           const majorData: Major = {
-                              id: 'maj-' + Date.now(), name: fd.get('mName') as string, universityId: currentInstId || '', universityName: currentUni?.name || '', facultyName: fd.get('fName') as string, domain: fd.get('domain') as string, level: fd.get('level') as any, duration: fd.get('duration') as string, fees: fd.get('fees') as string, location: currentUni?.location || '', image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400', careerProspects: [{ title: fd.get('career') as string, icon: 'work' }], requiredDiplomas: [{ name: fd.get('diploma') as string, icon: 'school' }]
-                           };
-                           addMajor(majorData); e.currentTarget.reset();
-                        }} className="space-y-4 p-6 bg-white/5 rounded-[32px] border border-white/5">
-                           <input name="mName" required placeholder="Nom Filière" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                           <input name="career" required placeholder="Débouché principal (obligatoire)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                           <input name="diploma" required placeholder="Diplôme requis (obligatoire)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                           <button type="submit" className="w-full py-3 bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">Enregistrer</button>
-                        </form>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
-                           <button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest">Retour</button>
-                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all">Terminer</button>
-                        </div>
-                     </div>
-                   )}
-                </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeView === 'cms' && (
+             <div className=" Kaplan space-y-10 animate-fade-in max-w-4xl">
+               <div className="space-y-2">
+                  <h2 className=" Kaplan text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
+                  <p className="text-gray-500 font-medium">Modifiez les textes statiques de la plateforme.</p>
+               </div>
+               <div className=" Kaplan bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10 space-y-8">
+                  {Object.keys(content).map(key => (
+                    <div key={key} className=" Kaplan space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl">
+                       <h4 className="font-black text-primary uppercase text-[10px] tracking-widest">ID: {key}</h4>
+                       <div className=" Kaplan grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {languages.filter(l => l.isActive).map(l => (
+                            <div key={l.code} className=" Kaplan space-y-1">
+                               <label className="text-[9px] font-bold text-gray-400 uppercase">{l.label}</label>
+                               <textarea 
+                                  value={content[key][l.code]} 
+                                  onChange={(e) => updateContent(key, l.code, e.target.value)}
+                                  className=" Kaplan w-full p-4 rounded-xl border-none font-bold text-sm bg-white dark:bg-surface-dark resize-none"
+                               />
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  ))}
+               </div>
              </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );
