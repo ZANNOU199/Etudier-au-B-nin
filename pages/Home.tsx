@@ -70,7 +70,7 @@ const Home: React.FC = () => {
                   <span className="material-symbols-outlined text-primary font-bold text-2xl">search</span>
                   <input 
                     className="w-full bg-transparent border-none text-text-main dark:text-white placeholder:text-gray-400 focus:ring-0 text-lg ml-3 font-bold py-5" 
-                    placeholder="Quelle filière ou université ?" 
+                    placeholder="Quelle filière ?" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
