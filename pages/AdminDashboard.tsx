@@ -20,7 +20,7 @@ const AdminDashboard: React.FC = () => {
     languages, toggleLanguage, themes, applyTheme
   } = useCMS();
   
-  const [activeView, setActiveView] = useState<AdminView>('catalog');
+  const [activeView, setActiveView] = useState<AdminView>('overview');
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
@@ -76,7 +76,7 @@ const AdminDashboard: React.FC = () => {
     setShowWizard(true);
   };
 
-  // CSV Parsing Logic - Advanced Global Import with delimiter auto-detection
+  // CSV Parsing Logic - Advanced with delimiter detection
   const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -88,17 +88,14 @@ const AdminDashboard: React.FC = () => {
       const lines = text.split(/\r?\n/);
       if (lines.length < 2) return;
 
-      // Auto-detect delimiter: check first line for ; or ,
       const firstLine = lines[0];
       const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
-
       const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
       const result: any[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
         const currentLine = line.split(delimiter);
         const obj: any = {};
         headers.forEach((header, index) => {
@@ -115,12 +112,9 @@ const AdminDashboard: React.FC = () => {
   const processBulkImport = () => {
     let uniCount = 0;
     let majorCount = 0;
-
-    // Use a local copy to track newly created universities during the same loop
     const currentUnis = [...universities];
 
     bulkData.forEach(row => {
-      // 1. Identify or Create University
       let uni = currentUnis.find(u => u.acronym.toLowerCase() === row.sigle_inst?.toLowerCase());
       let uniId = uni?.id;
 
@@ -135,7 +129,7 @@ const AdminDashboard: React.FC = () => {
           isStandaloneSchool: row.type_inst?.toUpperCase() === 'E',
           logo: 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
           cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
-          description: "Établissement importé via console administrative.",
+          description: "Établissement importé massivement.",
           stats: { students: 'N/A', majors: 1, founded: '2024', ranking: 'N/A' },
           faculties: row.nom_faculte ? [{
             id: 'fac-' + Math.random().toString(36).substr(2, 5),
@@ -145,11 +139,10 @@ const AdminDashboard: React.FC = () => {
           }] : []
         };
         addUniversity(newUni);
-        currentUnis.push(newUni); // Update local track
+        currentUnis.push(newUni);
         uniCount++;
         uni = newUni;
       } else if (uni && row.nom_faculte) {
-        // Ensure faculty exists in uni
         const facExists = uni.faculties.find(f => f.name.toLowerCase() === row.nom_faculte.toLowerCase());
         if (!facExists) {
           const updatedUni = {
@@ -157,18 +150,16 @@ const AdminDashboard: React.FC = () => {
             faculties: [...uni.faculties, {
               id: 'fac-' + Math.random().toString(36).substr(2, 5),
               name: row.nom_faculte,
-              description: 'Ajoutée par import massif',
+              description: 'Ajoutée par import',
               levels: [row.cycle || 'Licence']
             }]
           };
           updateUniversity(updatedUni);
-          // Update in local copy too
           const idx = currentUnis.findIndex(u => u.id === uni?.id);
           if (idx !== -1) currentUnis[idx] = updatedUni;
         }
       }
 
-      // 2. Create Major
       if (row.nom_filiere && (uniId || uni?.id)) {
         const major: Major = {
           id: 'maj-' + Math.random().toString(36).substr(2, 9),
@@ -190,7 +181,7 @@ const AdminDashboard: React.FC = () => {
       }
     });
 
-    alert(`Importation terminée avec succès !\n\n- ${uniCount} nouveaux établissements créés\n- ${majorCount} nouvelles filières importées.`);
+    alert(`Importation réussie : ${uniCount} établissements et ${majorCount} filières créés.`);
     setShowBulkImport(false);
     setBulkData([]);
     setImportStatus('idle');
@@ -301,16 +292,42 @@ const AdminDashboard: React.FC = () => {
               <div className="bg-[#0d1b13] p-10 rounded-[40px] text-white flex items-center justify-between relative overflow-hidden">
                  <div className="space-y-4 relative z-10">
                     <h2 className="text-4xl font-black tracking-tight leading-none">Console de Contrôle <br/><span className="text-primary italic">EDEN Communication</span></h2>
-                    <p className="text-gray-400 font-medium max-w-lg">Gérez l'ensemble des établissements, filières et candidatures depuis cette interface sécurisée.</p>
+                    <p className="text-gray-400 font-medium max-w-lg">Interface de gestion unifiée.</p>
                  </div>
                  <span className="material-symbols-outlined text-[120px] opacity-10 absolute -right-10 top-0">security</span>
               </div>
             </div>
           )}
 
+          {activeView === 'applications' && (
+            <div className="space-y-8 animate-fade-in">
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion des Candidatures ({applications.length})</h2>
+               <div className="grid grid-cols-1 gap-4">
+                  {applications.map(app => (
+                    <div key={app.id} onClick={() => setSelectedApp(app)} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between cursor-pointer hover:shadow-lg transition-all group">
+                       <div className="flex items-center gap-6">
+                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                             <span className="material-symbols-outlined">description</span>
+                          </div>
+                          <div>
+                             <h4 className="font-black dark:text-white">{app.studentName}</h4>
+                             <p className="text-xs text-gray-500 font-bold">{app.majorName} • {app.universityName}</p>
+                          </div>
+                       </div>
+                       <div className="flex items-center gap-6">
+                          <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                            app.status === 'Validé' ? 'bg-primary/10 text-primary' : app.status === 'Rejeté' ? 'bg-red-500/10 text-red-500' : 'bg-amber-400/10 text-amber-500'
+                          }`}>{app.status}</span>
+                          <span className="material-symbols-outlined text-gray-400">chevron_right</span>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
+
           {activeView === 'catalog' && (
             <div className="space-y-8 animate-fade-in">
-               {/* Main Catalog Header - Import Button prominently here */}
                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm">
                   <div className="flex flex-col gap-2">
                     <h2 className="text-2xl font-black dark:text-white tracking-tighter uppercase">Catalogue Académique</h2>
@@ -326,18 +343,8 @@ const AdminDashboard: React.FC = () => {
                       className="flex-1 lg:flex-none flex items-center justify-center gap-3 px-8 py-4 bg-[#0d1b13] text-primary border border-primary/20 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all shadow-xl shadow-primary/10"
                     >
                       <span className="material-symbols-outlined text-xl">table_chart</span>
-                      Import Massive CSV
+                      Import Massive (CSV)
                     </button>
-                    
-                    {activeCatalogSection === 'universities' && (
-                      <div className="hidden sm:flex gap-2 bg-gray-50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/10 h-fit self-center">
-                        {['all', 'university', 'school'].map(f => (
-                          <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
-                            {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                </div>
 
@@ -353,7 +360,7 @@ const AdminDashboard: React.FC = () => {
                                     {uni.isStandaloneSchool ? 'E' : 'U'}
                                  </span>
                               </div>
-                              <div className="space-y-1 flex-1">
+                              <div className="space-y-1 flex-1 text-left">
                                  <h3 className="text-2xl font-black text-white tracking-tighter leading-none">{uni.acronym}</h3>
                                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
                                  <p className="text-sm font-black text-gray-300 line-clamp-1">{uni.name}</p>
@@ -369,22 +376,13 @@ const AdminDashboard: React.FC = () => {
                            </div>
                         </div>
                       ))}
-                      
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add</span>
                         </div>
-                        <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
+                        <span className="font-black uppercase text-[10px] tracking-widest text-primary">Nouvel établissement</span>
                       </button>
                     </div>
-
-                    {totalUniPages > 1 && (
-                      <div className="flex justify-center items-center gap-3 pt-6 border-t border-white/5">
-                         {Array.from({ length: totalUniPages }).map((_, i) => (
-                           <button key={i} onClick={() => setUniPage(i + 1)} className={`size-12 rounded-2xl font-black text-xs transition-all border ${uniPage === i + 1 ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20' : 'bg-white/5 border-white/10 text-white hover:border-primary'}`}>{i + 1}</button>
-                         ))}
-                      </div>
-                    )}
                   </div>
                )}
 
@@ -392,7 +390,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {pagedMajors.map(major => (
-                           <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between group hover:bg-white/10 transition-all h-full">
+                           <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col justify-between group hover:bg-white/10 transition-all h-full text-left">
                               <div className="flex items-center gap-4 mb-6">
                                  <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase">{major.level[0]}</div>
                                  <div className="space-y-1">
@@ -419,120 +417,84 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {activeView === 'applications' && (
+          {activeView === 'cms' && (
             <div className="space-y-8 animate-fade-in">
-               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Candidatures</h2>
-               <div className="grid grid-cols-1 gap-4">
-                  {applications.map(app => (
-                    <div key={app.id} onClick={() => setSelectedApp(app)} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex items-center justify-between cursor-pointer hover:shadow-lg transition-all">
-                       <div className="flex items-center gap-6">
-                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
-                             <span className="material-symbols-outlined">description</span>
-                          </div>
-                          <div>
-                             <h4 className="font-black dark:text-white">{app.studentName}</h4>
-                             <p className="text-xs text-gray-500">{app.majorName}</p>
-                          </div>
-                       </div>
-                       <span className="px-4 py-2 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase">{app.status}</span>
-                    </div>
-                  ))}
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6">
+                     <h3 className="text-xl font-black dark:text-white">Langues actives</h3>
+                     <div className="space-y-4">
+                        {languages.map(lang => (
+                           <div key={lang.code} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
+                              <span className="font-black dark:text-white">{lang.label} ({lang.code.toUpperCase()})</span>
+                              <button onClick={() => toggleLanguage(lang.code)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang.isActive ? 'bg-primary text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
+                                 {lang.isActive ? 'Active' : 'Inactive'}
+                              </button>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeView === 'settings' && (
+            <div className="space-y-8 animate-fade-in">
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres</h2>
+               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/5">
+                  <p className="text-gray-400 font-bold italic">Aucune configuration supplémentaire requise pour le moment.</p>
                </div>
             </div>
           )}
         </div>
 
-        {/* MODAL: GLOBAL BULK IMPORT */}
+        {/* MODALS SECTION */}
+
+        {/* BULK IMPORT MODAL */}
         {showBulkImport && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
              <div className="bg-[#162a1f] w-full max-w-5xl rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5 flex flex-col max-h-[90vh]">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5 shrink-0">
                    <div>
                       <h3 className="text-2xl font-black text-white tracking-tight">Importation Massive Globale</h3>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Créez établissements, facultés et filières en un clic</p>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Établissements, Facultés et Filières en une seule étape</p>
                    </div>
-                   <button onClick={() => { setShowBulkImport(false); setBulkData([]); setImportStatus('idle'); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                   <button onClick={() => { setShowBulkImport(false); setBulkData([]); setImportStatus('idle'); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500">
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
-
-                <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar text-center">
                    {importStatus === 'idle' && (
-                      <div className="space-y-10 text-center py-6">
-                         <div className="max-w-xl mx-auto p-12 rounded-[40px] border-2 border-dashed border-white/10 hover:border-primary/50 transition-all group cursor-pointer bg-white/5 shadow-inner" onClick={() => fileInputRef.current?.click()}>
-                            <div className="size-24 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6 group-hover:scale-110 transition-transform">
-                              <span className="material-symbols-outlined text-5xl font-bold">upload_file</span>
-                            </div>
-                            <p className="text-white font-black uppercase text-xs tracking-widest">Cliquez ou glissez-déposez votre fichier CSV</p>
-                            <p className="text-gray-500 text-[10px] mt-2 font-bold italic">Le format doit inclure : type_inst;statut_inst;nom_inst;sigle_inst;ville...</p>
+                      <div className="space-y-10 py-6">
+                         <div className="max-w-xl mx-auto p-12 rounded-[40px] border-2 border-dashed border-white/10 hover:border-primary/50 transition-all cursor-pointer bg-white/5" onClick={() => fileInputRef.current?.click()}>
+                            <div className="size-24 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6"><span className="material-symbols-outlined text-5xl">upload_file</span></div>
+                            <p className="text-white font-black uppercase text-xs tracking-widest">Cliquez pour charger le CSV</p>
+                            <p className="text-gray-500 text-[10px] mt-2 font-bold italic">Le format doit être : type_inst;statut_inst;nom_inst;sigle_inst;ville...</p>
                             <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleBulkFileChange} />
                          </div>
-                         
-                         <div className="bg-black/40 p-8 rounded-[32px] text-left border border-white/5 space-y-6">
-                            <div className="flex items-center gap-3">
-                               <span className="material-symbols-outlined text-primary">list_alt</span>
-                               <h4 className="text-primary font-black uppercase text-[11px] tracking-widest">Structure du fichier attendue (Separateur ; ou ,) :</h4>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                               {[
-                                 'type_inst (U/E)', 'statut_inst', 'nom_inst', 'sigle_inst', 
-                                 'ville', 'nom_faculte', 'nom_filiere', 'cycle', 
-                                 'duree', 'frais', 'domaine', 'debouche', 'diplome'
-                               ].map(c => (
-                                  <div key={c} className="p-2.5 bg-white/5 rounded-xl text-[9px] font-bold text-gray-400 border border-white/5 flex items-center gap-2">
-                                     <span className="size-1.5 rounded-full bg-primary/40"></span>
-                                     {c}
-                                  </div>
-                               ))}
-                            </div>
-                         </div>
                       </div>
                    )}
-
-                   {importStatus === 'parsing' && (
-                      <div className="py-24 flex flex-col items-center gap-6">
-                         <div className="size-20 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-                         <p className="text-white font-black uppercase text-xs tracking-[0.3em] animate-pulse">Analyse structurelle en cours...</p>
-                      </div>
-                   )}
-
                    {importStatus === 'ready' && (
                       <div className="space-y-8 animate-in fade-in">
                          <div className="flex justify-between items-center bg-white/5 p-6 rounded-2xl border border-white/5">
-                            <div className="flex items-center gap-4">
-                               <span className="material-symbols-outlined text-primary text-3xl">check_circle</span>
-                               <h4 className="text-white font-black uppercase text-xs tracking-widest">Données validées : {bulkData.length} lignes identifiées</h4>
-                            </div>
-                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="px-6 py-2 bg-red-500/10 text-[10px] font-black text-red-400 uppercase tracking-widest rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all">Remplacer le fichier</button>
+                            <h4 className="text-white font-black uppercase text-xs tracking-widest">Données prêtes : {bulkData.length} lignes</h4>
+                            <button onClick={processBulkImport} className="px-10 py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">Lancer l'importation</button>
                          </div>
-                         
                          <div className="overflow-x-auto rounded-[32px] border border-white/5 shadow-2xl">
                             <table className="w-full text-left text-[11px] text-gray-400 font-bold border-collapse">
                                <thead className="bg-[#0d1b13] text-primary uppercase tracking-widest">
-                                  <tr>
-                                     <th className="p-5">Établissement</th>
-                                     <th className="p-5">Sigle</th>
-                                     <th className="p-5">Filière</th>
-                                     <th className="p-5">Localisation</th>
-                                  </tr>
+                                  <tr><th className="p-5">Établissement</th><th className="p-5">Filière</th><th className="p-5">Ville</th></tr>
                                </thead>
                                <tbody className="divide-y divide-white/5 bg-white/5">
-                                  {bulkData.slice(0, 10).map((row, i) => (
+                                  {bulkData.slice(0, 8).map((row, i) => (
                                      <tr key={i} className="hover:bg-white/10 transition-colors">
-                                        <td className="p-5 text-white font-black">{row.nom_inst || row.sigle_inst || '---'}</td>
-                                        <td className="p-5 uppercase">{row.sigle_inst || '---'}</td>
-                                        <td className="p-5 text-gray-300">{row.nom_filiere || '---'}</td>
-                                        <td className="p-5 text-[10px] uppercase">{row.ville || '---'}</td>
+                                        <td className="p-5 text-white font-black">{row.sigle_inst}</td>
+                                        <td className="p-5 text-gray-300">{row.nom_filiere}</td>
+                                        <td className="p-5">{row.ville}</td>
                                      </tr>
                                   ))}
                                </tbody>
                             </table>
-                         </div>
-                         {bulkData.length > 10 && <p className="text-center text-[11px] text-gray-500 font-bold uppercase tracking-[0.2em]">... + {bulkData.length - 10} entrées</p>}
-                         
-                         <div className="flex gap-4 pt-4">
-                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="flex-1 py-5 bg-white/5 text-white font-black rounded-3xl text-xs uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5">Annuler</button>
-                            <button onClick={processBulkImport} className="flex-1 py-5 bg-primary text-black font-black rounded-3xl text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all">Lancer l'Importation Globale</button>
                          </div>
                       </div>
                    )}
@@ -541,66 +503,136 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* MODAL: INSTITUTION WIZARD (Manual) */}
+        {/* APPLICATION DOSSIER MODAL */}
+        {selectedApp && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedApp(null)}>
+             <div className="bg-white dark:bg-[#162a1f] w-full max-w-4xl rounded-[48px] overflow-hidden shadow-2xl my-auto animate-in zoom-in-95 duration-300 border border-white/5" onClick={(e) => e.stopPropagation()}>
+                <div className="px-10 py-10 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                   <div className="space-y-2 text-left">
+                      <h3 className="text-3xl font-black dark:text-white tracking-tighter">Dossier de {selectedApp.studentName}</h3>
+                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Session 2024 • Soumis le {selectedApp.date}</p>
+                   </div>
+                   <div className="flex flex-col items-end gap-3">
+                      <select 
+                        value={selectedApp.status}
+                        onChange={(e) => {
+                          updateApplicationStatus(selectedApp.id, e.target.value as any);
+                          setSelectedApp({...selectedApp, status: e.target.value as any});
+                        }}
+                        className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border-none focus:ring-4 outline-none transition-all ${
+                          selectedApp.status === 'Validé' ? 'bg-primary text-black focus:ring-primary/20' : 
+                          selectedApp.status === 'Rejeté' ? 'bg-red-500 text-white focus:ring-red-500/20' : 
+                          'bg-amber-400 text-black focus:ring-amber-400/20'
+                        }`}
+                      >
+                         <option value="En attente">En attente</option>
+                         <option value="Validé">Approuvé (Validé)</option>
+                         <option value="Rejeté">Refusé (Rejeté)</option>
+                         <option value="En cours">En cours d'examen</option>
+                      </select>
+                   </div>
+                </div>
+
+                <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
+                   <div className="space-y-8">
+                      <div className="space-y-6">
+                        <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Formation Demandée</h4>
+                        <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 space-y-3">
+                           <p className="text-lg font-black dark:text-white leading-tight">{selectedApp.majorName}</p>
+                           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{selectedApp.universityName}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-6">
+                        <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] border-b border-primary/20 pb-2">Pièces Jointes</h4>
+                        <div className="grid grid-cols-1 gap-2">
+                           {selectedApp.documents.map((doc, i) => (
+                             <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                <p className="text-xs font-black dark:text-white truncate">{doc}</p>
+                                <button onClick={() => setPreviewDoc(doc)} className="px-4 py-2 bg-primary/10 text-primary text-[9px] font-black rounded-lg">VOIR</button>
+                             </div>
+                           ))}
+                        </div>
+                      </div>
+                   </div>
+                   <div className="space-y-10 pt-10 border-t lg:border-t-0 lg:border-l lg:pl-12 border-gray-100 dark:border-white/5 flex flex-col justify-end">
+                      <button onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }} className="w-full py-5 text-red-500 font-black uppercase text-[10px] tracking-widest border border-red-500/20 rounded-2xl hover:bg-red-500/10 transition-all">Supprimer le Dossier</button>
+                      <button onClick={() => setSelectedApp(null)} className="w-full py-5 bg-gray-900 dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl">Fermer la vue</button>
+                   </div>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* MANUAL WIZARD MODAL */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
                    <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                         <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
-                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
-                      </div>
+                      <h3 className="text-2xl font-black text-white tracking-tight">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">{wizardStep === 'institution' ? 'Identité' : wizardStep === 'faculties' ? 'Composantes' : 'Filières'}</p>
                    </div>
-                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500">
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
-
-                <div className="p-8 md:p-12 space-y-10 text-white">
+                <div className="p-12 text-white">
                    {wizardStep === 'institution' && (
                      <form onSubmit={(e) => {
                        e.preventDefault();
                        const fd = new FormData(e.currentTarget);
-                       const id = isEditing && currentInstId ? currentInstId : ((isSchoolKind ? 'sch-' : 'uni-') + Date.now());
+                       const id = isEditing && currentInstId ? currentInstId : 'uni-' + Date.now();
                        const data: University = {
                           id,
                           name: fd.get('name') as string,
                           acronym: fd.get('acronym') as string,
                           location: fd.get('location') as string,
                           type: establishmentStatus,
-                          description: currentUni?.description || 'Établissement académique.',
+                          description: currentUni?.description || 'Formation académique.',
                           isStandaloneSchool: isSchoolKind,
-                          logo: currentUni?.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
-                          cover: currentUni?.cover || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
-                          stats: currentUni?.stats || { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
+                          logo: 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
+                          cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
+                          stats: { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
                           faculties: currentUni?.faculties || []
                        };
-                       if (isEditing) updateUniversity(data);
-                       else addUniversity(data);
+                       if (isEditing) updateUniversity(data); else addUniversity(data);
                        setCurrentInstId(id);
-                       setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
-                     }} className="space-y-8">
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label>
-                           <input name="name" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                        </div>
+                       setWizardStep('faculties');
+                     }} className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label>
-                              <input name="acronym" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label>
-                              <input name="location" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                           </div>
+                           <button type="button" onClick={() => setIsSchoolKind(false)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${!isSchoolKind ? 'bg-primary text-black' : 'bg-white/5 text-gray-400'}`}>Université</button>
+                           <button type="button" onClick={() => setIsSchoolKind(true)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${isSchoolKind ? 'bg-amber-400 text-black' : 'bg-white/5 text-gray-400'}`}>École / Institut</button>
                         </div>
-                        <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl">Continuer</button>
+                        <input name="name" placeholder="Nom Complet" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
+                        <div className="grid grid-cols-2 gap-4">
+                           <input name="acronym" placeholder="Sigle" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
+                           <input name="location" placeholder="Ville" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
+                        </div>
+                        <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl">Suivant</button>
                      </form>
                    )}
-                   {/* Faculties and Majors manual entry steps omitted for brevity but remain functional via previous context logic */}
-                   {wizardStep !== 'institution' && <div className="text-center py-20 text-gray-500">Configurer manuellement {wizardStep}...</div>}
+                   {wizardStep === 'faculties' && (
+                     <div className="space-y-10 text-center">
+                        <p className="text-gray-400 font-bold">Ajoutez les composantes rattachées à cet établissement.</p>
+                        <form onSubmit={(e) => {
+                           e.preventDefault();
+                           const fd = new FormData(e.currentTarget);
+                           if (currentUni) {
+                              updateUniversity({...currentUni, faculties: [...currentUni.faculties, {
+                                id: 'fac-'+Date.now(), name: fd.get('fn') as string, description: 'Formation', levels: ['Licence']
+                              }]});
+                              e.currentTarget.reset();
+                           }
+                        }} className="space-y-4">
+                           <input name="fn" placeholder="Nom de l'entité (ex: FASEG, IFRI...)" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold outline-none" />
+                           <button type="submit" className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase">+ Ajouter</button>
+                        </form>
+                        <div className="flex gap-4 pt-10 border-t border-white/5">
+                           <button onClick={() => setWizardStep('institution')} className="flex-1 text-gray-500 font-black text-[10px] uppercase">Retour</button>
+                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase">Terminer</button>
+                        </div>
+                     </div>
+                   )}
                 </div>
              </div>
           </div>
