@@ -37,6 +37,7 @@ const AdminDashboard: React.FC = () => {
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedWizardLevel, setSelectedWizardLevel] = useState<'Licence' | 'Master' | 'Doctorat'>('Licence');
   
   // State for single Major editing
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
@@ -495,6 +496,7 @@ const AdminDashboard: React.FC = () => {
                            <h4 className="text-2xl font-black text-white tracking-tight leading-none">Offre Académique</h4>
                            <p className="text-gray-500 font-medium text-sm">Ajoutez les filières (Débouchés & Diplômes obligatoires).</p>
                         </div>
+
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
@@ -505,7 +507,7 @@ const AdminDashboard: React.FC = () => {
                               universityName: currentUni?.name || '',
                               facultyName: fd.get('fName') as string || 'Principal',
                               domain: fd.get('domain') as string || 'Général',
-                              level: fd.get('level') as any || 'Licence',
+                              level: selectedWizardLevel,
                               duration: fd.get('duration') as string || '3 Ans',
                               fees: fd.get('fees') as string || '0 FCFA',
                               location: currentUni?.location || 'Bénin',
@@ -515,18 +517,49 @@ const AdminDashboard: React.FC = () => {
                            };
                            addMajor(majorData);
                            e.currentTarget.reset();
-                        }} className="space-y-4 p-6 bg-white/5 rounded-[32px] border border-white/5">
-                           <input name="mName" required placeholder="Nom Filière" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                           <div className="grid grid-cols-2 gap-4">
-                              <input name="career" required placeholder="Débouché principal" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
-                              <input name="diploma" required placeholder="Diplôme requis" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
+                        }} className="space-y-6 p-6 bg-white/5 rounded-[32px] border border-white/5">
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom de la filière</label>
+                              <input name="mName" required placeholder="Ex: Informatique de Gestion" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
                            </div>
-                           <button type="submit" className="w-full py-3 bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">Enregistrer la filière</button>
+
+                           <div className="space-y-3">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Cycle d'étude</label>
+                              <div className="flex gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+                                 {(['Licence', 'Master', 'Doctorat'] as const).map(l => (
+                                    <button 
+                                       type="button"
+                                       key={l}
+                                       onClick={() => setSelectedWizardLevel(l)}
+                                       className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${selectedWizardLevel === l ? 'bg-primary text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                                    >
+                                       {l}
+                                    </button>
+                                 ))}
+                              </div>
+                           </div>
+
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Débouché principal</label>
+                                 <input name="career" required placeholder="Ex: Développeur" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Diplôme requis</label>
+                                 <input name="diploma" required placeholder="Ex: BAC C / D" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white" />
+                              </div>
+                           </div>
+                           
+                           <button type="submit" className="w-full py-4 bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">Enregistrer la filière</button>
                         </form>
+
                         <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                            {currentInstMajors.map(m => (
                               <div key={m.id} className="p-3 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
-                                 <p className="font-black text-xs text-white">{m.name}</p>
+                                 <div className="flex items-center gap-3">
+                                    <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-primary uppercase">{m.level[0]}</span>
+                                    <p className="font-black text-xs text-white">{m.name}</p>
+                                 </div>
                                  <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm">delete</button>
                               </div>
                            ))}
