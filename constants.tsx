@@ -14,10 +14,10 @@ export const UNIVERSITIES: University[] = [
     isStandaloneSchool: false,
     stats: { students: '85,000+', majors: 150, founded: '1970', ranking: '1er National' },
     faculties: [
-      { id: 'epac', name: "EPAC (Polytechnique)", description: 'Ingénierie et Technologies', levels: ['Licence', 'Master', 'Doctorat'], type: 'Ecole' },
+      { id: 'epac', name: "EPAC", description: 'Ingénierie et Technologies', levels: ['Licence', 'Master', 'Doctorat'], type: 'Ecole' },
       { id: 'eneam-uac', name: "ENEAM", description: 'Économie et Management', levels: ['Licence', 'Master'], type: 'Ecole' },
-      { id: 'fadesp', name: "FADESP (Droit)", description: 'Droit et Sciences Politiques', levels: ['Licence', 'Master', 'Doctorat'], type: 'Faculté' },
-      { id: 'fast', name: "FAST (Sciences)", description: 'Sciences et Techniques', levels: ['Licence', 'Master'], type: 'Faculté' }
+      { id: 'fadesp', name: "FADESP", description: 'Droit et Sciences Politiques', levels: ['Licence', 'Master', 'Doctorat'], type: 'Faculté' },
+      { id: 'fast', name: "FAST", description: 'Sciences et Techniques', levels: ['Licence', 'Master'], type: 'Faculté' }
     ]
   },
   {
@@ -62,7 +62,7 @@ export const UNIVERSITIES: University[] = [
     description: "Formation de pointe en ingénierie et technologies industrielles.",
     stats: { students: '12,000+', majors: 45, founded: '2016', ranking: 'Top Innovation' },
     faculties: [
-      { id: 'insti', name: "INSTI Lokossa", description: 'Technologies Industrielles', levels: ['Licence'], type: 'Institut' }
+      { id: 'insti', name: "INSTI", description: 'Technologies Industrielles', levels: ['Licence'], type: 'Institut' }
     ]
   },
   {
@@ -90,7 +90,7 @@ export const UNIVERSITIES: University[] = [
     description: "Dédiée à la recherche agronomique et à la sécurité alimentaire.",
     stats: { students: '8,000+', majors: 30, founded: '2016', ranking: 'Leader Agrotech' },
     faculties: [
-      { id: 'ensta', name: "ENSTA Ketou", description: 'Sciences et Techniques Agraires', levels: ['Licence'], type: 'Ecole' }
+      { id: 'ensta', name: "ENSTA", description: 'Sciences et Techniques Agraires', levels: ['Licence'], type: 'Ecole' }
     ]
   },
   {

@@ -97,7 +97,7 @@ const UniversityDetail: React.FC = () => {
                           </div>
                         </div>
                         <Link 
-                          to="/majors"
+                          to={`/majors?search=${faculty.name}`}
                           className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-primary group-hover:text-black transition-all"
                         >
                           <span className="material-symbols-outlined font-bold">arrow_forward</span>
