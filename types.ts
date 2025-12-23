@@ -53,6 +53,17 @@ export interface Major {
   requiredDiplomas?: RequiredDiploma[];
 }
 
+export interface Application {
+  id: string;
+  majorId: string;
+  majorName: string;
+  universityName: string;
+  status: 'En attente' | 'Validé' | 'Rejeté';
+  date: string;
+  progress: number;
+  documents: string[];
+}
+
 export type UserRole = 'super_admin' | 'editor' | 'student';
 
 export interface User {
@@ -65,7 +76,6 @@ export interface User {
   ine?: string;
 }
 
-// CMS SPECIFIC TYPES
 export interface Language {
   code: string;
   label: string;
