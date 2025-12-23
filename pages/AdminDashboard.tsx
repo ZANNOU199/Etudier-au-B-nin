@@ -35,6 +35,7 @@ const AdminDashboard: React.FC = () => {
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
   const [isSchoolKind, setIsSchoolKind] = useState(false);
+  const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
   
   // State for single Major editing
@@ -62,6 +63,7 @@ const AdminDashboard: React.FC = () => {
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
     setIsSchoolKind(!!uni.isStandaloneSchool);
+    setEstablishmentStatus(uni.type);
     setIsEditing(true);
     setWizardStep('institution');
     setShowWizard(true);
@@ -274,7 +276,7 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       ))}
                       
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add</span>
                         </div>
@@ -383,10 +385,22 @@ const AdminDashboard: React.FC = () => {
                 <div className="p-8 md:p-12 space-y-10">
                    {wizardStep === 'institution' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
-                        <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
-                           <button onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500'}`}>Université</button>
-                           <button onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-500'}`}>École / Institut</button>
+                        <div className="space-y-6">
+                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Type d'établissement</label>
+                           <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+                              <button type="button" onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500'}`}>Université</button>
+                              <button type="button" onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-500'}`}>École / Institut</button>
+                           </div>
                         </div>
+
+                        <div className="space-y-6">
+                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Statut de l'établissement</label>
+                           <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+                              <button type="button" onClick={() => setEstablishmentStatus('Public')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Public' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-500'}`}>Public</button>
+                              <button type="button" onClick={() => setEstablishmentStatus('Privé')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Privé' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-gray-500'}`}>Privé</button>
+                           </div>
+                        </div>
+
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
@@ -397,7 +411,7 @@ const AdminDashboard: React.FC = () => {
                               name: fd.get('name') as string,
                               acronym: fd.get('acronym') as string,
                               location: fd.get('location') as string,
-                              type: fd.get('type') as any,
+                              type: establishmentStatus,
                               description: currentUni?.description || 'Établissement académique.',
                               isStandaloneSchool: isSchoolKind,
                               logo: currentUni?.logo || 'https://images.unsplash.com/photo-1592280771190-3e2e4d571952?q=80&w=100',
