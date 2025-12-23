@@ -37,7 +37,7 @@ const AdminDashboard: React.FC = () => {
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
-  // State for single Major editing (outside the main wizard flow)
+  // State for single Major editing
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
 
   const navigate = useNavigate();
@@ -363,7 +363,7 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* MODAL: INSTITUTION WIZARD (Creation & Edit) */}
+        {/* MODAL: INSTITUTION WIZARD */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
@@ -586,7 +586,6 @@ const AdminDashboard: React.FC = () => {
         {selectedApp && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedApp(null)}>
              <div className="bg-white dark:bg-[#162a1f] w-full max-w-4xl rounded-[48px] overflow-hidden shadow-2xl my-auto animate-in zoom-in-95 duration-300 border border-white/5" onClick={(e) => e.stopPropagation()}>
-                {/* Modal Header */}
                 <div className="px-10 py-10 bg-white dark:bg-white/5 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                    <div className="space-y-2">
                       <div className="flex items-center gap-2">
