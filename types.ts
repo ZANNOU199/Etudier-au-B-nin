@@ -8,8 +8,8 @@ export interface University {
   logo: string;
   cover: string;
   description: string;
-  isStandaloneSchool?: boolean; // Indique si c'est une école autonome (ex: HECM)
-  cities?: string[]; // Pour les écoles présentes dans plusieurs villes
+  isStandaloneSchool?: boolean;
+  cities?: string[];
   stats: {
     students: string;
     majors: number;
@@ -53,12 +53,37 @@ export interface Major {
   requiredDiplomas?: RequiredDiploma[];
 }
 
+export type UserRole = 'super_admin' | 'editor' | 'student';
+
 export interface User {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
-  role: 'student' | 'admin';
+  role: UserRole;
   avatar?: string;
   ine?: string;
+}
+
+// CMS SPECIFIC TYPES
+export interface Language {
+  code: string;
+  label: string;
+  isActive: boolean;
+}
+
+export interface ThemeConfig {
+  id: string;
+  name: string;
+  primary: string;
+  background: string;
+  surface: string;
+  radius: string;
+  isActive: boolean;
+}
+
+export interface CMSContent {
+  [key: string]: {
+    [lang: string]: string;
+  };
 }

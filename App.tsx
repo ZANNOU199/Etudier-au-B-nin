@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { CMSProvider, useCMS } from './CMSContext';
 import Home from './pages/Home';
 import Universities from './pages/Universities';
 import UniversityDetail from './pages/UniversityDetail';
@@ -20,6 +21,7 @@ import Schools from './pages/Schools';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
+  const { translate, languages, currentLang, setLanguage } = useCMS();
   
   const isAppPage = location.pathname.startsWith('/dashboard') || 
                     location.pathname.startsWith('/admin') || 
@@ -28,15 +30,17 @@ const Navbar = () => {
   if (isAppPage) return null;
 
   const navLinks = [
-    { name: 'Accueil', path: '/' },
-    { name: 'Universités', path: '/universities' },
-    { name: 'Ecoles', path: '/schools' },
-    { name: 'Formations', path: '/majors' },
-    { name: 'Tarifs', path: '/pricing' },
-    { name: 'Nous Contacter', path: '/contact' },
+    { name: translate('nav_home'), path: '/' },
+    { name: translate('nav_universities'), path: '/universities' },
+    { name: translate('nav_schools'), path: '/schools' },
+    { name: translate('nav_majors'), path: '/majors' },
+    { name: translate('nav_pricing'), path: '/pricing' },
+    { name: translate('nav_contact'), path: '/contact' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const activeLangs = languages.filter(l => l.isActive);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border-light dark:border-white/5 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl">
@@ -64,7 +68,21 @@ const Navbar = () => {
           </nav>
         </div>
 
-        <div className="hidden lg:flex items-center gap-8 shrink-0">
+        <div className="hidden lg:flex items-center gap-6 shrink-0">
+          {activeLangs.length > 1 && (
+            <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-xl">
+              {activeLangs.map(lang => (
+                <button 
+                  key={lang.code}
+                  onClick={() => setLanguage(lang.code)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${currentLang === lang.code ? 'bg-primary text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}
+                >
+                  {lang.code}
+                </button>
+              ))}
+            </div>
+          )}
+          
           <Link to="/login" className="text-sm font-black text-gray-500 hover:text-primary transition-colors">
             Connexion
           </Link>
@@ -106,6 +124,7 @@ const Navbar = () => {
 
 const Footer = () => {
   const location = useLocation();
+  const { translate } = useCMS();
   const isAppPage = location.pathname.startsWith('/dashboard') || 
                     location.pathname.startsWith('/admin') || 
                     location.pathname.startsWith('/apply');
@@ -122,7 +141,7 @@ const Footer = () => {
               <span className="font-black text-xl tracking-tight dark:text-white">Etudier au Bénin</span>
             </Link>
             <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium">
-              La plateforme de référence pour l'orientation, les préinscriptions et l'admission dans le supérieur au Bénin.
+              {translate('footer_desc')}
             </p>
           </div>
           <div className="space-y-8">
@@ -167,29 +186,31 @@ const Footer = () => {
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Navbar />
-      <main className="flex-grow">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/universities" element={<Universities />} />
-          <Route path="/university/:id" element={<UniversityDetail />} />
-          <Route path="/schools" element={<Schools />} />
-          <Route path="/majors" element={<Majors />} />
-          <Route path="/major/:id" element={<MajorDetail />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin/*" element={<AdminDashboard />} />
-          <Route path="/apply" element={<ApplyProcess />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/faq" element={<FAQ />} />
-          <Route path="/contact" element={<Contact />} />
-        </Routes>
-      </main>
-      <Footer />
-    </Router>
+    <CMSProvider>
+      <Router>
+        <Navbar />
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/universities" element={<Universities />} />
+            <Route path="/university/:id" element={<UniversityDetail />} />
+            <Route path="/schools" element={<Schools />} />
+            <Route path="/majors" element={<Majors />} />
+            <Route path="/major/:id" element={<MajorDetail />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin/*" element={<AdminDashboard />} />
+            <Route path="/apply" element={<ApplyProcess />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/contact" element={<Contact />} />
+          </Routes>
+        </main>
+        <Footer />
+      </Router>
+    </CMSProvider>
   );
 };
 
