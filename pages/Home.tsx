@@ -1,28 +1,40 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { UNIVERSITIES } from '../constants';
 import { useCMS } from '../CMSContext';
 
 const Home: React.FC = () => {
-  const { translate } = useCMS();
+  const { translate, universities, majors } = useCMS();
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('Toutes les villes');
 
   const cities = useMemo(() => {
-    const allCities = UNIVERSITIES.map(u => u.location);
+    const allCities = universities.map(u => u.location);
     return ['Toutes les villes', ...Array.from(new Set(allCities))];
-  }, []);
+  }, [universities]);
 
   const filteredUniversities = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    return UNIVERSITIES.filter(uni => {
+    
+    return universities.filter(uni => {
+      // Filtre par ville
       const matchesCity = cityFilter === 'Toutes les villes' || uni.location === cityFilter;
       if (!matchesCity) return false;
+      
+      // Si pas de recherche textuelle, on affiche tout (limité à 2 pour la section Recommandés)
       if (!query) return true;
-      return uni.name.toLowerCase().includes(query) || uni.acronym.toLowerCase().includes(query);
-    }).slice(0, 2);
-  }, [searchQuery, cityFilter]);
+
+      // Recherche par Nom ou Sigle d'établissement
+      const matchesUni = uni.name.toLowerCase().includes(query) || uni.acronym.toLowerCase().includes(query);
+      if (matchesUni) return true;
+
+      // Recherche par Filières proposées par cet établissement
+      const institutionMajors = majors.filter(m => m.universityId === uni.id);
+      const matchesMajor = institutionMajors.some(m => m.name.toLowerCase().includes(query));
+      
+      return matchesMajor;
+    }).slice(0, 4); // Augmenté à 4 pour montrer plus de résultats dynamiques
+  }, [searchQuery, cityFilter, universities, majors]);
 
   const handleSearchClick = () => {
     document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -33,9 +45,9 @@ const Home: React.FC = () => {
       {/* Hero Section */}
       <section className="relative w-full overflow-hidden">
         <div 
-          className="w-full min-h-[80vh] flex flex-col items-center justify-center bg-cover bg-center relative px-6 py-32" 
+          className="w-full min-h-[85vh] flex flex-col items-center justify-center bg-cover bg-center relative px-6 py-32" 
           style={{ 
-            backgroundImage: `linear-gradient(to bottom, rgba(13, 27, 19, 0.9), rgba(13, 27, 19, 0.7)), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCkQQ_D4dsN5t-vB4dnSyIT0D90X16bTMemXMzEkfav2Fu40te6xhIxbzXEp2XtbeTmz8LK4-vaRNRjPDzAd5szO2DjnuBAYlA-dencatakWD1ooVt4Um2RkLzGr4Rt2EI590V6HfLNB_i9tvQIhvJfFvKuv9R2zenhB8_jsXfO1C45k6JbyzktatFBQG7URZB1-MWkPmN-uQN3EAOJqjkdkKu-U8dga4pQGt6w6VwDhJiVey8OMxscBvAmqHtzYh4v0wGPLrB6QeA")` 
+            backgroundImage: `linear-gradient(to bottom, rgba(13, 27, 19, 0.9), rgba(13, 27, 19, 0.7)), url("https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1600")` 
           }}
         >
           <div className="max-w-[1200px] mx-auto z-10 animate-fade-in flex flex-col gap-10 text-center">
@@ -48,7 +60,7 @@ const Home: React.FC = () => {
                 {translate('hero_title_line1')} <br /> de votre <span className="text-primary underline decoration-primary/20 underline-offset-[15px]">{translate('hero_title_accent')}</span>.
               </h1>
               <p className="text-gray-300 text-lg md:text-2xl font-medium max-w-3xl mx-auto leading-relaxed">
-                {translate('hero_subtitle')}
+                Trouvez la formation idéale parmi les établissements d'excellence au Bénin et gérez vos préinscriptions en quelques clics.
               </p>
             </div>
 
@@ -71,7 +83,7 @@ const Home: React.FC = () => {
                     onChange={(e) => setCityFilter(e.target.value)}
                   >
                     {cities.map(city => (
-                      <option key={city} value={city} className="dark:bg-surface-dark">{city}</option>
+                      <option key={city} value={city} className="dark:bg-surface-dark text-black">{city}</option>
                     ))}
                   </select>
                 </div>
@@ -85,7 +97,6 @@ const Home: React.FC = () => {
             </div>
           </div>
           
-          {/* Scroll Indicator */}
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
             <span className="material-symbols-outlined text-white text-3xl">expand_more</span>
           </div>
@@ -102,7 +113,7 @@ const Home: React.FC = () => {
               </h2>
               <div className="h-1.5 w-24 bg-primary rounded-full"></div>
             </div>
-            <Link to="/universities" className="flex items-center text-primary font-black hover:underline gap-3 group text-lg uppercase tracking-widest text-xs">
+            <Link to="/universities" className="flex items-center text-primary font-black hover:underline gap-3 group text-xs uppercase tracking-widest">
               Catalogue Complet 
               <span className="material-symbols-outlined transition-transform group-hover:translate-x-2 font-bold">east</span>
             </Link>
@@ -111,10 +122,13 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {filteredUniversities.length > 0 ? (
               filteredUniversities.map(uni => (
-                <div key={uni.id} className="group bg-white dark:bg-surface-dark rounded-[50px] overflow-hidden border border-gray-100 dark:border-white/5 hover:shadow-premium transition-all duration-700 flex flex-col md:flex-row">
+                <div key={uni.id} className="group bg-white dark:bg-surface-dark rounded-[50px] overflow-hidden border border-gray-100 dark:border-white/5 hover:shadow-premium transition-all duration-700 flex flex-col md:flex-row animate-fade-in">
                   <div className="md:w-2/5 relative h-64 md:h-auto overflow-hidden">
                     <img src={uni.cover} alt={uni.name} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                     <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-transparent to-transparent"></div>
+                    <span className={`absolute top-6 left-6 size-8 rounded-full flex items-center justify-center text-[11px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
+                      {uni.isStandaloneSchool ? 'E' : 'U'}
+                    </span>
                   </div>
                   <div className="p-10 md:p-12 md:w-3/5 flex flex-col justify-between">
                     <div className="space-y-6">
@@ -127,8 +141,8 @@ const Home: React.FC = () => {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h3 className="text-3xl font-black text-text-main dark:text-white tracking-tighter leading-none group-hover:text-primary transition-colors">
-                          {uni.name}
+                        <h3 className="text-2xl font-black text-text-main dark:text-white tracking-tighter leading-none group-hover:text-primary transition-colors">
+                          {uni.name} ({uni.acronym})
                         </h3>
                         <p className="text-sm font-bold text-gray-500 flex items-center gap-2">
                           <span className="material-symbols-outlined text-lg text-primary">location_on</span>
@@ -145,10 +159,16 @@ const Home: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="col-span-full text-center py-24 bg-white dark:bg-surface-dark rounded-[50px] border-2 border-dashed border-gray-100 dark:border-white/5">
+              <div className="col-span-full text-center py-24 bg-white dark:bg-surface-dark rounded-[50px] border-2 border-dashed border-gray-100 dark:border-white/5 animate-fade-in">
                 <span className="material-symbols-outlined text-7xl text-gray-200 mb-6">search_off</span>
                 <h3 className="text-3xl font-black dark:text-white">Aucun établissement trouvé</h3>
-                <p className="text-gray-500 mt-3 font-medium text-lg">Essayez d'ajuster vos critères ou réinitialisez la recherche.</p>
+                <p className="text-gray-500 mt-3 font-medium text-lg">Votre recherche pour "<span className="text-primary">{searchQuery}</span>" n'a retourné aucun résultat académique.</p>
+                <button 
+                  onClick={() => { setSearchQuery(''); setCityFilter('Toutes les villes'); }}
+                  className="mt-8 px-10 py-4 bg-primary/10 text-primary font-black rounded-2xl uppercase tracking-widest text-[10px] hover:bg-primary hover:text-black transition-all"
+                >
+                  Réinitialiser la recherche
+                </button>
               </div>
             )}
           </div>
@@ -162,9 +182,9 @@ const Home: React.FC = () => {
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] -translate-x-1/2 translate-y-1/2"></div>
           
           <div className="relative z-10 max-w-2xl text-center md:text-left space-y-8">
-            <h2 className="text-4xl md:text-7xl font-black text-white leading-[0.9] tracking-tighter">{translate('cta_title')} <br /><span className="text-primary">{translate('cta_today')}</span>.</h2>
+            <h2 className="text-4xl md:text-7xl font-black text-white leading-[0.9] tracking-tighter">Lancez votre futur <br /><span className="text-primary">aujourd'hui</span>.</h2>
             <p className="text-gray-400 text-lg md:text-2xl font-medium leading-relaxed">
-              {translate('cta_desc')}
+              Rejoignez plus de 15,000 étudiants qui ont déjà trouvé leur voie grâce à notre plateforme d'orientation intelligente.
             </p>
           </div>
           <div className="relative z-10 mt-12 md:mt-0">
