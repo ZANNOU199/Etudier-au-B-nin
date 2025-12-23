@@ -1,10 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { UNIVERSITIES } from '../constants';
+import { useCMS } from '../CMSContext';
 
 const UniversityDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useCMS();
   const [showAllFaculties, setShowAllFaculties] = useState(false);
   
   const uni = UNIVERSITIES.find(u => u.id === id);
@@ -26,6 +29,19 @@ const UniversityDetail: React.FC = () => {
   }, [uni]);
 
   const displayedFaculties = showAllFaculties ? facultiesToDisplay : facultiesToDisplay.slice(0, 3);
+
+  const handlePreRegistration = () => {
+    // On cible le catalogue filtré sur l'acronyme de l'université
+    const targetPath = `/majors?search=${encodeURIComponent(uni.acronym)}`;
+    
+    if (!user) {
+      // Si non connecté, on envoie vers login avec le paramètre de retour
+      navigate(`/login?redirect=${encodeURIComponent(targetPath)}`);
+    } else {
+      // Si déjà connecté, on envoie directement vers le catalogue filtré
+      navigate(targetPath);
+    }
+  };
 
   return (
     <div className="relative flex flex-col w-full">
@@ -49,9 +65,12 @@ const UniversityDetail: React.FC = () => {
               <h1 className="text-4xl lg:text-7xl font-black leading-none tracking-tighter">{uni.name}</h1>
               <p className="text-gray-200 text-lg md:text-xl font-medium max-w-2xl leading-relaxed">{uni.description}</p>
               <div className="flex flex-wrap gap-4 mt-8">
-                <Link to="/apply" className="flex items-center justify-center rounded-2xl h-14 px-10 bg-primary hover:bg-[#0fd660] transition-all text-[#0d1b13] text-lg font-black shadow-xl shadow-primary/20 hover:scale-105">
+                <button 
+                  onClick={handlePreRegistration}
+                  className="flex items-center justify-center rounded-2xl h-14 px-10 bg-primary hover:bg-[#0fd660] transition-all text-[#0d1b13] text-lg font-black shadow-xl shadow-primary/20 hover:scale-105"
+                >
                   Pré-inscription
-                </Link>
+                </button>
                 <button className="flex items-center justify-center rounded-2xl h-14 px-10 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white text-lg font-black border border-white/20 transition-all">
                   Brochure PDF
                 </button>
