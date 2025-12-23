@@ -25,7 +25,10 @@ const AdminDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  // State pour la pagination (séparé par section)
+  const [uniPage, setUniPage] = useState(1);
+  const [majorPage, setMajorPage] = useState(1);
   
   // Creation Wizard State
   const [showWizard, setShowWizard] = useState(false);
@@ -33,9 +36,12 @@ const AdminDashboard: React.FC = () => {
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
   const [isSchoolKind, setIsSchoolKind] = useState(false);
 
+  // Standalone Major Creation
+  const [showStandaloneMajorForm, setShowStandaloneMajorForm] = useState(false);
+
   const navigate = useNavigate();
 
-  // Pagination Logic
+  // Logique de pagination Universités
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -44,17 +50,16 @@ const AdminDashboard: React.FC = () => {
     });
   }, [universities, establishmentFilter]);
 
-  const totalPages = Math.ceil(filteredUnis.length / ITEMS_PER_PAGE);
-  const pagedUnis = filteredUnis.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const totalUniPages = Math.ceil(filteredUnis.length / ITEMS_PER_PAGE);
+  const pagedUnis = filteredUnis.slice((uniPage - 1) * ITEMS_PER_PAGE, uniPage * ITEMS_PER_PAGE);
+
+  // Logique de pagination Filières
+  const totalMajorPages = Math.ceil(majors.length / ITEMS_PER_PAGE);
+  const pagedMajors = majors.slice((majorPage - 1) * ITEMS_PER_PAGE, majorPage * ITEMS_PER_PAGE);
 
   const currentUni = useMemo(() => 
     universities.find(u => u.id === currentInstId), 
     [universities, currentInstId]
-  );
-
-  const currentInstMajors = useMemo(() => 
-    majors.filter(m => m.universityId === currentInstId),
-    [majors, currentInstId]
   );
 
   const SidebarNav = () => (
@@ -113,12 +118,10 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-[#f4f7f6] dark:bg-background-dark font-display overflow-hidden relative">
-      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-80 bg-[#0d1b13] flex-col shrink-0 z-30 shadow-2xl border-r border-white/5">
         <SidebarNav />
       </aside>
 
-      {/* Mobile Sidebar */}
       {isSidebarOpen && (
         <>
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
@@ -129,7 +132,6 @@ const AdminDashboard: React.FC = () => {
       )}
 
       <main className="flex-1 overflow-y-auto h-screen bg-gray-50 dark:bg-background-dark/50 flex flex-col">
-        {/* Header */}
         <header className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5 px-6 lg:px-12 py-6 flex items-center justify-between sticky top-0 z-40">
            <div className="flex items-center gap-4">
               <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden size-11 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500">
@@ -147,14 +149,14 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-8 animate-fade-in">
                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
                   <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
-                    <button onClick={() => { setActiveCatalogSection('universities'); setCurrentPage(1); }} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
-                    <button onClick={() => { setActiveCatalogSection('majors'); setCurrentPage(1); }} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
+                    <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
+                    <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
                   </div>
 
                   {activeCatalogSection === 'universities' && (
                     <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
                        {['all', 'university', 'school'].map(f => (
-                         <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setCurrentPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
+                         <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
                            {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
                          </button>
                        ))}
@@ -177,9 +179,7 @@ const AdminDashboard: React.FC = () => {
                               <div className="space-y-1 flex-1">
                                  <h3 className="text-2xl font-black dark:text-white tracking-tighter leading-none">{uni.acronym}</h3>
                                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
-                                 <div className="flex gap-3 pt-2">
-                                    <p className="text-sm font-black dark:text-white line-clamp-1">{uni.name}</p>
-                                 </div>
+                                 <p className="text-sm font-black dark:text-white line-clamp-1">{uni.name}</p>
                                  <div className="flex gap-4 pt-1">
                                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{uni.type}</span>
                                     <span className="text-[9px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-widest">{uni.faculties.length} Entités</span>
@@ -200,33 +200,81 @@ const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
+                    {totalUniPages > 1 && (
                       <div className="flex justify-center items-center gap-3 pt-8">
-                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400">
-                          <span className="material-symbols-outlined font-black">west</span>
-                        </button>
+                        <button onClick={() => setUniPage(p => Math.max(1, p - 1))} disabled={uniPage === 1} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">west</span></button>
                         <div className="flex gap-2">
-                           {Array.from({ length: totalPages }).map((_, i) => (
-                             <button key={i} onClick={() => setCurrentPage(i + 1)} className={`size-14 rounded-2xl font-black text-xs transition-all border ${currentPage === i + 1 ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20' : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 dark:text-white'}`}>{i + 1}</button>
+                           {Array.from({ length: totalUniPages }).map((_, i) => (
+                             <button key={i} onClick={() => setUniPage(i + 1)} className={`size-14 rounded-2xl font-black text-xs transition-all border ${uniPage === i + 1 ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20' : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 dark:text-white'}`}>{i + 1}</button>
                            ))}
                         </div>
-                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400">
-                          <span className="material-symbols-outlined font-black">east</span>
-                        </button>
+                        <button onClick={() => setUniPage(p => Math.min(totalUniPages, p + 1))} disabled={uniPage === totalUniPages} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">east</span></button>
                       </div>
                     )}
+                  </div>
+               )}
+
+               {activeCatalogSection === 'majors' && (
+                  <div className="space-y-10">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {pagedMajors.map(major => (
+                           <div key={major.id} className="bg-white dark:bg-surface-dark p-6 rounded-[40px] border border-gray-100 dark:border-white/5 flex flex-col justify-between group hover:shadow-xl transition-all h-full">
+                              <div className="flex justify-between items-start mb-6">
+                                 <div className="flex items-center gap-4">
+                                    <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase tracking-widest">
+                                       {major.level.charAt(0)}
+                                    </div>
+                                    <div className="space-y-1">
+                                       <h3 className="text-xl font-black dark:text-white tracking-tight leading-none">{major.name}</h3>
+                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{major.universityName} • {major.facultyName}</p>
+                                    </div>
+                                 </div>
+                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button className="size-9 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
+                                    <button onClick={() => deleteMajor(major.id)} className="size-9 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-50 dark:border-white/10">
+                                 <div>
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Frais annuels</p>
+                                    <p className="text-sm font-black text-primary">{major.fees}</p>
+                                 </div>
+                                 <div>
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Durée cycle</p>
+                                    <p className="text-sm font-black dark:text-white">{major.duration}</p>
+                                 </div>
+                              </div>
+                           </div>
+                        ))}
+                        <button onClick={() => setShowStandaloneMajorForm(true)} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[40px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                           <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                              <span className="material-symbols-outlined text-3xl font-bold">add_circle</span>
+                           </div>
+                           <span className="font-black uppercase text-[11px] tracking-[0.3em] text-primary">Nouvelle filière</span>
+                        </button>
+                     </div>
+
+                     {totalMajorPages > 1 && (
+                        <div className="flex justify-center items-center gap-3 pt-8">
+                           <button onClick={() => setMajorPage(p => Math.max(1, p - 1))} disabled={majorPage === 1} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">west</span></button>
+                           <div className="flex gap-2">
+                              {Array.from({ length: totalMajorPages }).map((_, i) => (
+                                 <button key={i} onClick={() => setMajorPage(i + 1)} className={`size-14 rounded-2xl font-black text-xs transition-all border ${majorPage === i + 1 ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20' : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/10 dark:text-white'}`}>{i + 1}</button>
+                              ))}
+                           </div>
+                           <button onClick={() => setMajorPage(p => Math.min(totalMajorPages, p + 1))} disabled={majorPage === totalMajorPages} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">east</span></button>
+                        </div>
+                     )}
                   </div>
                )}
             </div>
           )}
         </div>
 
-        {/* GUIDED CREATION WIZARD */}
+        {/* GUIDED CREATION WIZARD (Institution) */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300">
-                {/* Wizard Header */}
                 <div className="bg-gray-50 dark:bg-white/5 px-10 py-8 flex items-center justify-between border-b border-gray-100 dark:border-white/10">
                    <div>
                       <h3 className="text-2xl font-black dark:text-white tracking-tight leading-none">Assistant de Création</h3>
@@ -241,14 +289,12 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="p-8 md:p-12 space-y-10">
-                   {/* Step 1: Institution Details */}
                    {wizardStep === 'institution' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4">
                         <div className="flex gap-4 p-1.5 bg-gray-100 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
                            <button onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400'}`}>Université</button>
                            <button onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-400'}`}>École / Institut</button>
                         </div>
-
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
@@ -259,7 +305,7 @@ const AdminDashboard: React.FC = () => {
                               acronym: fd.get('acronym') as string,
                               location: fd.get('location') as string,
                               type: fd.get('type') as any,
-                              description: fd.get('desc') as string,
+                              description: fd.get('desc') as string || 'Établissement académique supérieur.',
                               isStandaloneSchool: isSchoolKind,
                               logo: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=100',
                               cover: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
@@ -272,15 +318,15 @@ const AdminDashboard: React.FC = () => {
                         }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="md:col-span-2 space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Nom Complet</label>
-                              <input name="name" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Ex: Université d'Abomey-Calavi" />
+                              <input name="name" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white" placeholder="Ex: Université d'Abomey-Calavi" />
                            </div>
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Sigle</label>
-                              <input name="acronym" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Ex: UAC" />
+                              <input name="acronym" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white" placeholder="Ex: UAC" />
                            </div>
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Ville</label>
-                              <input name="location" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Ex: Cotonou" />
+                              <input name="location" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white" placeholder="Ex: Cotonou" />
                            </div>
                            <div className="md:col-span-2 space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Statut financier</label>
@@ -290,22 +336,18 @@ const AdminDashboard: React.FC = () => {
                               </select>
                            </div>
                            <div className="md:col-span-2 pt-6">
-                              <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all">
-                                 Continuer vers l'étape suivante
-                              </button>
+                              <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all">Continuer</button>
                            </div>
                         </form>
                      </div>
                    )}
 
-                   {/* Step 2: Faculties/Attached Schools */}
                    {wizardStep === 'faculties' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4">
                         <div className="text-center space-y-2">
                            <h4 className="text-2xl font-black dark:text-white tracking-tight leading-none">Écoles & Facultés rattachées</h4>
                            <p className="text-gray-400 font-medium text-sm">Ajoutez toutes les composantes de cette université.</p>
                         </div>
-
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
@@ -331,7 +373,6 @@ const AdminDashboard: React.FC = () => {
                            </div>
                            <button type="submit" className="w-full py-3 bg-white dark:bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">+ Ajouter une autre entité</button>
                         </form>
-
                         <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                            {currentUni?.faculties.map(f => (
                               <div key={f.id} className="p-4 bg-white dark:bg-white/5 rounded-2xl flex justify-between items-center border border-gray-50 dark:border-white/10 animate-fade-in">
@@ -342,32 +383,25 @@ const AdminDashboard: React.FC = () => {
                                  <span className="material-symbols-outlined text-gray-300 text-lg">check_circle</span>
                               </div>
                            ))}
-                           {(!currentUni?.faculties || currentUni.faculties.length === 0) && (
-                              <p className="text-center text-xs text-gray-400 italic py-4">Aucune entité ajoutée pour le moment.</p>
-                           )}
                         </div>
-
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100 dark:border-white/10">
-                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl hover:bg-white dark:hover:bg-white/5 transition-all">Retour</button>
-                           <button onClick={() => setWizardStep('majors')} disabled={!currentUni?.faculties.length} className="flex-1 py-4 bg-primary disabled:opacity-50 text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 transition-all">Configurer les filières</button>
+                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl">Retour</button>
+                           <button onClick={() => setWizardStep('majors')} disabled={!currentUni?.faculties.length} className="flex-1 py-4 bg-primary disabled:opacity-50 text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20">Configurer les filières</button>
                         </div>
                      </div>
                    )}
 
-                   {/* Step 3: Majors & Careers */}
                    {wizardStep === 'majors' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4">
                         <div className="text-center space-y-2">
                            <h4 className="text-2xl font-black dark:text-white tracking-tight leading-none">Ajouter des Filières</h4>
-                           <p className="text-gray-400 font-medium text-sm">Remplissez les informations pour chaque filière de l'établissement.</p>
+                           <p className="text-gray-400 font-medium text-sm">Configurez l'offre académique de l'établissement.</p>
                         </div>
-
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
                            const prospect: CareerProspect = { title: fd.get('career') as string, icon: 'work' };
                            const diploma: RequiredDiploma = { name: fd.get('diploma') as string, icon: 'school' };
-
                            const majorData: Major = {
                               id: 'maj-' + Date.now(),
                               name: fd.get('mName') as string,
@@ -387,74 +421,30 @@ const AdminDashboard: React.FC = () => {
                            e.currentTarget.reset();
                         }} className="space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-[32px] border border-gray-100 dark:border-white/10">
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Nom de la filière</label>
-                                 <input name="mName" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: Génie Logiciel" />
-                              </div>
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Composante hôte</label>
-                                 <select name="fName" className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm">
-                                    {currentUni?.faculties.map(f => (
-                                       <option key={f.id} value={f.name}>{f.name}</option>
-                                    ))}
-                                    {isSchoolKind && <option value="Principal">Principal</option>}
-                                 </select>
-                              </div>
+                              <input name="mName" required placeholder="Nom de la filière" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
+                              <select name="fName" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white">
+                                 {currentUni?.faculties.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                                 {isSchoolKind && <option value="Principal">Principal</option>}
+                              </select>
                            </div>
-
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Domaine d'études</label>
-                                 <input name="domain" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: Informatique" />
-                              </div>
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Débouché (Exemple)</label>
-                                 <input name="career" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: Développeur Cloud" />
-                              </div>
+                              <input name="career" required placeholder="Débouché principal" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
+                              <input name="diploma" required placeholder="Diplôme requis (ex: BAC C / D)" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
                            </div>
-
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Diplôme Requis</label>
-                                 <input name="diploma" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: BAC C / D / E" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Frais (An)</label>
-                                    <input name="fees" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white shadow-sm" placeholder="450.000 FCFA" />
-                                 </div>
-                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Cycle</label>
-                                    <input name="duration" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white shadow-sm" placeholder="3 Ans" />
-                                 </div>
-                              </div>
+                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <select name="level" className="p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white">
+                                 <option value="Licence">Licence</option>
+                                 <option value="Master">Master</option>
+                                 <option value="Doctorat">Doctorat</option>
+                              </select>
+                              <input name="fees" required placeholder="Frais (ex: 450.000 FCFA)" className="p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white" />
+                              <input name="duration" required placeholder="Durée (ex: 3 Ans)" className="p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white" />
                            </div>
-                           
-                           <input type="hidden" name="level" value="Licence" />
                            <button type="submit" className="w-full py-3 bg-white dark:bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">+ Enregistrer cette filière</button>
                         </form>
-
-                        <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                           {currentInstMajors.map(m => (
-                              <div key={m.id} className="p-3 bg-white dark:bg-white/5 rounded-2xl flex justify-between items-center border border-gray-50 dark:border-white/10 animate-fade-in">
-                                 <div className="flex items-center gap-3">
-                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">L</div>
-                                    <div>
-                                       <p className="font-black text-xs dark:text-white leading-none">{m.name}</p>
-                                       <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{m.facultyName} • {m.fees}</p>
-                                    </div>
-                                 </div>
-                                 <button onClick={() => deleteMajor(m.id)} className="text-gray-300 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-sm">delete</span></button>
-                              </div>
-                           ))}
-                           {currentInstMajors.length === 0 && (
-                              <p className="text-center text-xs text-gray-400 italic py-2">Aucune filière configurée.</p>
-                           )}
-                        </div>
-
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100 dark:border-white/10">
-                           <button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl hover:bg-white dark:hover:bg-white/5 transition-all">Retour</button>
-                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all">Sauvegarder et Finir</button>
+                           <button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl">Retour</button>
+                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all">Terminer</button>
                         </div>
                      </div>
                    )}
@@ -463,7 +453,69 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* REGULAR MODALS FOR APPLICATIONS ETC (Remains unchanged) */}
+        {/* STANDALONE MAJOR FORM (Depuis la section Filières) */}
+        {showStandaloneMajorForm && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+             <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] shadow-2xl p-8 md:p-12 space-y-10 my-auto animate-in zoom-in-95 duration-300">
+                <div className="flex justify-between items-center">
+                   <h3 className="text-3xl font-black dark:text-white tracking-tight">Ajouter une Filière</h3>
+                   <button onClick={() => setShowStandaloneMajorForm(false)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
+                </div>
+                <form onSubmit={(e) => {
+                   e.preventDefault();
+                   const fd = new FormData(e.currentTarget);
+                   const uni = universities.find(u => u.id === fd.get('uniId'));
+                   const prospect: CareerProspect = { title: fd.get('career') as string, icon: 'work' };
+                   const diploma: RequiredDiploma = { name: fd.get('diploma') as string, icon: 'school' };
+                   const majorData: Major = {
+                      id: 'maj-' + Date.now(),
+                      name: fd.get('mName') as string,
+                      universityId: fd.get('uniId') as string,
+                      universityName: uni?.name || '',
+                      facultyName: fd.get('fName') as string,
+                      domain: fd.get('domain') as string || 'Général',
+                      level: fd.get('level') as any,
+                      duration: fd.get('duration') as string,
+                      fees: fd.get('fees') as string,
+                      location: uni?.location || '',
+                      image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
+                      careerProspects: [prospect],
+                      requiredDiplomas: [diploma]
+                   };
+                   addMajor(majorData);
+                   setShowStandaloneMajorForm(false);
+                }} className="space-y-6">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Établissement</label>
+                        <select name="uniId" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white">
+                           {universities.map(u => <option key={u.id} value={u.id}>{u.acronym} - {u.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nom de la filière</label>
+                        <input name="mName" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" placeholder="Ex: Informatique" />
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <input name="fName" required placeholder="Faculté / Composante (ex: EPAC)" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
+                      <input name="career" required placeholder="Débouché (ex: Développeur)" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
+                   </div>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <input name="diploma" required placeholder="Diplôme requis (ex: BAC C / D)" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
+                      <div className="grid grid-cols-2 gap-2">
+                         <input name="fees" required placeholder="Frais" className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-xs dark:text-white" />
+                         <input name="duration" required placeholder="Durée" className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-xs dark:text-white" />
+                      </div>
+                   </div>
+                   <input type="hidden" name="level" value="Licence" />
+                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all">Enregistrer la filière</button>
+                </form>
+             </div>
+          </div>
+        )}
+
+        {/* MODAL APPLICATION (Suivi) */}
         {selectedApp && (
           <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setSelectedApp(null)}>
              <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -477,10 +529,9 @@ const AdminDashboard: React.FC = () => {
                       <button onClick={() => setSelectedApp(null)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
                    </div>
                    <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-100 dark:border-white/10">
-                      <button onClick={() => { updateApplicationStatus(selectedApp.id, 'Validé'); setSelectedApp(null); }} className="flex-1 min-w-[140px] py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">Valider</button>
-                      <button onClick={() => { updateApplicationStatus(selectedApp.id, 'Rejeté'); setSelectedApp(null); }} className="flex-1 min-w-[140px] py-4 bg-red-500 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 transition-all">Rejeter</button>
-                      <button onClick={() => setSelectedApp(null)} className="flex-1 min-w-[140px] py-4 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-white/20 transition-all">Fermer</button>
-                      <button onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"><span className="material-symbols-outlined">delete</span></button>
+                      <button onClick={() => { updateApplicationStatus(selectedApp.id, 'Validé'); setSelectedApp(null); }} className="flex-1 min-w-[140px] py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20">Valider</button>
+                      <button onClick={() => { updateApplicationStatus(selectedApp.id, 'Rejeté'); setSelectedApp(null); }} className="flex-1 min-w-[140px] py-4 bg-red-500 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl">Rejeter</button>
+                      <button onClick={() => setSelectedApp(null)} className="flex-1 min-w-[140px] py-4 bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 font-black rounded-2xl text-[10px] uppercase tracking-widest">Fermer</button>
                    </div>
                 </div>
              </div>
