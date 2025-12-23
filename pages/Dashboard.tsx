@@ -217,6 +217,61 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           )}
+
+          {activeTab === 'profile' && (
+            <div className="space-y-10 animate-fade-in max-w-4xl">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black dark:text-white tracking-tighter">Profil Étudiant</h2>
+                <p className="text-gray-500 font-medium">Gérez vos informations personnelles et académiques.</p>
+              </div>
+
+              <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 border border-gray-100 dark:border-white/5 shadow-sm space-y-10">
+                <div className="flex items-center gap-8 border-b border-gray-50 dark:border-white/5 pb-10">
+                   <div className="size-24 rounded-[32px] bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                      <span className="material-symbols-outlined text-5xl font-bold">person</span>
+                   </div>
+                   <div className="space-y-1">
+                      <h3 className="text-3xl font-black dark:text-white tracking-tight">{user.firstName} {user.lastName}</h3>
+                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Candidat Session 2024</p>
+                      <span className="inline-block px-4 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase mt-2">Compte Vérifié</span>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nom complet</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
+                         {user.firstName} {user.lastName}
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Adresse Email</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
+                         {user.email}
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifiant National (INE)</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
+                         {user.ine || 'Non renseigné'}
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rôle Utilisateur</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white uppercase tracking-widest text-[10px]">
+                         {user.role}
+                      </div>
+                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-50 dark:border-white/5">
+                   <button className="px-10 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">
+                      Modifier mes informations
+                   </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

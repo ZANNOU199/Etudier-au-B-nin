@@ -13,12 +13,20 @@ const AdminDashboard: React.FC = () => {
     toggleLanguage, themes, applyTheme, activeTheme, updateTheme, userRole,
     applications, updateApplicationStatus, deleteApplication,
     universities, addUniversity, updateUniversity, deleteUniversity,
-    majors, addMajor, updateMajor, deleteMajor, logout
+    majors, addMajor, updateMajor, deleteMajor, logout, user
   } = useCMS();
   
   const [activeView, setActiveView] = useState<AdminView>('overview');
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  
+  // Catalog Form States
+  const [showUniForm, setShowUniForm] = useState(false);
+  const [showMajorForm, setShowMajorForm] = useState(false);
+  const [editingUni, setEditingUni] = useState<University | null>(null);
+  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
+
   const navigate = useNavigate();
 
   const isSuperAdmin = userRole === 'super_admin';
@@ -66,7 +74,7 @@ const AdminDashboard: React.FC = () => {
               <span className="material-symbols-outlined text-xl">{item.icon}</span>
               {item.label}
             </div>
-            {item.badge && (
+            {item.badge && item.badge !== '0' && (
               <span className={`px-2 py-0.5 rounded-lg text-[9px] ${activeView === item.id ? 'bg-black text-white' : 'bg-white/10 text-gray-400'}`}>
                 {item.badge}
               </span>
@@ -106,6 +114,9 @@ const AdminDashboard: React.FC = () => {
                 <span className="material-symbols-outlined">menu</span>
               </button>
               <h1 className="text-xl lg:text-2xl font-black dark:text-white tracking-tighter uppercase">Admin Console</h1>
+           </div>
+           <div className="flex items-center gap-4">
+              <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-black font-black text-xs shadow-lg">AD</div>
            </div>
         </header>
 
@@ -160,17 +171,9 @@ const AdminDashboard: React.FC = () => {
                        }`}>
                          {app.status}
                        </span>
-                       <div className="flex gap-2">
-                          <button onClick={() => updateApplicationStatus(app.id, 'Validé')} className="size-11 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-black transition-all flex items-center justify-center">
-                             <span className="material-symbols-outlined">check_circle</span>
-                          </button>
-                          <button onClick={() => updateApplicationStatus(app.id, 'Rejeté')} className="size-11 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
-                             <span className="material-symbols-outlined">cancel</span>
-                          </button>
-                          <button onClick={() => deleteApplication(app.id)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center">
-                             <span className="material-symbols-outlined">delete</span>
-                          </button>
-                       </div>
+                       <button onClick={() => setSelectedApp(app)} className="size-11 rounded-xl bg-primary text-black hover:bg-green-400 transition-all flex items-center justify-center shadow-lg">
+                          <span className="material-symbols-outlined font-bold">visibility</span>
+                       </button>
                     </div>
                   </div>
                 ))}
@@ -180,6 +183,73 @@ const AdminDashboard: React.FC = () => {
                    </div>
                 )}
               </div>
+
+              {/* Application Details Modal */}
+              {selectedApp && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl">
+                      <div className="p-10 space-y-8">
+                         <div className="flex justify-between items-start">
+                            <div>
+                               <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Dossier N° {selectedApp.id}</p>
+                               <h3 className="text-3xl font-black dark:text-white tracking-tighter leading-none">{selectedApp.studentName}</h3>
+                               <p className="text-gray-500 font-bold mt-2">Candidat pour : {selectedApp.majorName}</p>
+                            </div>
+                            <button onClick={() => setSelectedApp(null)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                               <span className="material-symbols-outlined">close</span>
+                            </button>
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/10">
+                               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Établissement</p>
+                               <p className="font-black dark:text-white">{selectedApp.universityName}</p>
+                            </div>
+                            <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/10">
+                               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Soumis le</p>
+                               <p className="font-black dark:text-white">{selectedApp.date}</p>
+                            </div>
+                         </div>
+
+                         <div className="space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Documents du dossier</h4>
+                            <div className="grid grid-cols-1 gap-2">
+                               {selectedApp.documents.map((doc, i) => (
+                                 <div key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 group">
+                                    <div className="flex items-center gap-3">
+                                       <span className="material-symbols-outlined text-primary">article</span>
+                                       <span className="text-sm font-bold dark:text-white">{doc}</span>
+                                    </div>
+                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-primary cursor-pointer">download</span>
+                                 </div>
+                               ))}
+                            </div>
+                         </div>
+
+                         <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-white/10">
+                            <button 
+                              onClick={() => { updateApplicationStatus(selectedApp.id, 'Validé'); setSelectedApp(null); }}
+                              className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                            >
+                              Valider le dossier
+                            </button>
+                            <button 
+                              onClick={() => { updateApplicationStatus(selectedApp.id, 'Rejeté'); setSelectedApp(null); }}
+                              className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 transition-all"
+                            >
+                              Rejeter
+                            </button>
+                            <button 
+                              onClick={() => { deleteApplication(selectedApp.id); setSelectedApp(null); }}
+                              className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"
+                            >
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -202,12 +272,12 @@ const AdminDashboard: React.FC = () => {
                               </div>
                            </div>
                            <div className="flex gap-2">
-                              <button className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
+                              <button onClick={() => { setEditingUni(uni); setShowUniForm(true); }} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
                               <button onClick={() => deleteUniversity(uni.id)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center"><span className="material-symbols-outlined text-xl">delete</span></button>
                            </div>
                         </div>
                      ))}
-                     <button onClick={() => alert('Interface de création Universités non implémentée')} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
+                     <button onClick={() => { setEditingUni(null); setShowUniForm(true); }} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
                         + Ajouter un établissement
                      </button>
                   </div>
@@ -225,23 +295,238 @@ const AdminDashboard: React.FC = () => {
                               </div>
                            </div>
                            <div className="flex gap-2">
-                              <button className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
+                              <button onClick={() => { setEditingMajor(major); setShowMajorForm(true); }} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center"><span className="material-symbols-outlined text-xl">edit</span></button>
                               <button onClick={() => deleteMajor(major.id)} className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center"><span className="material-symbols-outlined text-xl">delete</span></button>
                            </div>
                         </div>
                      ))}
-                     <button onClick={() => alert('Interface de création Filières non implémentée')} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
+                     <button onClick={() => { setEditingMajor(null); setShowMajorForm(true); }} className="p-8 rounded-[32px] border-2 border-dashed border-primary/20 text-primary font-black uppercase text-[10px] tracking-[0.3em] hover:bg-primary/5 transition-all">
                         + Ajouter une filière
                      </button>
                   </div>
                )}
+
+               {/* University Form Modal */}
+               {showUniForm && (
+                 <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
+                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                     <div className="flex justify-between items-center">
+                       <h3 className="text-2xl font-black dark:text-white">{editingUni ? 'Modifier' : 'Ajouter'} un Établissement</h3>
+                       <button onClick={() => setShowUniForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
+                     </div>
+                     <form onSubmit={(e) => {
+                       e.preventDefault();
+                       const formData = new FormData(e.currentTarget);
+                       const uniData: Partial<University> = {
+                         id: editingUni?.id || 'uni-' + Date.now(),
+                         name: formData.get('name') as string,
+                         acronym: formData.get('acronym') as string,
+                         location: formData.get('location') as string,
+                         type: formData.get('type') as any,
+                         description: formData.get('description') as string,
+                         logo: editingUni?.logo || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=100',
+                         cover: editingUni?.cover || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=1200',
+                         stats: editingUni?.stats || { students: '0', majors: 0, founded: '2024', ranking: 'N/A' },
+                         faculties: editingUni?.faculties || []
+                       };
+                       if (editingUni) updateUniversity(uniData as University);
+                       else addUniversity(uniData as University);
+                       setShowUniForm(false);
+                     }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Nom</label>
+                         <input name="name" required defaultValue={editingUni?.name} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Sigle</label>
+                         <input name="acronym" required defaultValue={editingUni?.acronym} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Ville</label>
+                         <input name="location" required defaultValue={editingUni?.location} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Type</label>
+                         <select name="type" required defaultValue={editingUni?.type} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                           <option value="Public">Public</option>
+                           <option value="Privé">Privé</option>
+                         </select>
+                       </div>
+                       <div className="md:col-span-2 space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Description</label>
+                         <textarea name="description" rows={3} defaultValue={editingUni?.description} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold resize-none" />
+                       </div>
+                       <div className="md:col-span-2 pt-4">
+                         <button type="submit" className="w-full py-4 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl">Sauvegarder</button>
+                       </div>
+                     </form>
+                   </div>
+                 </div>
+               )}
+
+               {/* Major Form Modal */}
+               {showMajorForm && (
+                 <div className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in overflow-y-auto">
+                   <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[40px] shadow-2xl p-10 space-y-8">
+                     <div className="flex justify-between items-center">
+                       <h3 className="text-2xl font-black dark:text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une Filière</h3>
+                       <button onClick={() => setShowMajorForm(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
+                     </div>
+                     <form onSubmit={(e) => {
+                       e.preventDefault();
+                       const formData = new FormData(e.currentTarget);
+                       const selectedUni = universities.find(u => u.id === formData.get('universityId'));
+                       const majorData: Partial<Major> = {
+                         id: editingMajor?.id || 'maj-' + Date.now(),
+                         name: formData.get('name') as string,
+                         universityId: formData.get('universityId') as string,
+                         universityName: selectedUni?.name || 'Inconnu',
+                         facultyName: formData.get('facultyName') as string,
+                         domain: formData.get('domain') as string,
+                         level: formData.get('level') as any,
+                         duration: formData.get('duration') as string,
+                         fees: formData.get('fees') as string,
+                         location: selectedUni?.location || 'Cotonou',
+                         image: editingMajor?.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
+                       };
+                       if (editingMajor) updateMajor(majorData as Major);
+                       else addMajor(majorData as Major);
+                       setShowMajorForm(false);
+                     }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Nom de la filière</label>
+                         <input name="name" required defaultValue={editingMajor?.name} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Établissement</label>
+                         <select name="universityId" required defaultValue={editingMajor?.universityId} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                           {universities.map(u => <option key={u.id} value={u.id}>{u.acronym}</option>)}
+                         </select>
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Niveau</label>
+                         <select name="level" required defaultValue={editingMajor?.level} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold">
+                           <option value="Licence">Licence</option>
+                           <option value="Master">Master</option>
+                           <option value="Doctorat">Doctorat</option>
+                         </select>
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Domaine</label>
+                         <input name="domain" required defaultValue={editingMajor?.domain} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Coûts annuels</label>
+                         <input name="fees" required defaultValue={editingMajor?.fees} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase text-gray-400">Durée (Cycle)</label>
+                         <input name="duration" required defaultValue={editingMajor?.duration} className="w-full p-4 rounded-xl bg-gray-50 dark:bg-white/5 border-none font-bold" />
+                       </div>
+                       <div className="md:col-span-2 pt-4">
+                         <button type="submit" className="w-full py-4 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl">Sauvegarder</button>
+                       </div>
+                     </form>
+                   </div>
+                 </div>
+               )}
+            </div>
+          )}
+
+          {activeView === 'settings' && (
+            <div className="space-y-10 animate-fade-in max-w-4xl">
+               <div className="space-y-2">
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres Système</h2>
+                  <p className="text-gray-500 font-medium">Configurez l'apparence et les préférences globales de la plateforme.</p>
+               </div>
+
+               <div className="grid grid-cols-1 gap-8">
+                  {/* Appearance Settings */}
+                  <div className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-8">
+                     <div className="flex items-center gap-4 border-b border-gray-50 dark:border-white/5 pb-6">
+                        <span className="material-symbols-outlined text-primary font-bold">palette</span>
+                        <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-[11px]">Apparence & Thème</h3>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {themes.map(t => (
+                          <button 
+                            key={t.id}
+                            onClick={() => applyTheme(t.id)}
+                            className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${t.isActive ? 'border-primary bg-primary/5' : 'border-gray-50 dark:border-white/5'}`}
+                          >
+                             <div className="size-10 rounded-xl shadow-inner" style={{ backgroundColor: t.primary }}></div>
+                             <span className="font-black text-[10px] uppercase tracking-widest dark:text-white">{t.name}</span>
+                             {t.isActive && <span className="material-symbols-outlined text-primary text-sm font-bold">check_circle</span>}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Language Settings */}
+                  <div className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-8">
+                     <div className="flex items-center gap-4 border-b border-gray-50 dark:border-white/5 pb-6">
+                        <span className="material-symbols-outlined text-primary font-bold">translate</span>
+                        <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-[11px]">Langues de la plateforme</h3>
+                     </div>
+                     <div className="flex gap-4">
+                        {languages.map(l => (
+                          <button 
+                            key={l.code}
+                            onClick={() => toggleLanguage(l.code)}
+                            className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${l.isActive ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-white/5 text-gray-400'}`}
+                          >
+                            {l.label}
+                          </button>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Profile Settings (Admin Only) */}
+                  <div className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm space-y-8">
+                     <div className="flex items-center gap-4 border-b border-gray-50 dark:border-white/5 pb-6">
+                        <span className="material-symbols-outlined text-primary font-bold">admin_panel_settings</span>
+                        <h3 className="text-xl font-black dark:text-white tracking-tight uppercase tracking-widest text-[11px]">Mon Profil Administrateur</h3>
+                     </div>
+                     <div className="space-y-4">
+                        <div className="flex justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
+                           <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Connecté en tant que</span>
+                           <span className="font-black dark:text-white">{user?.firstName} {user?.lastName}</span>
+                        </div>
+                        <div className="flex justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
+                           <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Rôle Master</span>
+                           <span className="font-black text-primary uppercase text-[10px] tracking-widest">{user?.role}</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
             </div>
           )}
 
           {activeView === 'cms' && (
-             <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10">
-                <p className="text-gray-400 font-bold text-center">Interface CMS existante préservée.</p>
-                {/* La logique existante de gestion CMS reste ici */}
+             <div className="space-y-10 animate-fade-in max-w-4xl">
+               <div className="space-y-2">
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion CMS</h2>
+                  <p className="text-gray-500 font-medium">Modifiez les textes statiques de la plateforme.</p>
+               </div>
+               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/10 space-y-8">
+                  {Object.keys(content).map(key => (
+                    <div key={key} className="space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-3xl">
+                       <h4 className="font-black text-primary uppercase text-[10px] tracking-widest">ID: {key}</h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {languages.filter(l => l.isActive).map(l => (
+                            <div key={l.code} className="space-y-1">
+                               <label className="text-[9px] font-bold text-gray-400 uppercase">{l.label}</label>
+                               <textarea 
+                                  value={content[key][l.code]} 
+                                  onChange={(e) => updateContent(key, l.code, e.target.value)}
+                                  className="w-full p-4 rounded-xl border-none font-bold text-sm bg-white dark:bg-surface-dark resize-none"
+                               />
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  ))}
+               </div>
              </div>
           )}
         </div>
