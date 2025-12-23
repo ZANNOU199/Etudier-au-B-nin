@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { CMSProvider, useCMS } from './CMSContext';
 import Home from './pages/Home';
 import Universities from './pages/Universities';
@@ -21,13 +21,15 @@ import Schools from './pages/Schools';
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
-  const { translate, languages, currentLang, setLanguage } = useCMS();
+  const navigate = useNavigate();
+  const { translate, languages, currentLang, setLanguage, user, logout } = useCMS();
   
   const isAppPage = location.pathname.startsWith('/dashboard') || 
                     location.pathname.startsWith('/admin') || 
                     location.pathname.startsWith('/apply');
 
-  if (isAppPage) return null;
+  // Si on est dans le processus d'inscription complexe ou admin, on masque ce header global
+  if (isAppPage && location.pathname !== '/dashboard') return null;
 
   const navLinks = [
     { name: translate('nav_home'), path: '/' },
@@ -39,8 +41,13 @@ const Navbar = () => {
   ];
 
   const isActive = (path: string) => location.pathname === path;
-
   const activeLangs = languages.filter(l => l.isActive);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    setIsMenuOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border-light dark:border-white/5 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl">
@@ -83,12 +90,32 @@ const Navbar = () => {
             </div>
           )}
           
-          <Link to="/login" className="text-sm font-black text-gray-500 hover:text-primary transition-colors">
-            Connexion
-          </Link>
-          <Link to="/register" className="flex items-center justify-center rounded-2xl h-12 px-8 bg-primary text-black hover:bg-green-400 transition-all hover:shadow-hover hover:-translate-y-0.5 active:translate-y-0 text-sm font-black">
-            S'inscrire
-          </Link>
+          {user ? (
+            <div className="flex items-center gap-4">
+              <Link to="/dashboard" className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 hover:border-primary transition-all">
+                <div className="flex flex-col items-end">
+                   <span className="text-[11px] font-black dark:text-white leading-none">{user.firstName}</span>
+                   <span className="text-[9px] font-bold text-primary uppercase tracking-widest mt-0.5">Tableau de bord</span>
+                </div>
+                <span className="material-symbols-outlined text-gray-400">account_circle</span>
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="flex items-center justify-center rounded-2xl h-12 px-8 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-sm font-black border border-red-500/20"
+              >
+                Déconnexion
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link to="/login" className="text-sm font-black text-gray-500 hover:text-primary transition-colors">
+                Connexion
+              </Link>
+              <Link to="/register" className="flex items-center justify-center rounded-2xl h-12 px-8 bg-primary text-black hover:bg-green-400 transition-all hover:shadow-hover hover:-translate-y-0.5 active:translate-y-0 text-sm font-black">
+                S'inscrire
+              </Link>
+            </>
+          )}
         </div>
 
         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors">
@@ -106,6 +133,9 @@ const Navbar = () => {
              <button onClick={() => setIsMenuOpen(false)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center"><span className="material-symbols-outlined">close</span></button>
           </div>
           <nav className="flex flex-col gap-2">
+            {user && (
+              <Link to="/dashboard" onClick={() => setIsMenuOpen(false)} className="text-2xl font-black p-4 rounded-3xl bg-primary/10 text-primary mb-4">Mon Tableau de bord</Link>
+            )}
             {navLinks.map((link) => (
               <Link key={link.path} onClick={() => setIsMenuOpen(false)} to={link.path} className={`text-2xl font-black p-4 rounded-3xl transition-all ${isActive(link.path) ? 'bg-primary text-black' : 'hover:bg-primary/5 dark:text-white'}`}>
                 {link.name}
@@ -113,8 +143,14 @@ const Navbar = () => {
             ))}
           </nav>
           <div className="mt-auto flex flex-col gap-4">
-            <Link onClick={() => setIsMenuOpen(false)} to="/login" className="text-lg font-black text-center py-5 rounded-3xl border-2 border-gray-100 dark:border-white/10 dark:text-white">Connexion</Link>
-            <Link onClick={() => setIsMenuOpen(false)} to="/register" className="bg-primary py-5 text-center rounded-3xl font-black text-black text-lg shadow-xl shadow-primary/20">S'inscrire</Link>
+            {user ? (
+               <button onClick={handleLogout} className="bg-red-500/10 text-red-500 py-5 text-center rounded-3xl font-black text-lg border border-red-500/20">Déconnexion</button>
+            ) : (
+              <>
+                <Link onClick={() => setIsMenuOpen(false)} to="/login" className="text-lg font-black text-center py-5 rounded-3xl border-2 border-gray-100 dark:border-white/10 dark:text-white">Connexion</Link>
+                <Link onClick={() => setIsMenuOpen(false)} to="/register" className="bg-primary py-5 text-center rounded-3xl font-black text-black text-lg shadow-xl shadow-primary/20">S'inscrire</Link>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -129,7 +165,7 @@ const Footer = () => {
                     location.pathname.startsWith('/admin') || 
                     location.pathname.startsWith('/apply');
 
-  if (isAppPage) return null;
+  if (isAppPage && location.pathname !== '/dashboard') return null;
 
   return (
     <footer className="bg-white dark:bg-surface-dark border-t border-border-light dark:border-white/5 pt-20 pb-12">

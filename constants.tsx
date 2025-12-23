@@ -178,7 +178,7 @@ export const UNIVERSITIES: University[] = [
 ];
 
 export const MAJORS: Major[] = [
-  // --- UAC (EPAC) ---
+  // --- UAC (EPAC / ENEAM / FADESP) ---
   {
     id: 'uac-gl',
     name: "Génie Logiciel",
@@ -191,23 +191,8 @@ export const MAJORS: Major[] = [
     fees: '450.000 FCFA',
     location: 'Abomey-Calavi',
     image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-    careerProspects: [{ title: "Développeur Fullstack", icon: "code" }, { title: "Architecte Logiciel", icon: "architecture" }, { title: "Chef de Projet IT", icon: "assignment" }],
+    careerProspects: [{ title: "Développeur Fullstack", icon: "code" }, { title: "Chef de Projet IT", icon: "assignment" }],
     requiredDiplomas: [{ name: "BAC C / D / E", icon: "school" }]
-  },
-  {
-    id: 'uac-gc',
-    name: "Génie Civil",
-    universityId: 'uac',
-    universityName: "UAC (EPAC)",
-    facultyName: 'EPAC',
-    domain: 'BTP',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: '450.000 FCFA',
-    location: 'Abomey-Calavi',
-    image: 'https://images.unsplash.com/photo-1541888941257-183a6200ca21?q=80&w=400',
-    careerProspects: [{ title: "Ingénieur de Chantier", icon: "engineering" }, { title: "Chef de projet BTP", icon: "foundation" }],
-    requiredDiplomas: [{ name: "BAC C / D / E / F4", icon: "school" }]
   },
   {
     id: 'uac-droit',
@@ -221,269 +206,214 @@ export const MAJORS: Major[] = [
     fees: 'Gratuit (Bourse)',
     location: 'Abomey-Calavi',
     image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=400',
-    careerProspects: [{ title: "Avocat d'affaires", icon: "gavel" }, { title: "Juriste d'entreprise", icon: "business_center" }],
+    careerProspects: [{ title: "Juriste d'entreprise", icon: "business_center" }, { title: "Avocat d'affaires", icon: "gavel" }],
     requiredDiplomas: [{ name: "BAC A1 / A2 / B", icon: "menu_book" }]
   },
 
-  // --- UP (Parakou) ---
+  // --- HECM (Standalone) ---
   {
-    id: 'up-med',
-    name: "Médecine Générale",
-    universityId: 'up',
-    universityName: "Université de Parakou",
-    facultyName: 'Faculté de Médecine',
-    domain: 'Santé',
-    level: 'Doctorat',
-    duration: '8 Ans',
-    fees: 'Bourse d\'État',
-    location: 'Parakou',
-    image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=400',
-    careerProspects: [{ title: "Médecin Généraliste", icon: "medical_services" }, { title: "Chercheur en Santé", icon: "biotechnology" }],
-    requiredDiplomas: [{ name: "BAC C / D", icon: "science" }]
-  },
-  {
-    id: 'up-droit-pub',
-    name: "Droit Public",
-    universityId: 'up',
-    universityName: "Université de Parakou",
-    facultyName: 'FDSP',
-    domain: 'Droit',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: '150.000 FCFA',
-    location: 'Parakou',
-    image: 'https://images.unsplash.com/photo-1505664194779-8beaceb93744?q=80&w=400',
-    careerProspects: [{ title: "Administrateur Civil", icon: "account_balance" }, { title: "Diplomate", icon: "public" }],
-    requiredDiplomas: [{ name: "BAC A1 / A2 / B", icon: "history_edu" }]
-  },
-
-  // --- HECM ---
-  {
-    id: 'hecm-com',
+    id: 'hecm-marketing',
     name: "Marketing & Communication",
     universityId: 'hecm',
     universityName: "HECM",
-    facultyName: "Pôle Gestion",
+    facultyName: "Hautes Études Commerciales et de Management",
     domain: "Communication",
     level: 'Licence',
     duration: '3 Ans',
     fees: '385.000 FCFA',
     location: 'Cotonou',
     image: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?q=80&w=400',
-    careerProspects: [{ title: "Chef de Marque", icon: "campaign" }, { title: "Chargé de Com", icon: "forum" }],
+    careerProspects: [{ title: "Responsable Marketing", icon: "campaign" }, { title: "Chargé de Com", icon: "forum" }],
     requiredDiplomas: [{ name: "BAC Toutes séries", icon: "school" }]
   },
   {
     id: 'hecm-rh',
-    name: "Gestion des RH",
+    name: "Management des RH",
     universityId: 'hecm',
     universityName: "HECM",
-    facultyName: "Pôle Gestion",
-    domain: "Management",
+    facultyName: "Hautes Études Commerciales et de Management",
+    domain: "Gestion",
+    level: 'Licence',
+    duration: '3 Ans',
+    fees: '385.000 FCFA',
+    location: 'Cotonou',
+    image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?q=80&w=400',
+    careerProspects: [{ title: "Gestionnaire RH", icon: "badge" }, { title: "Recruteur", icon: "person_search" }],
+    requiredDiplomas: [{ name: "BAC G2 / G3 / B / D", icon: "school" }]
+  },
+  {
+    id: 'hecm-audit',
+    name: "Audit & Contrôle de Gestion",
+    universityId: 'hecm',
+    universityName: "HECM",
+    facultyName: "Hautes Études Commerciales et de Management",
+    domain: "Finances",
     level: 'Master',
     duration: '2 Ans',
     fees: '550.000 FCFA',
     location: 'Cotonou',
-    image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?q=80&w=400',
-    careerProspects: [{ title: "Responsable RH", icon: "badge" }, { title: "Consultant Recrutement", icon: "person_search" }],
-    requiredDiplomas: [{ name: "Licence de Gestion", icon: "history_edu" }]
-  },
-
-  // --- UNSTIM ---
-  {
-    id: 'unstim-nrj',
-    name: "Énergies Renouvelables",
-    universityId: 'unstim',
-    universityName: "UNSTIM",
-    facultyName: 'INSTI',
-    domain: 'Énergie',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: '450.000 FCFA',
-    location: 'Lokossa',
-    image: 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?q=80&w=400',
-    careerProspects: [{ title: "Technicien Solaire", icon: "wb_sunny" }, { title: "Expert Éolien", icon: "air" }],
-    requiredDiplomas: [{ name: "BAC C / D / E / F", icon: "bolt" }]
-  },
-  {
-    id: 'unstim-maint',
-    name: "Maintenance Industrielle",
-    universityId: 'unstim',
-    universityName: "UNSTIM",
-    facultyName: 'INSTI',
-    domain: 'Industrie',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: '450.000 FCFA',
-    location: 'Lokossa',
-    image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=400',
-    careerProspects: [{ title: "Chef de Maintenance", icon: "settings" }, { title: "Responsable Qualité", icon: "verified" }],
-    requiredDiplomas: [{ name: "BAC E / F / C", icon: "precision_manufacturing" }]
-  },
-
-  // --- ISM Adonai ---
-  {
-    id: 'ism-audit',
-    name: "Audit & Contrôle de Gestion",
-    universityId: 'ism-adonai',
-    universityName: "ISM Adonaï",
-    facultyName: "Département Finance",
-    domain: "Finances",
-    level: 'Master',
-    duration: '2 Ans',
-    fees: '650.000 FCFA',
-    location: 'Cotonou',
     image: 'https://images.unsplash.com/photo-1454165833762-01d67877bd2c?q=80&w=400',
-    careerProspects: [{ title: "Auditeur Interne", icon: "manage_search" }, { title: "Contrôleur de Gestion", icon: "monitoring" }],
-    requiredDiplomas: [{ name: "Licence Comptabilité", icon: "history_edu" }]
+    careerProspects: [{ title: "Auditeur interne", icon: "manage_search" }, { title: "Contrôleur de gestion", icon: "monitoring" }],
+    requiredDiplomas: [{ name: "Licence Gestion/Comptabilité", icon: "history_edu" }]
   },
 
-  // --- ESGIS ---
+  // --- ISM ADONAI (Standalone) ---
+  {
+    id: 'ism-compta',
+    name: "Comptabilité, Audit et Contrôle",
+    universityId: 'ism-adonai',
+    universityName: "ISM ADONAI",
+    facultyName: "Institut Supérieur Adonaï",
+    domain: "Finances",
+    level: 'Licence',
+    duration: '3 Ans',
+    fees: '425.000 FCFA',
+    location: 'Cotonou',
+    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=400',
+    careerProspects: [{ title: "Comptable", icon: "account_balance_wallet" }, { title: "Assistant Audit", icon: "verified" }],
+    requiredDiplomas: [{ name: "BAC G2 / C / D / B", icon: "calculate" }]
+  },
+  {
+    id: 'ism-banque',
+    name: "Banque et Institutions Financières",
+    universityId: 'ism-adonai',
+    universityName: "ISM ADONAI",
+    facultyName: "Institut Supérieur Adonaï",
+    domain: "Finances",
+    level: 'Licence',
+    duration: '3 Ans',
+    fees: '425.000 FCFA',
+    location: 'Cotonou',
+    image: 'https://images.unsplash.com/photo-1501167786227-4cba0077d0d2?q=80&w=400',
+    careerProspects: [{ title: "Chargé de clientèle", icon: "groups" }, { title: "Analyste Crédit", icon: "trending_up" }],
+    requiredDiplomas: [{ name: "BAC G2 / B / C / D", icon: "payments" }]
+  },
+
+  // --- ESGIS (Standalone) ---
   {
     id: 'esgis-cyber',
-    name: "Cybersécurité",
+    name: "Systèmes, Réseaux et Cybersécurité",
     universityId: 'esgis',
     universityName: "ESGIS",
-    facultyName: "Systèmes d'Information",
+    facultyName: "ESGIS Bénin",
     domain: "Informatique",
     level: 'Licence',
     duration: '3 Ans',
     fees: '500.000 FCFA',
     location: 'Cotonou',
     image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=400',
-    careerProspects: [{ title: "Analyste Sécurité", icon: "lock" }, { title: "Pénétreur (Hacker éthique)", icon: "terminal" }],
-    requiredDiplomas: [{ name: "BAC C / D / E", icon: "security" }]
+    careerProspects: [{ title: "Administrateur Réseaux", icon: "router" }, { title: "Analyste Sécurité", icon: "lock" }],
+    requiredDiplomas: [{ name: "BAC C / D / E / F", icon: "security" }]
+  },
+  {
+    id: 'esgis-digital',
+    name: "Management Digital",
+    universityId: 'esgis',
+    universityName: "ESGIS",
+    facultyName: "ESGIS Bénin",
+    domain: "Management",
+    level: 'Licence',
+    duration: '3 Ans',
+    fees: '480.000 FCFA',
+    location: 'Cotonou',
+    image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=400',
+    careerProspects: [{ title: "Chef de projet Digital", icon: "devices" }, { title: "Social Media Manager", icon: "public" }],
+    requiredDiplomas: [{ name: "BAC Toutes séries", icon: "laptop" }]
   },
 
-  // --- CERCO ---
+  // --- CERCO (Standalone) ---
   {
     id: 'cerco-ia',
-    name: "Intelligence Artificielle",
+    name: "Intelligence Artificielle et Big Data",
     universityId: 'cerco',
     universityName: "CERCO",
-    facultyName: "Institut d'Innovation",
+    facultyName: "Groupe Cerco",
     domain: "Informatique",
     level: 'Licence',
     duration: '3 Ans',
     fees: '550.000 FCFA',
     location: 'Cotonou',
     image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=400',
-    careerProspects: [{ title: "Ingénieur IA", icon: "smart_toy" }, { title: "Data Scientist", icon: "bar_chart" }],
-    requiredDiplomas: [{ name: "BAC C / E", icon: "memory" }]
+    careerProspects: [{ title: "Développeur IA", icon: "smart_toy" }, { title: "Data Analyst", icon: "analytics" }],
+    requiredDiplomas: [{ name: "BAC C / E / D", icon: "memory" }]
   },
-
-  // --- UNA ---
   {
-    id: 'una-agro-ind',
-    name: "Agro-Industrie",
-    universityId: 'una',
-    universityName: "UNA",
-    facultyName: 'ENSTA',
-    domain: 'Agriculture',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: '185.000 FCFA',
-    location: 'Kétou',
-    image: 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?q=80&w=400',
-    careerProspects: [{ title: "Ingénieur Agroalimentaire", icon: "restaurant" }, { title: "Responsable Production", icon: "factory" }],
-    requiredDiplomas: [{ name: "BAC D / C", icon: "grass" }]
-  },
-
-  // --- UPN ---
-  {
-    id: 'upn-socio',
-    name: "Sociologie du Développement",
-    universityId: 'upn',
-    universityName: "UPN",
-    facultyName: 'FASHS',
-    domain: 'Sciences Sociales',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: 'Gratuit',
-    location: 'Porto-Novo',
-    image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=400',
-    careerProspects: [{ title: "Chargé d'études sociales", icon: "groups" }, { title: "Consultant ONG", icon: "public" }],
-    requiredDiplomas: [{ name: "BAC A1 / A2 / B / D", icon: "school" }]
-  },
-
-  // --- PIGIER ---
-  {
-    id: 'pigier-ass-dir',
-    name: "Assistante de Direction",
-    universityId: 'pigier',
-    universityName: "PIGIER",
-    facultyName: "Département Tertiaire",
-    domain: "Administration",
+    id: 'cerco-iot',
+    name: "Objets Connectés (IoT)",
+    universityId: 'cerco',
+    universityName: "CERCO",
+    facultyName: "Groupe Cerco",
+    domain: "Technologies",
     level: 'Licence',
     duration: '3 Ans',
     fees: '550.000 FCFA',
     location: 'Cotonou',
-    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400',
-    careerProspects: [{ title: "Assistante de Manager", icon: "support_agent" }, { title: "Secrétaire de Direction", icon: "business_center" }],
-    requiredDiplomas: [{ name: "BAC G1 / A / B", icon: "format_list_bulleted" }]
+    image: 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?q=80&w=400',
+    careerProspects: [{ title: "Ingénieur IoT", icon: "settings_input_component" }, { title: "Maintenancier Systèmes", icon: "build" }],
+    requiredDiplomas: [{ name: "BAC C / E / F", icon: "sensors" }]
   },
 
-  // --- ENEAM Standalone ---
+  // --- PIGIER (Standalone) ---
   {
-    id: 'eneam-stat-eco',
+    id: 'pigier-assdir',
+    name: "Assistant de Direction",
+    universityId: 'pigier',
+    universityName: "PIGIER",
+    facultyName: "Pigier Bénin",
+    domain: "Administration",
+    level: 'Licence',
+    duration: '3 Ans',
+    fees: '525.000 FCFA',
+    location: 'Cotonou',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400',
+    careerProspects: [{ title: "Assistant de Manager", icon: "support_agent" }, { title: "Office Manager", icon: "business_center" }],
+    requiredDiplomas: [{ name: "BAC G1 / A / B", icon: "format_list_bulleted" }]
+  },
+  {
+    id: 'pigier-compta',
+    name: "Gestion Comptable et Financière",
+    universityId: 'pigier',
+    universityName: "PIGIER",
+    facultyName: "Pigier Bénin",
+    domain: "Finances",
+    level: 'Licence',
+    duration: '3 Ans',
+    fees: '525.000 FCFA',
+    location: 'Cotonou',
+    image: 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?q=80&w=400',
+    careerProspects: [{ title: "Comptable d'entreprise", icon: "account_balance" }, { title: "Assistant Trésorier", icon: "savings" }],
+    requiredDiplomas: [{ name: "BAC G2 / B / C / D", icon: "calculate" }]
+  },
+
+  // --- ENEAM STANDALONE ---
+  {
+    id: 'eneam-stat',
     name: "Statistique Économique",
     universityId: 'eneam-standalone',
     universityName: "ENEAM",
-    facultyName: "Département Statistique",
+    facultyName: "ENEAM (Autonome)",
     domain: "Économie",
     level: 'Licence',
     duration: '3 Ans',
     fees: '150.000 FCFA',
     location: 'Cotonou',
     image: 'https://images.unsplash.com/photo-1543286386-713bdd548da4?q=80&w=400',
-    careerProspects: [{ title: "Statisticien", icon: "analytics" }, { title: "Analyste Économique", icon: "show_chart" }],
-    requiredDiplomas: [{ name: "BAC C / G2", icon: "functions" }]
+    careerProspects: [{ title: "Statisticien", icon: "bar_chart" }, { title: "Chargé d'études", icon: "analytics" }],
+    requiredDiplomas: [{ name: "BAC C / D / G2", icon: "functions" }]
   },
   {
-    id: 'eneam-compt-ges',
-    name: "Comptabilité & Gestion",
+    id: 'eneam-management',
+    name: "Management des Organisations",
     universityId: 'eneam-standalone',
     universityName: "ENEAM",
-    facultyName: "Département Gestion",
-    domain: "Gestion",
+    facultyName: "ENEAM (Autonome)",
+    domain: "Management",
     level: 'Licence',
     duration: '3 Ans',
     fees: '150.000 FCFA',
     location: 'Cotonou',
-    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=400',
-    careerProspects: [{ title: "Comptable", icon: "account_balance_wallet" }, { title: "Gestionnaire", icon: "payments" }],
-    requiredDiplomas: [{ name: "BAC G2 / C / D", icon: "calculate" }]
-  },
-
-  // --- UAK (Kétou) ---
-  {
-    id: 'uak-agro-equip',
-    name: "Génie Rural & Agro-équipement",
-    universityId: 'uak',
-    universityName: "UAK",
-    facultyName: 'ENAT',
-    domain: 'Agriculture',
-    level: 'Licence',
-    duration: '3 Ans',
-    fees: '185.000 FCFA',
-    location: 'Kétou',
-    image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=400',
-    careerProspects: [{ title: "Concepteur de machines agricoles", icon: "agriculture" }, { title: "Technicien Irrigation", icon: "water" }],
-    requiredDiplomas: [{ name: "BAC D / C / E", icon: "settings" }]
-  },
-  {
-    id: 'uak-biotech-veg',
-    name: "Biotechnologies Végétales",
-    universityId: 'uak',
-    universityName: "UAK",
-    facultyName: 'ENAT',
-    domain: 'Agriculture',
-    level: 'Master',
-    duration: '2 Ans',
-    fees: '250.000 FCFA',
-    location: 'Kétou',
-    image: 'https://images.unsplash.com/photo-1530836361280-88eb2d477bf0?q=80&w=400',
-    careerProspects: [{ title: "Améliorateur de semences", icon: "potted_plant" }, { title: "Chercheur en Bio-tech", icon: "biotechnology" }],
-    requiredDiplomas: [{ name: "Licence Agronomie", icon: "history_edu" }]
+    image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=400',
+    careerProspects: [{ title: "Gestionnaire de projet", icon: "assignment" }, { title: "Administrateur", icon: "business" }],
+    requiredDiplomas: [{ name: "BAC B / G2 / D / G3", icon: "groups" }]
   }
 ];

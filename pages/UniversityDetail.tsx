@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { UNIVERSITIES } from '../constants';
 
@@ -11,7 +11,21 @@ const UniversityDetail: React.FC = () => {
 
   if (!uni) return <div className="p-20 text-center">Université non trouvée.</div>;
 
-  const displayedFaculties = showAllFaculties ? uni.faculties : uni.faculties.slice(0, 3);
+  // Si c'est une école autonome (isStandaloneSchool), on crée une "faculté virtuelle" représentant l'école elle-même
+  const facultiesToDisplay = useMemo(() => {
+    if (uni.isStandaloneSchool && uni.faculties.length === 0) {
+      return [{
+        id: uni.id,
+        name: uni.name,
+        description: `Établissement autonome de référence à ${uni.location}.`,
+        levels: ['Licence', 'Master'],
+        type: 'Ecole' as const
+      }];
+    }
+    return uni.faculties;
+  }, [uni]);
+
+  const displayedFaculties = showAllFaculties ? facultiesToDisplay : facultiesToDisplay.slice(0, 3);
 
   return (
     <div className="relative flex flex-col w-full">
@@ -69,12 +83,12 @@ const UniversityDetail: React.FC = () => {
                   <h3 className="text-text-main dark:text-white text-3xl font-black tracking-tight flex items-center gap-3">
                     Écoles & Facultés
                   </h3>
-                  {uni.faculties.length > 3 && (
+                  {facultiesToDisplay.length > 3 && (
                     <button 
                       onClick={() => setShowAllFaculties(!showAllFaculties)}
                       className="text-primary font-black flex items-center gap-1 hover:underline text-sm uppercase tracking-widest"
                     >
-                      {showAllFaculties ? 'Réduire' : `Voir tout (${uni.faculties.length})`}
+                      {showAllFaculties ? 'Réduire' : `Voir tout (${facultiesToDisplay.length})`}
                       <span className="material-symbols-outlined text-lg">{showAllFaculties ? 'expand_less' : 'expand_more'}</span>
                     </button>
                   )}
@@ -97,7 +111,7 @@ const UniversityDetail: React.FC = () => {
                           </div>
                         </div>
                         <Link 
-                          to={`/majors?search=${faculty.name}`}
+                          to={`/majors?search=${encodeURIComponent(faculty.name)}`}
                           className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-primary group-hover:text-black transition-all"
                         >
                           <span className="material-symbols-outlined font-bold">arrow_forward</span>
@@ -119,7 +133,9 @@ const UniversityDetail: React.FC = () => {
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Adresse Siège</p>
-                      <p className="text-sm font-bold dark:text-white leading-relaxed">Route de l'Université, Abomey-Calavi, Bénin</p>
+                      <p className="text-sm font-bold dark:text-white leading-relaxed">
+                        {uni.location === 'Cotonou' ? 'Boulevard de la Marina, Cotonou, Bénin' : `Campus Principal, ${uni.location}, Bénin`}
+                      </p>
                     </div>
                   </li>
                   <li className="flex items-start gap-4">
@@ -137,7 +153,7 @@ const UniversityDetail: React.FC = () => {
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Email Académique</p>
-                      <p className="text-sm font-bold dark:text-white">scolarite@uac.bj</p>
+                      <p className="text-sm font-bold dark:text-white">scolarite@{uni.acronym.toLowerCase()}.bj</p>
                     </div>
                   </li>
                 </ul>
