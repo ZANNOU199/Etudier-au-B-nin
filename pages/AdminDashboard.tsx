@@ -20,13 +20,13 @@ const AdminDashboard: React.FC = () => {
     majors, addMajor, updateMajor, deleteMajor, logout, user
   } = useCMS();
   
-  const [activeView, setActiveView] = useState<AdminView>('catalog');
+  const [activeView, setActiveView] = useState<AdminView>('overview');
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   
-  // State pour la pagination (4 par page)
+  // Pagination States
   const [uniPage, setUniPage] = useState(1);
   const [majorPage, setMajorPage] = useState(1);
   
@@ -41,7 +41,15 @@ const AdminDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Logique de filtrage et pagination Universités
+  // KPI Data for Overview
+  const kpis = [
+    { label: 'Candidatures', val: applications.length.toString(), icon: 'description', color: 'bg-primary/10 text-primary' },
+    { label: 'Établissements', val: universities.length.toString(), icon: 'account_balance', color: 'bg-blue-500/10 text-blue-500' },
+    { label: 'Filières', val: majors.length.toString(), icon: 'library_books', color: 'bg-purple-500/10 text-purple-500' },
+    { label: 'Activité', val: '89%', icon: 'trending_up', color: 'bg-amber-500/10 text-amber-500' }
+  ];
+
+  // Filters & Pagination Logic
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -53,19 +61,11 @@ const AdminDashboard: React.FC = () => {
   const totalUniPages = Math.ceil(filteredUnis.length / ITEMS_PER_PAGE);
   const pagedUnis = filteredUnis.slice((uniPage - 1) * ITEMS_PER_PAGE, uniPage * ITEMS_PER_PAGE);
 
-  // Logique de pagination Filières (4 par page)
   const totalMajorPages = Math.ceil(majors.length / ITEMS_PER_PAGE);
   const pagedMajors = majors.slice((majorPage - 1) * ITEMS_PER_PAGE, majorPage * ITEMS_PER_PAGE);
 
-  const currentUni = useMemo(() => 
-    universities.find(u => u.id === currentInstId), 
-    [universities, currentInstId]
-  );
-
-  const currentInstMajors = useMemo(() => 
-    majors.filter(m => m.universityId === currentInstId),
-    [majors, currentInstId]
-  );
+  const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
+  const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
 
   const SidebarNav = () => (
     <div className="flex flex-col h-full py-10 px-6">
@@ -123,12 +123,10 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-[#f4f7f6] dark:bg-background-dark font-display overflow-hidden relative">
-      {/* Sidebar Desktop */}
       <aside className="hidden lg:flex w-80 bg-[#0d1b13] flex-col shrink-0 z-30 shadow-2xl border-r border-white/5">
         <SidebarNav />
       </aside>
 
-      {/* Sidebar Mobile */}
       {isSidebarOpen && (
         <>
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
@@ -139,7 +137,6 @@ const AdminDashboard: React.FC = () => {
       )}
 
       <main className="flex-1 overflow-y-auto h-screen bg-gray-50 dark:bg-background-dark/50 flex flex-col">
-        {/* Header */}
         <header className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-white/5 px-6 lg:px-12 py-6 flex items-center justify-between sticky top-0 z-40">
            <div className="flex items-center gap-4">
               <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden size-11 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500">
@@ -153,15 +150,70 @@ const AdminDashboard: React.FC = () => {
         </header>
 
         <div className="p-4 lg:p-12 space-y-10">
+          {/* VIEW: OVERVIEW */}
+          {activeView === 'overview' && (
+            <div className="space-y-10 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                {kpis.map((kpi, idx) => (
+                  <div key={idx} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm group">
+                    <div className={`size-12 rounded-xl flex items-center justify-center ${kpi.color} mb-6`}>
+                      <span className="material-symbols-outlined font-bold text-2xl">{kpi.icon}</span>
+                    </div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
+                    <p className="text-3xl font-black dark:text-white tracking-tighter">{kpi.val}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-[#0d1b13] p-10 rounded-[40px] text-white flex items-center justify-between relative overflow-hidden">
+                 <div className="space-y-4 relative z-10">
+                    <h2 className="text-4xl font-black tracking-tight leading-none">Console de Contrôle <br/><span className="text-primary italic">EDEN Communication</span></h2>
+                    <p className="text-gray-400 font-medium max-w-lg">Gérez l'ensemble des établissements, filières et candidatures depuis cette interface sécurisée.</p>
+                 </div>
+                 <span className="material-symbols-outlined text-[120px] opacity-10 absolute -right-10 top-0">security</span>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: APPLICATIONS */}
+          {activeView === 'applications' && (
+            <div className="space-y-8 animate-fade-in">
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Flux de Candidatures</h2>
+               <div className="grid grid-cols-1 gap-4">
+                  {applications.map(app => (
+                    <div key={app.id} className="bg-white dark:bg-surface-dark p-6 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:shadow-lg transition-all">
+                       <div className="flex items-center gap-6 flex-1 w-full">
+                          <div className="size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400">
+                             <span className="material-symbols-outlined text-2xl">description</span>
+                          </div>
+                          <div className="space-y-1">
+                             <p className="text-[9px] font-black text-primary uppercase tracking-widest">{app.id}</p>
+                             <h4 className="text-lg font-black dark:text-white leading-tight">{app.studentName}</h4>
+                             <p className="text-xs font-bold text-gray-500">{app.majorName} • {app.universityName}</p>
+                          </div>
+                       </div>
+                       <div className="flex items-center gap-4 w-full md:w-auto">
+                          <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${
+                             app.status === 'Validé' ? 'text-primary bg-primary/10' : 
+                             app.status === 'Rejeté' ? 'text-red-500 bg-red-500/10' : 'text-amber-500 bg-amber-500/10'
+                          }`}>
+                             {app.status}
+                          </span>
+                          <button onClick={() => setSelectedApp(app)} className="size-11 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all"><span className="material-symbols-outlined">visibility</span></button>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: CATALOG (REFACTORED) */}
           {activeView === 'catalog' && (
             <div className="space-y-8 animate-fade-in">
-               {/* Sous-navigation Catalogue */}
                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
                   <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
                     <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
                     <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
                   </div>
-
                   {activeCatalogSection === 'universities' && (
                     <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
                        {['all', 'university', 'school'].map(f => (
@@ -173,7 +225,6 @@ const AdminDashboard: React.FC = () => {
                   )}
                </div>
 
-               {/* Section Universités & Écoles */}
                {activeCatalogSection === 'universities' && (
                   <div className="space-y-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -209,8 +260,6 @@ const AdminDashboard: React.FC = () => {
                         <span className="font-black uppercase text-[11px] tracking-[0.3em] text-primary">Nouveau établissement</span>
                       </button>
                     </div>
-
-                    {/* Pagination Universités */}
                     {totalUniPages > 1 && (
                       <div className="flex justify-center items-center gap-3 pt-8">
                         <button onClick={() => setUniPage(p => Math.max(1, p - 1))} disabled={uniPage === 1} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">west</span></button>
@@ -225,7 +274,6 @@ const AdminDashboard: React.FC = () => {
                   </div>
                )}
 
-               {/* Section Filières */}
                {activeCatalogSection === 'majors' && (
                   <div className="space-y-10">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -233,9 +281,7 @@ const AdminDashboard: React.FC = () => {
                            <div key={major.id} className="bg-white dark:bg-surface-dark p-6 rounded-[40px] border border-gray-100 dark:border-white/5 flex flex-col justify-between group hover:shadow-xl transition-all h-full">
                               <div className="flex justify-between items-start mb-6">
                                  <div className="flex items-center gap-4">
-                                    <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase tracking-widest">
-                                       {major.level.charAt(0)}
-                                    </div>
+                                    <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase tracking-widest">{major.level.charAt(0)}</div>
                                     <div className="space-y-1">
                                        <h3 className="text-xl font-black dark:text-white tracking-tight leading-none">{major.name}</h3>
                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{major.universityName} • {major.facultyName}</p>
@@ -265,8 +311,6 @@ const AdminDashboard: React.FC = () => {
                            <span className="font-black uppercase text-[11px] tracking-[0.3em] text-primary">Nouvelle filière</span>
                         </button>
                      </div>
-
-                     {/* Pagination Filières */}
                      {totalMajorPages > 1 && (
                         <div className="flex justify-center items-center gap-3 pt-8">
                            <button onClick={() => setMajorPage(p => Math.max(1, p - 1))} disabled={majorPage === 1} className="size-14 rounded-2xl border border-gray-100 dark:border-white/10 flex items-center justify-center disabled:opacity-30 hover:border-primary transition-all text-gray-400"><span className="material-symbols-outlined font-black">west</span></button>
@@ -282,13 +326,71 @@ const AdminDashboard: React.FC = () => {
                )}
             </div>
           )}
+
+          {/* VIEW: CMS */}
+          {activeView === 'cms' && (
+            <div className="space-y-8 animate-fade-in">
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestionnaire de Contenu</h2>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6">
+                     <h3 className="text-xl font-black dark:text-white">Traductions & Langues</h3>
+                     <div className="space-y-4">
+                        {languages.map(lang => (
+                           <div key={lang.code} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
+                              <span className="font-black dark:text-white">{lang.label} ({lang.code.toUpperCase()})</span>
+                              <button onClick={() => toggleLanguage(lang.code)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${lang.isActive ? 'bg-primary text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-400'}`}>
+                                 {lang.isActive ? 'Active' : 'Inactive'}
+                              </button>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+                  <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 space-y-6">
+                     <h3 className="text-xl font-black dark:text-white">Identité Visuelle</h3>
+                     <div className="space-y-4">
+                        {themes.map(theme => (
+                           <button key={theme.id} onClick={() => applyTheme(theme.id)} className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${theme.isActive ? 'border-primary bg-primary/5' : 'border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5'}`}>
+                              <span className="font-black dark:text-white">{theme.name}</span>
+                              <div className="size-6 rounded-full" style={{ backgroundColor: theme.primary }}></div>
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* VIEW: SETTINGS */}
+          {activeView === 'settings' && (
+            <div className="space-y-8 animate-fade-in">
+               <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Paramètres Système</h2>
+               <div className="bg-white dark:bg-surface-dark p-10 rounded-[48px] border border-gray-100 dark:border-white/5 space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                     <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Maintenance du Site</label>
+                        <div className="flex items-center gap-4">
+                           <div className="size-14 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center"><span className="material-symbols-outlined">construction</span></div>
+                           <div className="flex-1">
+                              <h4 className="font-black dark:text-white">Mode Maintenance</h4>
+                              <p className="text-xs text-gray-400">Restreindre l'accès au site public.</p>
+                           </div>
+                           <button className="size-12 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10"></button>
+                        </div>
+                     </div>
+                     <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sauvegarde des données</label>
+                        <button className="w-full py-4 bg-gray-50 dark:bg-white/5 text-gray-500 font-black rounded-2xl border border-gray-200 dark:border-white/10 uppercase tracking-widest text-[10px] hover:bg-primary hover:text-black transition-all">Exporter la base de données (JSON)</button>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          )}
         </div>
 
-        {/* WIZARD DE CRÉATION GUIDÉ */}
+        {/* MODAL: WIZARD DE CRÉATION GUIDÉ */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300">
-                {/* Header du Wizard */}
                 <div className="bg-gray-50 dark:bg-white/5 px-10 py-8 flex items-center justify-between border-b border-gray-100 dark:border-white/10">
                    <div>
                       <h3 className="text-2xl font-black dark:text-white tracking-tight leading-none">Assistant de Création</h3>
@@ -297,20 +399,15 @@ const AdminDashboard: React.FC = () => {
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Établissement' : wizardStep === 'faculties' ? 'Composantes' : 'Offre Académique'}</p>
                       </div>
                    </div>
-                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white dark:bg-white/10 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
+                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white dark:bg-white/10 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
                 </div>
-
                 <div className="p-8 md:p-12 space-y-10">
-                   {/* Étape 1 : Identité */}
                    {wizardStep === 'institution' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4">
                         <div className="flex gap-4 p-1.5 bg-gray-100 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10">
                            <button onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400'}`}>Université</button>
                            <button onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-400'}`}>École / Institut</button>
                         </div>
-
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
@@ -334,186 +431,88 @@ const AdminDashboard: React.FC = () => {
                         }} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="md:col-span-2 space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Nom Complet</label>
-                              <input name="name" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Ex: Université d'Abomey-Calavi" />
+                              <input name="name" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white" placeholder="Ex: Université d'Abomey-Calavi" />
                            </div>
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Sigle</label>
-                              <input name="acronym" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Ex: UAC" />
+                              <input name="acronym" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white" placeholder="Ex: UAC" />
                            </div>
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Ville</label>
-                              <input name="location" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Ex: Cotonou" />
+                              <input name="location" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white" placeholder="Ex: Cotonou" />
                            </div>
-                           <div className="md:col-span-2 space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Statut financier</label>
-                              <select name="type" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold dark:text-white">
-                                 <option value="Public">Public (État)</option>
-                                 <option value="Privé">Privé (Particulier)</option>
-                              </select>
-                           </div>
-                           <div className="md:col-span-2 pt-6">
-                              <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all">
-                                 Continuer vers l'étape suivante
-                              </button>
-                           </div>
+                           <div className="md:col-span-2 pt-6"><button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all">Continuer</button></div>
                         </form>
                      </div>
                    )}
-
-                   {/* Étape 2 : Facultés / Écoles rattachées */}
                    {wizardStep === 'faculties' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4">
                         <div className="text-center space-y-2">
                            <h4 className="text-2xl font-black dark:text-white tracking-tight leading-none">Écoles & Facultés rattachées</h4>
                            <p className="text-gray-400 font-medium text-sm">Ajoutez toutes les composantes de cette université.</p>
                         </div>
-
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
-                           const newFac: Faculty = {
-                              id: 'fac-' + Date.now(),
-                              name: fd.get('fName') as string,
-                              description: fd.get('fDesc') as string || 'Formation spécialisée',
-                              levels: ['Licence', 'Master'],
-                              type: fd.get('fType') as any
-                           };
-                           if (currentUni) {
-                              updateUniversity({ ...currentUni, faculties: [...currentUni.faculties, newFac] });
-                              e.currentTarget.reset();
-                           }
+                           const newFac: Faculty = { id: 'fac-' + Date.now(), name: fd.get('fName') as string, description: 'Formation spécialisée', levels: ['Licence', 'Master'], type: fd.get('fType') as any };
+                           if (currentUni) { updateUniversity({ ...currentUni, faculties: [...currentUni.faculties, newFac] }); e.currentTarget.reset(); }
                         }} className="p-6 bg-gray-50 dark:bg-white/5 rounded-[32px] border border-gray-100 dark:border-white/10 space-y-4">
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               <input name="fName" required placeholder="Nom (ex: ENEAM, EPAC...)" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
                               <select name="fType" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white">
-                                 <option value="Ecole">École</option>
-                                 <option value="Faculté">Faculté</option>
-                                 <option value="Institut">Institut</option>
+                                 <option value="Ecole">École</option><option value="Faculté">Faculté</option><option value="Institut">Institut</option>
                               </select>
                            </div>
                            <button type="submit" className="w-full py-3 bg-white dark:bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">+ Ajouter une autre entité</button>
                         </form>
-
                         <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                            {currentUni?.faculties.map(f => (
                               <div key={f.id} className="p-4 bg-white dark:bg-white/5 rounded-2xl flex justify-between items-center border border-gray-50 dark:border-white/10 animate-fade-in">
-                                 <div>
-                                    <p className="font-black text-sm dark:text-white leading-none">{f.name}</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">{f.type}</p>
-                                 </div>
+                                 <div><p className="font-black text-sm dark:text-white leading-none">{f.name}</p><p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">{f.type}</p></div>
                                  <span className="material-symbols-outlined text-gray-300 text-lg">check_circle</span>
                               </div>
                            ))}
-                           {(!currentUni?.faculties || currentUni.faculties.length === 0) && (
-                              <p className="text-center text-xs text-gray-400 italic py-4">Aucune entité ajoutée pour le moment.</p>
-                           )}
                         </div>
-
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100 dark:border-white/10">
-                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl hover:bg-white dark:hover:bg-white/5 transition-all">Retour</button>
-                           <button onClick={() => setWizardStep('majors')} disabled={!currentUni?.faculties.length} className="flex-1 py-4 bg-primary disabled:opacity-50 text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 transition-all">Configurer les filières</button>
+                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl">Retour</button>
+                           <button onClick={() => setWizardStep('majors')} disabled={!currentUni?.faculties.length} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 transition-all">Configurer les filières</button>
                         </div>
                      </div>
                    )}
-
-                   {/* Étape 3 : Filières, Débouchés et Diplômes */}
                    {wizardStep === 'majors' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4">
-                        <div className="text-center space-y-2">
-                           <h4 className="text-2xl font-black dark:text-white tracking-tight leading-none">Ajouter des Filières</h4>
-                           <p className="text-gray-400 font-medium text-sm">Remplissez les informations pour chaque filière de l'établissement.</p>
-                        </div>
-
+                        <div className="text-center space-y-2"><h4 className="text-2xl font-black dark:text-white tracking-tight leading-none">Ajouter des Filières</h4><p className="text-gray-400 font-medium text-sm">Configurez l'offre académique de l'établissement.</p></div>
                         <form onSubmit={(e) => {
                            e.preventDefault();
                            const fd = new FormData(e.currentTarget);
                            const prospect: CareerProspect = { title: fd.get('career') as string, icon: 'work' };
                            const diploma: RequiredDiploma = { name: fd.get('diploma') as string, icon: 'school' };
-
                            const majorData: Major = {
-                              id: 'maj-' + Date.now(),
-                              name: fd.get('mName') as string,
-                              universityId: currentInstId || '',
-                              universityName: currentUni?.name || '',
-                              facultyName: fd.get('fName') as string,
-                              domain: fd.get('domain') as string,
-                              level: fd.get('level') as any,
-                              duration: fd.get('duration') as string,
-                              fees: fd.get('fees') as string,
-                              location: currentUni?.location || '',
-                              image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
-                              careerProspects: [prospect],
-                              requiredDiplomas: [diploma]
+                              id: 'maj-' + Date.now(), name: fd.get('mName') as string, universityId: currentInstId || '', universityName: currentUni?.name || '', facultyName: fd.get('fName') as string, domain: fd.get('domain') as string, level: fd.get('level') as any, duration: fd.get('duration') as string, fees: fd.get('fees') as string, location: currentUni?.location || '', image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400', careerProspects: [prospect], requiredDiplomas: [diploma]
                            };
-                           addMajor(majorData);
-                           e.currentTarget.reset();
+                           addMajor(majorData); e.currentTarget.reset();
                         }} className="space-y-4 p-6 bg-gray-50 dark:bg-white/5 rounded-[32px] border border-gray-100 dark:border-white/10">
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Nom de la filière</label>
-                                 <input name="mName" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: Génie Logiciel" />
-                              </div>
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Composante hôte</label>
-                                 <select name="fName" className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm">
-                                    {currentUni?.faculties.map(f => (
-                                       <option key={f.id} value={f.name}>{f.name}</option>
-                                    ))}
-                                    {isSchoolKind && <option value="Principal">Principal</option>}
-                                 </select>
-                              </div>
+                              <input name="mName" required placeholder="Nom de la filière" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
+                              <select name="fName" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white">
+                                 {currentUni?.faculties.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                                 {isSchoolKind && <option value="Principal">Principal</option>}
+                              </select>
                            </div>
-
                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Domaine d'études</label>
-                                 <input name="domain" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: Informatique" />
-                              </div>
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Débouché (Exemple)</label>
-                                 <input name="career" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: Développeur Cloud" />
-                              </div>
+                              <input name="career" required placeholder="Débouché principal" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
+                              <input name="diploma" required placeholder="Diplôme requis (ex: BAC C / D)" className="w-full p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white" />
                            </div>
-
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Diplôme Requis</label>
-                                 <input name="diploma" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-sm dark:text-white shadow-sm" placeholder="Ex: BAC C / D / E" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Frais (An)</label>
-                                    <input name="fees" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white shadow-sm" placeholder="450.000 FCFA" />
-                                 </div>
-                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest ml-2">Cycle</label>
-                                    <input name="duration" required className="w-full p-3.5 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white shadow-sm" placeholder="3 Ans" />
-                                 </div>
-                              </div>
+                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <select name="level" className="p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white"><option value="Licence">Licence</option><option value="Master">Master</option><option value="Doctorat">Doctorat</option></select>
+                              <input name="fees" required placeholder="Frais (ex: 450.000 FCFA)" className="p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white" />
+                              <input name="duration" required placeholder="Durée (ex: 3 Ans)" className="p-4 rounded-xl bg-white dark:bg-surface-dark border-none font-bold text-xs dark:text-white" />
                            </div>
-                           
-                           <input type="hidden" name="level" value="Licence" />
                            <button type="submit" className="w-full py-3 bg-white dark:bg-white/10 text-primary border border-primary/20 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all">+ Enregistrer cette filière</button>
                         </form>
-
-                        <div className="max-h-32 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                           {currentInstMajors.map(m => (
-                              <div key={m.id} className="p-3 bg-white dark:bg-white/5 rounded-2xl flex justify-between items-center border border-gray-50 dark:border-white/10 animate-fade-in">
-                                 <div className="flex items-center gap-3">
-                                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] uppercase">L</div>
-                                    <div>
-                                       <p className="font-black text-xs dark:text-white leading-none">{m.name}</p>
-                                       <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{m.facultyName} • {m.fees}</p>
-                                    </div>
-                                 </div>
-                                 <button onClick={() => deleteMajor(m.id)} className="text-gray-300 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-sm">delete</span></button>
-                              </div>
-                           ))}
-                        </div>
-
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100 dark:border-white/10">
-                           <button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl hover:bg-white dark:hover:bg-white/5 transition-all">Retour</button>
-                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all">Sauvegarder et Finir</button>
+                           <button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest border border-gray-100 dark:border-white/10 rounded-2xl">Retour</button>
+                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl transition-all">Terminer</button>
                         </div>
                      </div>
                    )}
@@ -522,82 +521,34 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* FORMULAIRE FILIÈRE INDÉPENDANT (Depuis la grille Filières) */}
+        {/* MODAL: FILIÈRE INDÉPENDANTE */}
         {showStandaloneMajorForm && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] shadow-2xl p-8 md:p-12 space-y-10 my-auto animate-in zoom-in-95 duration-300">
-                <div className="flex justify-between items-center">
-                   <h3 className="text-3xl font-black dark:text-white tracking-tight leading-none">Ajouter une Filière</h3>
-                   <button onClick={() => setShowStandaloneMajorForm(false)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
-                </div>
+                <div className="flex justify-between items-center"><h3 className="text-3xl font-black dark:text-white tracking-tight">Ajouter une Filière</h3><button onClick={() => setShowStandaloneMajorForm(false)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button></div>
                 <form onSubmit={(e) => {
-                   e.preventDefault();
-                   const fd = new FormData(e.currentTarget);
-                   const uni = universities.find(u => u.id === fd.get('uniId'));
-                   const prospect: CareerProspect = { title: fd.get('career') as string, icon: 'work' };
-                   const diploma: RequiredDiploma = { name: fd.get('diploma') as string, icon: 'school' };
-                   const majorData: Major = {
-                      id: 'maj-' + Date.now(),
-                      name: fd.get('mName') as string,
-                      universityId: fd.get('uniId') as string,
-                      universityName: uni?.name || '',
-                      facultyName: fd.get('fName') as string,
-                      domain: fd.get('domain') as string || 'Général',
-                      level: fd.get('level') as any,
-                      duration: fd.get('duration') as string,
-                      fees: fd.get('fees') as string,
-                      location: uni?.location || '',
-                      image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
-                      careerProspects: [prospect],
-                      requiredDiplomas: [diploma]
-                   };
-                   addMajor(majorData);
-                   setShowStandaloneMajorForm(false);
+                   e.preventDefault(); const fd = new FormData(e.currentTarget); const uni = universities.find(u => u.id === fd.get('uniId')); const majorData: Major = {
+                      id: 'maj-' + Date.now(), name: fd.get('mName') as string, universityId: fd.get('uniId') as string, universityName: uni?.name || '', facultyName: fd.get('fName') as string, domain: 'Général', level: 'Licence', duration: fd.get('duration') as string, fees: fd.get('fees') as string, location: uni?.location || '', image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400'
+                   }; addMajor(majorData); setShowStandaloneMajorForm(false);
                 }} className="space-y-6">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Établissement</label>
-                        <select name="uniId" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white">
-                           {universities.map(u => <option key={u.id} value={u.id}>{u.acronym} - {u.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase text-gray-400 ml-2">Nom de la filière</label>
-                        <input name="mName" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" placeholder="Ex: Informatique" />
-                      </div>
-                   </div>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <input name="fName" required placeholder="Faculté / Composante (ex: EPAC)" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
-                      <input name="career" required placeholder="Débouché (ex: Développeur)" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
-                   </div>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <input name="diploma" required placeholder="Diplôme requis (ex: BAC C / D)" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
-                      <div className="grid grid-cols-2 gap-2">
-                         <input name="fees" required placeholder="Frais" className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-xs dark:text-white" />
-                         <input name="duration" required placeholder="Durée" className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-xs dark:text-white" />
-                      </div>
-                   </div>
-                   <input type="hidden" name="level" value="Licence" />
-                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all">Enregistrer la filière</button>
+                   <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-400 ml-2">Établissement</label><select name="uniId" required className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white">{universities.map(u => <option key={u.id} value={u.id}>{u.acronym} - {u.name}</option>)}</select></div>
+                   <input name="mName" required placeholder="Nom de la filière" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
+                   <input name="fName" required placeholder="Faculté / Composante" className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-sm dark:text-white" />
+                   <div className="grid grid-cols-2 gap-4"><input name="fees" required placeholder="Frais" className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-xs dark:text-white" /><input name="duration" required placeholder="Durée" className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border-none font-bold text-xs dark:text-white" /></div>
+                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all">Enregistrer</button>
                 </form>
              </div>
           </div>
         )}
 
-        {/* MODAL POUR LES DOSSIERS (Candidatures) */}
+        {/* MODAL: DOSSIER CANDIDATURE */}
         {selectedApp && (
           <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setSelectedApp(null)}>
              <div className="bg-white dark:bg-surface-dark w-full max-w-2xl rounded-[48px] overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <div className="p-10 space-y-8">
                    <div className="flex justify-between items-start">
-                      <div>
-                         <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Dossier N° {selectedApp.id}</p>
-                         <h3 className="text-3xl font-black dark:text-white tracking-tighter leading-none">{selectedApp.studentName}</h3>
-                         <p className="text-gray-500 font-bold mt-2">Candidat pour : {selectedApp.majorName}</p>
-                      </div>
-                      <button onClick={() => setSelectedApp(null)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
-                         <span className="material-symbols-outlined">close</span>
-                      </button>
+                      <div><p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Dossier N° {selectedApp.id}</p><h3 className="text-3xl font-black dark:text-white tracking-tighter leading-none">{selectedApp.studentName}</h3><p className="text-gray-500 font-bold mt-2">Candidat pour : {selectedApp.majorName}</p></div>
+                      <button onClick={() => setSelectedApp(null)} className="size-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
                    </div>
                    <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-100 dark:border-white/10">
                       <button onClick={() => { updateApplicationStatus(selectedApp.id, 'Validé'); setSelectedApp(null); }} className="flex-1 min-w-[140px] py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20">Valider</button>
