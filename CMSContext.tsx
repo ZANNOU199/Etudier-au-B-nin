@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, ThemeConfig, CMSContent, UserRole, User, Application } from './types';
+import { Language, ThemeConfig, CMSContent, UserRole } from './types';
 
 interface CMSContextType {
   content: CMSContent;
@@ -9,8 +9,6 @@ interface CMSContextType {
   currentLang: string;
   activeTheme: ThemeConfig;
   userRole: UserRole;
-  user: User | null;
-  applications: Application[];
   translate: (key: string) => string;
   updateContent: (key: string, lang: string, value: string) => void;
   setLanguage: (code: string) => void;
@@ -18,10 +16,6 @@ interface CMSContextType {
   applyTheme: (themeId: string) => void;
   updateTheme: (themeId: string, updates: Partial<ThemeConfig>) => void;
   setUserRole: (role: UserRole) => void;
-  login: (userData: User) => void;
-  logout: () => void;
-  addApplication: (app: Application) => void;
-  removeApplication: (id: string) => void;
 }
 
 const DEFAULT_CONTENT: CMSContent = {
@@ -55,16 +49,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : DEFAULT_CONTENT;
   });
 
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('auth_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [applications, setApplications] = useState<Application[]>(() => {
-    const saved = localStorage.getItem('user_applications');
-    return saved ? JSON.parse(saved) : [];
-  });
-
   const [languages, setLanguages] = useState<Language[]>([
     { code: 'fr', label: 'Français', isActive: true },
     { code: 'en', label: 'English', isActive: true }
@@ -77,21 +61,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : DEFAULT_THEMES;
   });
 
-  const [userRole, setUserRole] = useState<UserRole>('student');
+  const [userRole, setUserRole] = useState<UserRole>('super_admin');
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
   useEffect(() => {
     localStorage.setItem('cms_content_v1', JSON.stringify(content));
   }, [content]);
-
-  useEffect(() => {
-    localStorage.setItem('auth_user', JSON.stringify(user));
-  }, [user]);
-
-  useEffect(() => {
-    localStorage.setItem('user_applications', JSON.stringify(applications));
-  }, [applications]);
 
   useEffect(() => {
     localStorage.setItem('cms_themes_v1', JSON.stringify(themes));
@@ -104,20 +80,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const translate = (key: string) => content[key]?.[currentLang] || content[key]?.fr || key;
 
-  const login = (userData: User) => setUser(userData);
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('auth_user');
-  };
-
-  const addApplication = (app: Application) => {
-    setApplications(prev => [app, ...prev]);
-  };
-
-  const removeApplication = (id: string) => {
-    setApplications(prev => prev.filter(a => a.id !== id));
-  };
-
   const updateContent = (key: string, lang: string, value: string) => {
     setContent(prev => ({
       ...prev,
@@ -126,6 +88,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setLanguage = (code: string) => setCurrentLang(code);
+
   const toggleLanguage = (code: string) => {
     setLanguages(prev => prev.map(l => l.code === code ? { ...l, isActive: !l.isActive } : l));
   };
@@ -140,9 +103,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <CMSContext.Provider value={{ 
-      content, languages, themes, currentLang, activeTheme, userRole, user, applications,
+      content, languages, themes, currentLang, activeTheme, userRole,
       translate, updateContent, setLanguage, toggleLanguage,
-      applyTheme, updateTheme, setUserRole, login, logout, addApplication, removeApplication
+      applyTheme, updateTheme, setUserRole
     }}>
       {children}
     </CMSContext.Provider>

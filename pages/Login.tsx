@@ -1,27 +1,8 @@
 
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useCMS } from '../CMSContext';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Login: React.FC = () => {
-  const { login } = useCMS();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulation d'une connexion réussie
-    login({
-      id: 'USR-' + Math.floor(Math.random() * 10000),
-      firstName: 'Koffi',
-      lastName: 'Mensah',
-      email: email || 'etudiant@exemple.bj',
-      role: 'student',
-      ine: '12345678'
-    });
-    navigate('/dashboard');
-  };
-
   return (
     <div className="min-h-screen w-full flex bg-white dark:bg-background-dark">
       {/* Left side: Image & Branding */}
@@ -32,6 +13,7 @@ const Login: React.FC = () => {
           alt="Campus étudiant" 
         />
         <div className="absolute inset-0 bg-black/40"></div>
+        
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
           <div className="flex items-center gap-3">
             <div className="size-12 bg-[#13ec6d] rounded-xl flex items-center justify-center shadow-lg">
@@ -39,6 +21,7 @@ const Login: React.FC = () => {
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Etudier au Bénin</h1>
           </div>
+
           <div className="space-y-6 max-w-lg">
             <p className="text-4xl font-bold text-white leading-tight drop-shadow-2xl">
               "L'éducation est l'arme la plus puissante qu'on puisse utiliser pour changer le monde."
@@ -57,21 +40,18 @@ const Login: React.FC = () => {
           <div className="space-y-4">
             <h2 className="text-5xl font-black text-[#0f1a13] dark:text-white tracking-tighter">Connexion</h2>
             <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed">
-              Bienvenue sur votre espace étudiant.
+              Bienvenue sur votre espace étudiant. Entrez vos identifiants pour accéder à votre compte.
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Adresse Email</label>
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-[#13ec6d] transition-colors">mail</span>
                 <input 
-                  required
                   className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
                   type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="etudiant@exemple.bj" 
                 />
               </div>
@@ -82,7 +62,6 @@ const Login: React.FC = () => {
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-[#13ec6d] transition-colors">lock</span>
                 <input 
-                  required
                   className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
                   type="password" 
                   placeholder="••••••••" 
@@ -98,11 +77,12 @@ const Login: React.FC = () => {
               <Link to="#" className="font-bold text-[#13ec6d] hover:underline">Mot de passe oublié ?</Link>
             </div>
 
-            <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">
+            {/* FIXED: Changed to Link for navigation */}
+            <Link to="/dashboard" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">
               Se connecter
               <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
-            </button>
-          </form>
+            </Link>
+          </div>
 
           <div className="relative flex items-center py-4">
             <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
@@ -113,6 +93,11 @@ const Login: React.FC = () => {
           <p className="text-center font-bold text-gray-500 text-lg">
             Nouveau bachelier ? <Link to="/register" className="text-[#13ec6d] hover:underline">Créer un compte</Link>
           </p>
+
+          <div className="flex justify-center gap-8 pt-10 text-[10px] font-black uppercase tracking-widest text-gray-400">
+            <Link to="#" className="hover:text-[#13ec6d] transition-colors">Aide & Support</Link>
+            <Link to="#" className="hover:text-[#13ec6d] transition-colors">Politique de confidentialité</Link>
+          </div>
         </div>
       </div>
     </div>
