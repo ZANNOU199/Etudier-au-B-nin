@@ -10,7 +10,6 @@ const SuperAdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'logs'>('csv');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // Mock Staff State (In a real app, this would be in CMSContext or an API)
   const [staffList, setStaffList] = useState<User[]>([
     { id: 'STF-001', firstName: 'Jean', lastName: 'Admin', email: 'jean@eden.bj', role: 'super_admin' },
     { id: 'STF-002', firstName: 'Alice', lastName: 'Editeur', email: 'alice@eden.bj', role: 'editor' }
@@ -26,9 +25,9 @@ const SuperAdminDashboard: React.FC = () => {
 
     try {
       const result = await processAcademicCSV(file, universities, addUniversity, updateUniversity, addMajor);
-      alert(`IMPORTATION RÉUSSIE :\n- ${result.uniCount} Établissements créés\n- ${result.majorCount} Filières créées.`);
+      alert(`IMPORTATION TERMINÉE :\n- ${result.uniCount} Établissements créés/vérifiés\n- ${result.majorCount} Filières injectées.`);
     } catch (err) {
-      alert("Erreur lors de l'importation CSV.");
+      alert("Erreur lors de l'importation : " + (err as Error).message);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -123,10 +122,10 @@ const SuperAdminDashboard: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-8 lg:p-16 custom-scrollbar">
           {activeTab === 'csv' && (
-            <div className="max-w-4xl space-y-12 animate-fade-in">
+            <div className="max-w-4xl space-y-12 animate-fade-in text-left">
                <div className="space-y-4">
                   <h2 className="text-5xl font-black text-white tracking-tighter leading-none">Nexus <span className="text-primary italic">Import</span></h2>
-                  <p className="text-gray-500 text-lg font-medium">Synchronisez votre base de données académique en une seule étape.</p>
+                  <p className="text-gray-500 text-lg font-medium">Injectez massivement vos données académiques dans le système.</p>
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -139,20 +138,27 @@ const SuperAdminDashboard: React.FC = () => {
                         <span className="material-symbols-outlined text-5xl">upload_file</span>
                      </div>
                      <h3 className="text-xl font-black text-white mb-2">Charger un CSV</h3>
-                     <p className="text-gray-500 text-sm font-medium">Glissez-déposez ou cliquez pour importer.</p>
+                     <p className="text-gray-500 text-sm font-medium">Cliquez pour sélectionner votre fichier.</p>
                   </div>
 
-                  <div className="p-12 rounded-[48px] bg-primary text-black flex flex-col justify-between shadow-2xl shadow-primary/20">
-                     <div className="space-y-4">
-                        <div className="size-12 bg-black rounded-xl flex items-center justify-center text-primary">
-                           <span className="material-symbols-outlined font-black">info</span>
+                  <div className="p-10 rounded-[48px] bg-white/5 border border-white/10 text-white flex flex-col justify-between shadow-2xl">
+                     <div className="space-y-6">
+                        <div className="size-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                           <span className="material-symbols-outlined font-black">table_chart</span>
                         </div>
-                        <h3 className="text-2xl font-black tracking-tight leading-none">Structure requise</h3>
-                        <p className="text-sm font-bold opacity-80 leading-relaxed">
-                          Colonnes minimales : sigle_inst, nom_inst, ville, statut_inst, nom_filiere, cycle, frais, debouche, diplome.
-                        </p>
+                        <h3 className="text-xl font-black tracking-tight leading-none">Colonnes requises</h3>
+                        <div className="text-[10px] font-bold text-gray-400 grid grid-cols-2 gap-y-2 uppercase tracking-widest">
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> type_inst</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> nom_inst</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> sigle_inst</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> ville</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> statut_inst</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> nom_filiere</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> cycle</div>
+                           <div className="flex items-center gap-2"><div className="size-1.5 bg-primary rounded-full"></div> debouches</div>
+                        </div>
                      </div>
-                     <button className="w-full py-4 bg-black text-white font-black rounded-2xl text-[10px] uppercase tracking-widest mt-8">Télécharger Modèle</button>
+                     <p className="text-[9px] text-gray-500 font-medium italic mt-4">Note: Utilisez "|" pour séparer les débouchés et diplômes.</p>
                   </div>
                </div>
             </div>
@@ -161,16 +167,16 @@ const SuperAdminDashboard: React.FC = () => {
           {activeTab === 'staff' && (
             <div className="space-y-10 animate-fade-in">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-left">
                     <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Gestion du Staff</h2>
-                    <p className="text-gray-500 font-medium italic">Attribuez les accès éditeurs et administrateurs.</p>
+                    <p className="text-gray-500 font-medium italic">Gérez les accès administrateurs et éditeurs.</p>
                   </div>
                   <button 
                     onClick={() => setShowStaffModal(true)}
                     className="flex items-center gap-3 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                   >
                     <span className="material-symbols-outlined text-xl font-bold">person_add</span>
-                    Nouveau Staff
+                    Ajouter Staff
                   </button>
                </div>
 
@@ -198,7 +204,7 @@ const SuperAdminDashboard: React.FC = () => {
                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
                                     s.role === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                                  }`}>
-                                    {s.role}
+                                    {s.role.replace('_', ' ')}
                                  </span>
                               </td>
                               <td className="px-8 py-6">
@@ -213,14 +219,12 @@ const SuperAdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'logs' && (
-             <div className="space-y-8 animate-fade-in max-w-2xl">
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Flux Système en temps réel</h2>
-                <div className="bg-black/40 rounded-[32px] p-8 border border-white/5 font-mono text-xs text-primary space-y-4">
-                   <p className="opacity-60">[09:41:22] SYNC_WIZARD started...</p>
-                   <p>[09:41:24] Connection established with Super_Console_Node_01</p>
-                   <p className="text-white font-black">[09:42:01] 45 entities synchronized from CSV payload</p>
-                   <p className="opacity-40">[09:45:00] Cleaning cache...</p>
-                   <p>[09:45:02] System ready. All nodes online.</p>
+             <div className="space-y-8 animate-fade-in max-w-2xl text-left">
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Flux Système</h2>
+                <div className="bg-black/40 rounded-[32px] p-8 border border-white/5 font-mono text-xs text-primary space-y-4 shadow-inner">
+                   <p className="opacity-60">[10:15:22] SYNC_WIZARD started...</p>
+                   <p>[10:15:24] Nexus Bridge connection established.</p>
+                   <p className="text-white font-black">[10:16:01] Importation massive complétée par SuperAdmin.</p>
                    <div className="animate-pulse">_</div>
                 </div>
              </div>
@@ -231,13 +235,13 @@ const SuperAdminDashboard: React.FC = () => {
         {showStaffModal && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5 my-auto animate-in zoom-in-95 duration-300">
-                <div className="px-10 py-8 bg-white/5 border-b border-white/5 flex justify-between items-center">
-                   <h3 className="text-2xl font-black text-white tracking-tight">Nouvel accès Système</h3>
+                <div className="px-10 py-8 bg-white/5 border-b border-white/5 flex justify-between items-center text-left">
+                   <h3 className="text-2xl font-black text-white tracking-tight">Nouvel accès</h3>
                    <button onClick={() => setShowStaffModal(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
-                <form onSubmit={addStaffMember} className="p-10 space-y-6">
+                <form onSubmit={addStaffMember} className="p-10 space-y-6 text-left">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Prénom</label>
@@ -253,13 +257,13 @@ const SuperAdminDashboard: React.FC = () => {
                       <input name="email" type="email" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                    </div>
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle Système</label>
+                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle</label>
                       <select name="role" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
-                         <option value="editor" className="bg-[#162a1f]">Éditeur de contenu</option>
-                         <option value="super_admin" className="bg-[#162a1f]">Super Administrateur</option>
+                         <option value="editor" className="bg-[#162a1f]">Éditeur</option>
+                         <option value="super_admin" className="bg-[#162a1f]">Super Admin</option>
                       </select>
                    </div>
-                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6">Initialiser le compte</button>
+                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6">Créer le compte</button>
                 </form>
              </div>
           </div>
