@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 import { University, Major, Application, Faculty, CareerProspect, RequiredDiploma } from '../types';
@@ -39,6 +39,12 @@ const AdminDashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedWizardLevel, setSelectedWizardLevel] = useState<'Licence' | 'Master' | 'Doctorat'>('Licence');
   
+  // Bulk Import State
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkData, setBulkData] = useState<any[]>([]);
+  const [importStatus, setImportStatus] = useState<'idle' | 'parsing' | 'ready'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // State for single Major editing
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
 
@@ -68,6 +74,66 @@ const AdminDashboard: React.FC = () => {
     setIsEditing(true);
     setWizardStep('institution');
     setShowWizard(true);
+  };
+
+  // CSV Parsing Logic
+  const handleBulkFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportStatus('parsing');
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n');
+      const result: any[] = [];
+      const headers = lines[0].split(',').map(h => h.trim());
+
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const currentLine = lines[i].split(',');
+        const obj: any = {};
+        headers.forEach((header, index) => {
+          obj[header] = currentLine[index]?.trim();
+        });
+        result.push(obj);
+      }
+      setBulkData(result);
+      setImportStatus('ready');
+    };
+    reader.readAsText(file);
+  };
+
+  const processBulkImport = () => {
+    let successCount = 0;
+    bulkData.forEach(row => {
+      // Find university by Acronym
+      const uni = universities.find(u => u.acronym.toLowerCase() === row.universite_sigle?.toLowerCase());
+      
+      if (uni) {
+        const major: Major = {
+          id: 'bulk-' + Math.random().toString(36).substr(2, 9),
+          name: row.filiere_nom,
+          universityId: uni.id,
+          universityName: uni.acronym,
+          facultyName: row.faculte_nom || 'Général',
+          domain: row.domaine || 'Académique',
+          level: (['Licence', 'Master', 'Doctorat'].includes(row.cycle) ? row.cycle : 'Licence') as any,
+          duration: row.duree || '3 Ans',
+          fees: row.frais || 'N/A',
+          location: uni.location,
+          image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+          careerProspects: [{ title: row.debouche || 'Divers', icon: 'work' }],
+          requiredDiplomas: [{ name: row.diplome_requis || 'BAC', icon: 'school' }]
+        };
+        addMajor(major);
+        successCount++;
+      }
+    });
+    alert(`${successCount} filières importées avec succès !`);
+    setShowBulkImport(false);
+    setBulkData([]);
+    setImportStatus('idle');
   };
 
   const SidebarNav = () => (
@@ -237,15 +303,26 @@ const AdminDashboard: React.FC = () => {
                     <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
                   </div>
 
-                  {activeCatalogSection === 'universities' && (
-                    <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
-                       {['all', 'university', 'school'].map(f => (
-                         <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
-                           {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
-                         </button>
-                       ))}
-                    </div>
-                  )}
+                  <div className="flex gap-4">
+                    {activeCatalogSection === 'majors' && (
+                       <button 
+                        onClick={() => setShowBulkImport(true)}
+                        className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/10 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-500 hover:text-primary transition-all shadow-sm"
+                       >
+                         <span className="material-symbols-outlined text-lg">table_chart</span>
+                         Import Massive (CSV)
+                       </button>
+                    )}
+                    {activeCatalogSection === 'universities' && (
+                      <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
+                        {['all', 'university', 'school'].map(f => (
+                          <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
+                            {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                </div>
 
                {activeCatalogSection === 'universities' && (
@@ -365,6 +442,89 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* MODAL: BULK IMPORT */}
+        {showBulkImport && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+             <div className="bg-[#162a1f] w-full max-w-4xl rounded-[48px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5 flex flex-col max-h-[90vh]">
+                <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5 shrink-0">
+                   <div>
+                      <h3 className="text-2xl font-black text-white tracking-tight">Importation Massive de Filières</h3>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Format supporté : CSV UTF-8</p>
+                   </div>
+                   <button onClick={() => { setShowBulkImport(false); setBulkData([]); setImportStatus('idle'); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                      <span className="material-symbols-outlined">close</span>
+                   </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
+                   {importStatus === 'idle' && (
+                      <div className="space-y-8 text-center py-10">
+                         <div className="max-w-md mx-auto p-8 rounded-[32px] border-2 border-dashed border-white/10 hover:border-primary/50 transition-all group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <span className="material-symbols-outlined text-6xl text-gray-500 group-hover:text-primary transition-colors mb-4">upload_file</span>
+                            <p className="text-white font-black uppercase text-[11px] tracking-widest">Cliquez pour choisir votre fichier CSV</p>
+                            <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleBulkFileChange} />
+                         </div>
+                         <div className="bg-white/5 p-6 rounded-3xl text-left border border-white/5 space-y-4">
+                            <h4 className="text-primary font-black uppercase text-[10px] tracking-widest">Structure attendue (Colonnes) :</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                               {['filiere_nom', 'universite_sigle', 'faculte_nom', 'cycle', 'duree', 'frais', 'domaine', 'debouche', 'diplome_requis'].map(c => (
+                                  <div key={c} className="p-2 bg-black/20 rounded-lg text-[9px] font-bold text-gray-400 border border-white/5">
+                                     {c}
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                      </div>
+                   )}
+
+                   {importStatus === 'parsing' && (
+                      <div className="py-20 flex flex-col items-center gap-6">
+                         <div className="size-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                         <p className="text-white font-black uppercase text-[11px] tracking-widest animate-pulse">Traitement du fichier...</p>
+                      </div>
+                   )}
+
+                   {importStatus === 'ready' && (
+                      <div className="space-y-8 animate-in fade-in">
+                         <div className="flex justify-between items-center">
+                            <h4 className="text-white font-black uppercase text-[11px] tracking-widest">Aperçu des données ({bulkData.length} lignes)</h4>
+                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="text-[10px] font-black text-red-400 uppercase tracking-widest hover:underline">Changer de fichier</button>
+                         </div>
+                         <div className="overflow-x-auto rounded-2xl border border-white/5">
+                            <table className="w-full text-left text-[10px] text-gray-400 font-bold border-collapse">
+                               <thead className="bg-white/5 text-white uppercase tracking-widest">
+                                  <tr>
+                                     <th className="p-4">Filière</th>
+                                     <th className="p-4">Université</th>
+                                     <th className="p-4">Cycle</th>
+                                     <th className="p-4">Frais</th>
+                                  </tr>
+                               </thead>
+                               <tbody className="divide-y divide-white/5">
+                                  {bulkData.slice(0, 5).map((row, i) => (
+                                     <tr key={i} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 text-white truncate max-w-[150px]">{row.filiere_nom}</td>
+                                        <td className="p-4">{row.universite_sigle}</td>
+                                        <td className="p-4">{row.cycle}</td>
+                                        <td className="p-4 text-primary">{row.frais}</td>
+                                     </tr>
+                                  ))}
+                               </tbody>
+                            </table>
+                         </div>
+                         {bulkData.length > 5 && <p className="text-center text-[10px] text-gray-500 font-bold italic">Et {bulkData.length - 5} autres lignes...</p>}
+                         
+                         <div className="flex gap-4">
+                            <button onClick={() => { setBulkData([]); setImportStatus('idle'); }} className="flex-1 py-4 bg-white/5 text-white font-black rounded-2xl text-[11px] uppercase tracking-widest hover:bg-white/10 transition-all">Annuler</button>
+                            <button onClick={processBulkImport} className="flex-1 py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">Confirmer l'importation</button>
+                         </div>
+                      </div>
+                   )}
+                </div>
+             </div>
+          </div>
+        )}
 
         {/* MODAL: INSTITUTION WIZARD */}
         {showWizard && (
