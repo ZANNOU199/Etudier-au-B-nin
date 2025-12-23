@@ -7,6 +7,7 @@ interface SchoolDisplay {
   id: string;
   name: string;
   parentName: string;
+  parentAcronym: string;
   parentId: string;
   parentStatus: 'Public' | 'Privé';
   type: string;
@@ -33,6 +34,7 @@ const Schools: React.FC = () => {
           id: uni.id,
           name: uni.acronym,
           parentName: uni.name,
+          parentAcronym: uni.acronym,
           parentId: uni.id,
           parentStatus: uni.type,
           type: 'École / Institut',
@@ -46,6 +48,7 @@ const Schools: React.FC = () => {
             id: fac.id,
             name: fac.name,
             parentName: uni.name,
+            parentAcronym: uni.acronym,
             parentId: uni.id,
             parentStatus: uni.type,
             type: fac.type || 'Faculté / Institut',
@@ -63,8 +66,12 @@ const Schools: React.FC = () => {
   const filtered = useMemo(() => {
     return allSchools.filter(s => {
       const query = search.toLowerCase().trim();
-      const matchesSearch = s.name.toLowerCase().includes(query) || 
-                            s.parentName.toLowerCase().includes(query);
+      
+      // Recherche étendue : Nom, Sigle, Nom Parent ou Sigle Parent
+      const matchesSearch = 
+        s.name.toLowerCase().includes(query) || 
+        s.parentName.toLowerCase().includes(query) ||
+        s.parentAcronym.toLowerCase().includes(query);
       
       const matchesType = filterType === 'All' || 
                           (filterType === 'Standalone' && s.isStandalone) ||
@@ -81,12 +88,12 @@ const Schools: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full min-h-screen font-display bg-[#f8faf9] dark:bg-background-dark">
-      {/* Header */}
+      {/* Header avec Barre de Recherche Optimisée */}
       <div className="bg-background-dark py-20 px-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] translate-x-1/2 -translate-y-1/2"></div>
         <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
           <div className="space-y-4">
-            <span className="text-primary font-black uppercase tracking-[0.3em] text-[10px] bg-primary/10 px-6 py-2 rounded-full border border-primary/20">Établissements spécialisés</span>
+            <span className="text-primary font-black uppercase tracking-[0.3em] text-[10px] bg-primary/10 px-6 py-2 rounded-full border border-primary/20">Annuaire des Établissements</span>
             <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-tight">
               Écoles & Instituts <br /><span className="text-primary italic">spécialisés</span>
             </h1>
@@ -96,20 +103,20 @@ const Schools: React.FC = () => {
             <span className="absolute left-6 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors text-2xl">search</span>
             <input 
               type="text"
-              placeholder="Rechercher une école..."
+              placeholder="Rechercher par Nom ou Sigle (ex: FASEG, UAC...)"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="w-full bg-white/10 border-white/10 text-white pl-16 pr-6 py-6 rounded-[32px] focus:ring-4 focus:ring-primary/20 outline-none backdrop-blur-md font-bold text-lg transition-all"
+              className="w-full bg-white/10 border-white/10 text-white pl-16 pr-6 py-6 rounded-[32px] focus:ring-4 focus:ring-primary/20 outline-none backdrop-blur-md font-bold text-lg transition-all placeholder:text-gray-500"
             />
           </div>
         </div>
       </div>
 
       <div className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 flex flex-col lg:flex-row gap-16">
-        {/* Sidebar Filters */}
+        {/* Barre Latérale de Filtres */}
         <aside className="w-full lg:w-80 flex-shrink-0 space-y-8">
           <div className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-premium space-y-10">
-            {/* Filter by Type */}
+            {/* Filtre : Type d'Établissement */}
             <div className="space-y-6">
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-2 flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm">account_tree</span>
@@ -137,7 +144,7 @@ const Schools: React.FC = () => {
               </div>
             </div>
 
-            {/* Filter by Status */}
+            {/* Filtre : Secteur d'Activité */}
             <div className="space-y-6 pt-4 border-t border-gray-50 dark:border-white/5">
               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 px-2 flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm">verified</span>
@@ -168,17 +175,17 @@ const Schools: React.FC = () => {
 
           <div className="p-10 bg-background-dark rounded-[40px] text-white space-y-6 relative overflow-hidden shadow-2xl">
              <div className="absolute -top-10 -right-10 size-32 bg-primary/10 rounded-full blur-2xl"></div>
-             <h4 className="text-xl font-black leading-tight relative z-10">Guide des Écoles</h4>
-             <p className="text-sm font-medium text-gray-400 relative z-10">Explorez les instituts techniques et professionnels.</p>
-             <Link to="/contact" className="block w-full py-4 bg-primary text-black text-center rounded-2xl font-black text-[10px] uppercase tracking-widest relative z-10 hover:scale-105 transition-all">Poser une question</Link>
+             <h4 className="text-xl font-black leading-tight relative z-10">Guide Interactif</h4>
+             <p className="text-sm font-medium text-gray-400 relative z-10">Trouvez l'institut qui correspond à votre projet professionnel.</p>
+             <Link to="/contact" className="block w-full py-4 bg-primary text-black text-center rounded-2xl font-black text-[10px] uppercase tracking-widest relative z-10 hover:scale-105 transition-all">Besoin d'aide ?</Link>
           </div>
         </aside>
 
-        {/* Content Area */}
+        {/* Grille de Résultats */}
         <div className="flex-1 space-y-10">
           <div className="flex justify-between items-center px-4">
             <h2 className="text-[11px] font-black dark:text-white tracking-[0.2em] uppercase text-gray-500">
-               {filtered.length} Établissement(s) <span className="text-primary italic">trouvé(s)</span>
+               {filtered.length} Établissement(s) <span className="text-primary italic">identifié(s)</span>
             </h2>
           </div>
 
@@ -207,9 +214,9 @@ const Schools: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="pt-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Institution parente</p>
-                    <p className="text-sm font-black dark:text-white italic line-clamp-1">{school.parentName}</p>
+                  <div className="pt-4 space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Institution parente</p>
+                    <p className="text-sm font-black dark:text-white italic line-clamp-1">{school.parentName} ({school.parentAcronym})</p>
                   </div>
                 </div>
                 
@@ -218,7 +225,7 @@ const Schools: React.FC = () => {
                     to={`/majors?search=${encodeURIComponent(school.name)}`} 
                     className="w-full flex items-center justify-center gap-3 py-4 bg-background-dark dark:bg-white/5 text-white dark:text-white hover:bg-primary hover:text-black transition-all rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/5"
                   >
-                    Voir les filières
+                    Parcourir les filières
                     <span className="material-symbols-outlined text-sm font-bold group-hover:translate-x-1 transition-transform">arrow_forward</span>
                   </Link>
                 </div>
@@ -228,13 +235,13 @@ const Schools: React.FC = () => {
 
           {filtered.length === 0 && (
             <div className="text-center py-24 bg-white dark:bg-surface-dark rounded-[40px] border border-dashed border-gray-200 dark:border-white/10 animate-fade-in">
-               <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">school</span>
-               <h3 className="text-xl font-black dark:text-white mb-2">Aucune école trouvée</h3>
-               <p className="text-gray-400">Essayez de modifier vos filtres ou votre recherche.</p>
+               <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">search_off</span>
+               <h3 className="text-xl font-black dark:text-white mb-2">Aucun résultat</h3>
+               <p className="text-gray-400">Aucun établissement ne correspond au sigle ou au nom recherché.</p>
             </div>
           )}
 
-          {/* Pagination */}
+          {/* Pagination : Max 4 par page */}
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-3 mt-16 animate-fade-in">
               <button 
