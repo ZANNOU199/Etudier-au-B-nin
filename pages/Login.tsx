@@ -16,7 +16,16 @@ const Login: React.FC = () => {
     e.preventDefault();
     
     // Simulation simple d'authentification
-    if (email === 'admin@eden.bj') {
+    if (email === 'superadmin@eden.bj') {
+      login({
+        id: 'SUP-001',
+        firstName: 'Directeur',
+        lastName: 'Général',
+        email: 'superadmin@eden.bj',
+        role: 'super_admin'
+      });
+      navigate('/super-admin');
+    } else if (email === 'admin@eden.bj') {
       login({
         id: 'ADM-001',
         firstName: 'Admin',
@@ -27,7 +36,7 @@ const Login: React.FC = () => {
       navigate(redirectPath || '/admin');
     } else {
       login({
-        id: 'USR-6329', // ID statique pour correspondre à la maquette
+        id: 'USR-6329',
         firstName: 'staff',
         lastName: 'Candidat',
         email: email,
@@ -54,8 +63,8 @@ const Login: React.FC = () => {
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Etudier au Bénin</h1>
           </div>
-          <div className="space-y-6 max-w-lg">
-            <p className="text-4xl font-bold text-white leading-tight drop-shadow-2xl">
+          <div className="space-y-6 max-w-lg text-white">
+            <p className="text-4xl font-bold leading-tight drop-shadow-2xl">
               "L'éducation est l'arme la plus puissante qu'on puisse utiliser pour changer le monde."
             </p>
             <div className="flex flex-col gap-2">
@@ -70,12 +79,12 @@ const Login: React.FC = () => {
         <div className="w-full max-w-md space-y-10">
           <div className="space-y-4">
             <h2 className="text-5xl font-black text-[#0f1a13] dark:text-white tracking-tighter">Connexion</h2>
-            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed">
-              Bienvenue sur votre espace personnel.
+            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed text-left">
+              Accédez à votre console de gestion ou à votre espace candidat.
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6 text-left">
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Adresse Email</label>
               <div className="relative group">
@@ -86,7 +95,7 @@ const Login: React.FC = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
                   type="email" 
-                  placeholder="etudiant@exemple.bj" 
+                  placeholder="votre@email.bj" 
                 />
               </div>
             </div>
@@ -106,28 +115,14 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-between items-center text-sm">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-600 dark:text-gray-400">
-                <input type="checkbox" className="rounded border-gray-300 text-[#13ec6d] focus:ring-[#13ec6d]" />
-                Se souvenir de moi
-              </label>
-              <Link to="#" className="font-bold text-[#13ec6d] hover:underline">Mot de passe oublié ?</Link>
-            </div>
-
             <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">
-              Se connecter
+              Initialiser l'accès
               <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
             </button>
           </form>
 
-          <div className="relative flex items-center py-4">
-            <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
-            <span className="flex-shrink mx-4 text-xs font-black text-gray-400 uppercase tracking-widest">OU</span>
-            <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
-          </div>
-
           <p className="text-center font-bold text-gray-500 text-lg">
-            Nouveau bachelier ? <Link to="/register" className="text-[#13ec6d] hover:underline">Créer un compte</Link>
+            Nouveau candidat ? <Link to="/register" className="text-[#13ec6d] hover:underline">S'inscrire</Link>
           </p>
         </div>
       </div>

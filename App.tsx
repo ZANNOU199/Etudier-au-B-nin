@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import ApplyProcess from './pages/ApplyProcess';
 import About from './pages/About';
 import Pricing from './pages/Pricing';
@@ -24,9 +25,9 @@ const Navbar = () => {
   const { translate, languages, currentLang, setLanguage, user, logout } = useCMS();
   
   const isAppPage = location.pathname.startsWith('/admin') || 
+                    location.pathname.startsWith('/super-admin') || 
                     location.pathname.startsWith('/apply');
 
-  // Sur les pages d'administration pure ou de processus d'inscription, on peut masquer le header global
   if (isAppPage) return null;
 
   const handleLogout = () => {
@@ -34,23 +35,20 @@ const Navbar = () => {
     navigate('/login');
   };
 
-  // HEADER POUR UTILISATEUR CONNECTÉ (Minimaliste & Dashboard Style selon maquette)
   if (user) {
     return (
       <header className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-white/5 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl">
         <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto w-full">
-          {/* Section Gauche : Grid View + Salutations */}
           <div className="flex items-center gap-5">
-            <Link to="/dashboard" className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary hover:scale-105 transition-transform">
+            <Link to={user.role === 'super_admin' ? '/super-admin' : '/dashboard'} className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary hover:scale-105 transition-transform">
               <span className="material-symbols-outlined font-black text-2xl">grid_view</span>
             </Link>
             <div className="flex flex-col">
               <h2 className="text-lg font-black dark:text-white leading-none tracking-tight">Bonjour, {user.firstName}</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Candidat Session 2024 • Connecté</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Session 2024 • {user.role === 'super_admin' ? 'Super Admin' : 'Candidat'}</p>
             </div>
           </div>
 
-          {/* Section Droite : Identité & Logout */}
           <div className="flex items-center gap-6">
             <div className="hidden sm:flex items-center gap-3">
                <div className="flex flex-col items-end text-right">
@@ -75,7 +73,6 @@ const Navbar = () => {
     );
   }
 
-  // HEADER STANDARD (PUBLIC)
   const navLinks = [
     { name: translate('nav_home'), path: '/' },
     { name: translate('nav_universities'), path: '/universities' },
@@ -145,8 +142,8 @@ const Footer = () => {
   const location = useLocation();
   const { translate } = useCMS();
   
-  // Cache le footer sur les pages d'application (Admin, Formulaire d'inscription)
   const isAppPage = location.pathname.startsWith('/admin') || 
+                    location.pathname.startsWith('/super-admin') || 
                     location.pathname.startsWith('/apply');
 
   if (isAppPage) return null;
@@ -221,6 +218,7 @@ const App: React.FC = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin/*" element={<AdminDashboard />} />
+            <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
             <Route path="/apply" element={<ApplyProcess />} />
             <Route path="/about" element={<About />} />
             <Route path="/pricing" element={<Pricing />} />
