@@ -26,7 +26,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [editingTheme, setEditingTheme] = useState<ThemeConfig | null>(null);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffError, setStaffError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -43,28 +44,54 @@ const SuperAdminDashboard: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleAddStaffMember = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddStaffMember = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setStaffLoading(true);
+    setStaffError('');
+
     const fd = new FormData(e.currentTarget);
+    const firstName = fd.get('fn') as string;
+    const lastName = fd.get('ln') as string;
+    const email = (fd.get('email') as string).toLowerCase().trim();
+    const password = fd.get('password') as string;
     const role = fd.get('role') as UserRole;
 
-    // Attribution automatique des permissions selon le rôle
-    const defaultPermissions = role === 'super_admin' 
-      ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
-      : ['manage_catalog', 'validate_apps'];
+    try {
+      // Appel direct à l'API de register pour créer le nouveau compte
+      const response = await fetch('https://api.cipaph.com/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName, lastName, email, password })
+      });
+      
+      const result = await response.json();
 
-    const newUser: User = {
-      id: 'STF-' + Math.floor(Math.random() * 9000 + 1000),
-      firstName: fd.get('fn') as string,
-      lastName: fd.get('ln') as string,
-      email: (fd.get('email') as string).toLowerCase().trim(),
-      role: role,
-      permissions: defaultPermissions
-    };
-    
-    addStaffUser(newUser);
-    setShowStaffModal(false);
-    alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès pour ${newUser.email}`);
+      if (result.status === "success") {
+        // Attribution automatique des permissions selon le rôle sélectionné
+        const defaultPermissions = role === 'super_admin' 
+          ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
+          : ['manage_catalog', 'validate_apps'];
+
+        const newUser: User = {
+          id: result.user.id.toString(),
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          email: result.user.email,
+          role: role, // On force le rôle admin/super_admin choisi dans le formulaire
+          permissions: defaultPermissions
+        };
+        
+        addStaffUser(newUser);
+        setShowStaffModal(false);
+        alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès.`);
+      } else {
+        setStaffError(result.message || "Échec de la création du compte.");
+      }
+    } catch (error) {
+      setStaffError("Erreur de connexion au serveur d'authentification.");
+    } finally {
+      setStaffLoading(false);
+    }
   };
 
   const Sidebar = () => (
@@ -223,7 +250,6 @@ const SuperAdminDashboard: React.FC = () => {
              </div>
           )}
 
-          {/* ... autres onglets CMS, Settings, Logs ... */}
           {activeTab === 'cms' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Module CMS Actif</div>}
           {activeTab === 'settings' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Paramètres Système</div>}
           {activeTab === 'logs' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Flux Temps Réel</div>}
@@ -237,7 +263,14 @@ const SuperAdminDashboard: React.FC = () => {
                    <h3 className="text-2xl font-black text-white tracking-tight">Nouvel accès administratif</h3>
                    <button onClick={() => setShowStaffModal(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400"><span className="material-symbols-outlined">close</span></button>
                 </div>
+                
                 <form onSubmit={handleAddStaffMember} className="p-10 space-y-6 text-left">
+                   {staffError && (
+                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] font-black uppercase tracking-widest">
+                       {staffError}
+                     </div>
+                   )}
+                   
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Prénom</label>
@@ -248,10 +281,17 @@ const SuperAdminDashboard: React.FC = () => {
                         <input name="ln" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
                    </div>
+                   
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Email Professionnel</label>
                       <input name="email" type="email" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                    </div>
+
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Mot de passe temporaire</label>
+                      <input name="password" type="password" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" placeholder="••••••••" />
+                   </div>
+
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle</label>
                       <select name="role" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
@@ -259,7 +299,14 @@ const SuperAdminDashboard: React.FC = () => {
                          <option value="super_admin" className="bg-[#162a1f]">Super Admin (Super Console)</option>
                       </select>
                    </div>
-                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6">Finaliser et créer le compte</button>
+                   
+                   <button 
+                    disabled={staffLoading}
+                    type="submit" 
+                    className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6 disabled:opacity-50"
+                   >
+                     {staffLoading ? "Création en cours..." : "Finaliser et créer le compte"}
+                   </button>
                 </form>
              </div>
           </div>
