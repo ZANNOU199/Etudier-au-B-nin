@@ -84,8 +84,6 @@ const SuperAdminDashboard: React.FC = () => {
           { id: 'csv', label: 'Nexus Import (CSV)', icon: 'terminal' },
           { id: 'staff', label: 'Staff & Permissions', icon: 'admin_panel_settings' },
           { id: 'cms', label: 'Gestion CMS', icon: 'palette' },
-          { id: 'settings', label: 'Paramètres', icon: 'settings' },
-          { id: 'logs', label: 'Flux Système', icon: 'monitoring' },
         ].map((item) => (
           <button 
             key={item.id}
