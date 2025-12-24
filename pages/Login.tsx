@@ -15,23 +15,27 @@ const Login: React.FC = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Recherche dans la liste dynamique du staff (Super Admins et Admins)
-    const staffMember = staffUsers.find(u => u.email === email);
+    const cleanEmail = email.toLowerCase().trim();
+    
+    // Recherche dans la liste dynamique du staff (Admins et Super Admins créés)
+    const staffMember = staffUsers.find(u => u.email.toLowerCase() === cleanEmail);
     
     if (staffMember) {
       login(staffMember);
       if (staffMember.role === 'super_admin') {
         navigate('/super-admin');
+      } else if (staffMember.role === 'admin') {
+        navigate('/admin');
       } else {
-        navigate(redirectPath || '/admin');
+        navigate('/dashboard');
       }
     } else {
-      // Sinon, on considère que c'est un candidat (étudiant)
+      // Candidat standard
       login({
         id: 'USR-' + Math.floor(Math.random() * 9000 + 1000),
         firstName: 'Candidat',
         lastName: 'Utilisateur',
-        email: email,
+        email: cleanEmail,
         role: 'student',
         ine: '2024' + Math.floor(Math.random() * 100000)
       });
@@ -50,7 +54,7 @@ const Login: React.FC = () => {
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
           <div className="flex items-center gap-3">
-            <div className="size-12 bg-[#13ec6d] rounded-xl flex items-center justify-center shadow-lg">
+            <div className="size-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
               <span className="material-symbols-outlined text-white text-3xl font-bold">school</span>
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Etudier au Bénin</h1>
@@ -60,8 +64,8 @@ const Login: React.FC = () => {
               "L'éducation est l'arme la plus puissante qu'on puisse utiliser pour changer le monde."
             </p>
             <div className="flex flex-col gap-2">
-               <div className="h-1 w-16 bg-[#13ec6d]"></div>
-               <p className="text-[#13ec6d] font-black uppercase tracking-[0.2em] text-sm">Nelson Mandela</p>
+               <div className="h-1 w-16 bg-primary"></div>
+               <p className="text-primary font-black uppercase tracking-[0.2em] text-sm">Nelson Mandela</p>
             </div>
           </div>
         </div>
@@ -69,9 +73,9 @@ const Login: React.FC = () => {
 
       <div className="flex-1 flex flex-col justify-center items-center p-8 md:p-16 lg:p-24 bg-[#f9fafb] dark:bg-background-dark">
         <div className="w-full max-w-md space-y-10">
-          <div className="space-y-4">
+          <div className="space-y-4 text-left">
             <h2 className="text-5xl font-black text-[#0f1a13] dark:text-white tracking-tighter">Connexion</h2>
-            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed text-left">
+            <p className="text-gray-500 dark:text-gray-400 font-medium text-lg leading-relaxed">
               Accédez à votre console de gestion ou à votre espace candidat.
             </p>
           </div>
@@ -80,12 +84,12 @@ const Login: React.FC = () => {
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Adresse Email</label>
               <div className="relative group">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-[#13ec6d] transition-colors">mail</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors">mail</span>
                 <input 
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" 
                   type="email" 
                   placeholder="votre@email.bj" 
                 />
@@ -95,32 +99,26 @@ const Login: React.FC = () => {
             <div className="space-y-2">
               <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Mot de passe</label>
               <div className="relative group">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-[#13ec6d] transition-colors">lock</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors">lock</span>
                 <input 
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-[#13ec6d]/20 focus:border-[#13ec6d] transition-all outline-none" 
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border border-gray-200 dark:bg-surface-dark dark:border-gray-800 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" 
                   type="password" 
                   placeholder="••••••••" 
                 />
               </div>
             </div>
 
-            <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 text-[10px] text-amber-600 font-bold uppercase tracking-widest leading-relaxed">
-              Indices Démo :<br/>
-              • superadmin@eden.bj (Super Admin)<br/>
-              • admin@eden.bj (Admin Standard)
-            </div>
-
-            <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">
+            <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 group">
               Initialiser l'accès
               <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
             </button>
           </form>
 
           <p className="text-center font-bold text-gray-500 text-lg">
-            Nouveau candidat ? <Link to="/register" className="text-[#13ec6d] hover:underline">S'inscrire</Link>
+            Nouveau candidat ? <Link to="/register" className="text-primary hover:underline">S'inscrire</Link>
           </p>
         </div>
       </div>
