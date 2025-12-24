@@ -4,42 +4,38 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Login: React.FC = () => {
-  const { login, staffUsers } = useCMS();
+  const { login } = useCMS();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const redirectPath = searchParams.get('redirect');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
-    const cleanEmail = email.toLowerCase().trim();
+    const result = await login(email.toLowerCase().trim(), password);
     
-    // Recherche dans la liste dynamique du staff (Admins et Super Admins créés)
-    const staffMember = staffUsers.find(u => u.email.toLowerCase() === cleanEmail);
-    
-    if (staffMember) {
-      login(staffMember);
-      if (staffMember.role === 'super_admin') {
+    setLoading(false);
+    if (result.success) {
+      // Re-fetch user to check role after login (login updates context user)
+      // The context update triggers navigate logic based on role in the same tick if we handle it here
+      const currentUser = JSON.parse(localStorage.getItem('auth_user_v1') || '{}');
+      
+      if (currentUser.role === 'super_admin') {
         navigate('/super-admin');
-      } else if (staffMember.role === 'admin') {
+      } else if (currentUser.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate('/dashboard');
+        navigate(redirectPath || '/dashboard');
       }
     } else {
-      // Candidat standard
-      login({
-        id: 'USR-' + Math.floor(Math.random() * 9000 + 1000),
-        firstName: 'Candidat',
-        lastName: 'Utilisateur',
-        email: cleanEmail,
-        role: 'student',
-        ine: '2024' + Math.floor(Math.random() * 100000)
-      });
-      navigate(redirectPath || '/dashboard');
+      setError(result.message);
     }
   };
 
@@ -53,13 +49,13 @@ const Login: React.FC = () => {
         />
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 text-left">
             <div className="size-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
               <span className="material-symbols-outlined text-white text-3xl font-bold">school</span>
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">Etudier au Bénin</h1>
           </div>
-          <div className="space-y-6 max-w-lg text-white">
+          <div className="space-y-6 max-w-lg text-white text-left">
             <p className="text-4xl font-bold leading-tight drop-shadow-2xl">
               "L'éducation est l'arme la plus puissante qu'on puisse utiliser pour changer le monde."
             </p>
@@ -79,6 +75,12 @@ const Login: React.FC = () => {
               Accédez à votre console de gestion ou à votre espace candidat.
             </p>
           </div>
+
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm font-bold animate-fade-in text-left">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6 text-left">
             <div className="space-y-2">
@@ -111,9 +113,13 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 group">
-              Initialiser l'accès
-              <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>
+            <button 
+              disabled={loading}
+              type="submit" 
+              className="w-full flex items-center justify-center gap-3 py-4 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 group disabled:opacity-50"
+            >
+              {loading ? "Connexion en cours..." : "Initialiser l'accès"}
+              {!loading && <span className="material-symbols-outlined transition-transform group-hover:translate-x-1">arrow_forward</span>}
             </button>
           </form>
 

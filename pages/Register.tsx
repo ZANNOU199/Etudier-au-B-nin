@@ -4,8 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Register: React.FC = () => {
-  const { login } = useCMS();
+  const { register } = useCMS();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -15,20 +17,24 @@ const Register: React.FC = () => {
     password: ''
   });
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
-    // Dans une version standalone, on simule la création et on connecte l'utilisateur localement
-    login({
-      id: 'USR-' + Math.floor(Math.random() * 9000 + 1000),
-      firstName: formData.firstName || 'Candidat',
-      lastName: formData.lastName || 'Utilisateur',
+    const result = await register({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
       email: formData.email.toLowerCase().trim(),
-      role: 'student',
-      ine: '2024' + Math.floor(Math.random() * 100000)
+      password: formData.password
     });
     
-    navigate('/dashboard');
+    setLoading(false);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +101,12 @@ const Register: React.FC = () => {
               Remplissez le formulaire ci-dessous pour accéder à votre espace personnel.
             </p>
           </div>
+
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm font-bold animate-fade-in text-left">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -180,8 +192,12 @@ const Register: React.FC = () => {
               </span>
             </label>
 
-            <button type="submit" className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm">
-              S'inscrire gratuitement
+            <button 
+              disabled={loading}
+              type="submit" 
+              className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm disabled:opacity-50"
+            >
+              {loading ? "Création du compte..." : "S'inscrire gratuitement"}
             </button>
           </form>
 
