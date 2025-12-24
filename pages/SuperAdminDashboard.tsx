@@ -57,17 +57,23 @@ const SuperAdminDashboard: React.FC = () => {
     const role = fd.get('role') as UserRole;
 
     try {
-      // Appel direct à l'API de register pour créer le nouveau compte
+      // On envoie maintenant le rôle explicitement à l'API pour qu'il soit stocké en base
       const response = await fetch('https://api.cipaph.com/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, password })
+        body: JSON.stringify({ 
+          firstName, 
+          lastName, 
+          email, 
+          password,
+          role: role // Transmission du rôle choisi (admin ou super_admin)
+        })
       });
       
       const result = await response.json();
 
       if (result.status === "success") {
-        // Attribution automatique des permissions selon le rôle sélectionné
+        // Attribution des permissions selon le rôle persisté
         const defaultPermissions = role === 'super_admin' 
           ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
           : ['manage_catalog', 'validate_apps'];
@@ -77,13 +83,13 @@ const SuperAdminDashboard: React.FC = () => {
           firstName: result.user.firstName,
           lastName: result.user.lastName,
           email: result.user.email,
-          role: role, // On force le rôle admin/super_admin choisi dans le formulaire
+          role: role, // On utilise le rôle choisi pour l'affichage local
           permissions: defaultPermissions
         };
         
         addStaffUser(newUser);
         setShowStaffModal(false);
-        alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès.`);
+        alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès et enregistré dans la base.`);
       } else {
         setStaffError(result.message || "Échec de la création du compte.");
       }
@@ -96,11 +102,11 @@ const SuperAdminDashboard: React.FC = () => {
 
   const Sidebar = () => (
     <div className="flex flex-col h-full p-8 text-white">
-      <div className="flex items-center gap-4 mb-16 px-2">
+      <div className="flex items-center gap-4 mb-16 px-2 text-left">
         <div className="size-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/20">
           <span className="material-symbols-outlined font-black text-2xl">diamond</span>
         </div>
-        <div className="text-left">
+        <div>
           <h2 className="text-xl font-black tracking-tighter leading-none">Super Console</h2>
           <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1.5">Master Access</p>
         </div>
