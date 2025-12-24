@@ -4,8 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Register: React.FC = () => {
-  const { login } = useCMS();
+  const { register } = useCMS();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -15,20 +17,24 @@ const Register: React.FC = () => {
     password: ''
   });
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Dans une version standalone, on simule la création et on connecte l'utilisateur localement
-    login({
-      id: 'USR-' + Math.floor(Math.random() * 9000 + 1000),
-      firstName: formData.firstName || 'Candidat',
-      lastName: formData.lastName || 'Utilisateur',
+    setLoading(true);
+    setError('');
+
+    const result = await register({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
       email: formData.email.toLowerCase().trim(),
-      role: 'student',
-      ine: '2024' + Math.floor(Math.random() * 100000)
+      password: formData.password
     });
-    
-    navigate('/dashboard');
+
+    setLoading(false);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,7 +68,7 @@ const Register: React.FC = () => {
               Rejoignez la plateforme de référence pour l'orientation universitaire. Comparez les établissements, choisissez votre parcours et préparez votre succès.
             </p>
 
-            <div className="flex items-center gap-6 pt-6">
+            <div className="flex items-center gap-6 pt-6 text-left">
               <div className="flex -space-x-4">
                 <img className="size-14 rounded-full border-4 border-white object-cover shadow-lg" src="https://i.pravatar.cc/150?u=a1" alt="Student" />
                 <img className="size-14 rounded-full border-4 border-white object-cover shadow-lg" src="https://i.pravatar.cc/150?u=a2" alt="Student" />
@@ -70,7 +76,7 @@ const Register: React.FC = () => {
               </div>
               <div className="space-y-0.5">
                 <p className="text-primary font-black text-2xl tracking-tight">15k+ Étudiants</p>
-                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest text-left">Inscrits cette année</p>
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Inscrits cette année</p>
               </div>
             </div>
           </div>
@@ -95,6 +101,12 @@ const Register: React.FC = () => {
               Remplissez le formulaire ci-dessous pour accéder à votre espace personnel.
             </p>
           </div>
+
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm font-bold animate-fade-in text-left">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -124,23 +136,20 @@ const Register: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Email</label>
-                <div className="relative">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">mail</span>
-                   <input 
-                    name="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
-                    type="email" 
-                    placeholder="etudiant@exemple.bj" 
-                   />
-                </div>
+            <div className="space-y-3">
+              <label className="text-xs font-black uppercase tracking-widest text-gray-400">Email</label>
+              <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">mail</span>
+                  <input 
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  type="email" 
+                  placeholder="etudiant@exemple.bj" 
+                  />
               </div>
-              
             </div>
 
             <div className="space-y-3">
@@ -166,8 +175,12 @@ const Register: React.FC = () => {
               </span>
             </label>
 
-            <button type="submit" className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm">
-              S'inscrire gratuitement
+            <button 
+              disabled={loading}
+              type="submit" 
+              className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm disabled:opacity-50"
+            >
+              {loading ? "Création du compte..." : "S'inscrire gratuitement"}
             </button>
           </form>
 
