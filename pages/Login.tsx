@@ -15,14 +15,15 @@ const Login: React.FC = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simulation simple d'authentification
+    // Simulation simple d'authentification basée sur l'email
     if (email === 'superadmin@eden.bj') {
       login({
         id: 'SUP-001',
         firstName: 'Directeur',
         lastName: 'Général',
         email: 'superadmin@eden.bj',
-        role: 'super_admin'
+        role: 'super_admin',
+        permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms']
       });
       navigate('/super-admin');
     } else if (email === 'admin@eden.bj') {
@@ -31,14 +32,15 @@ const Login: React.FC = () => {
         firstName: 'Admin',
         lastName: 'Principal',
         email: 'admin@eden.bj',
-        role: 'super_admin'
+        role: 'admin',
+        permissions: ['manage_catalog', 'validate_apps']
       });
       navigate(redirectPath || '/admin');
     } else {
       login({
         id: 'USR-6329',
-        firstName: 'staff',
-        lastName: 'Candidat',
+        firstName: 'Candidat',
+        lastName: 'Béninois',
         email: email,
         role: 'student',
         ine: '2024' + Math.floor(Math.random() * 100000)
@@ -113,6 +115,12 @@ const Login: React.FC = () => {
                   placeholder="••••••••" 
                 />
               </div>
+            </div>
+
+            <div className="bg-amber-500/10 p-4 rounded-xl border border-amber-500/20 text-[10px] text-amber-600 font-bold uppercase tracking-widest leading-relaxed">
+              Indices Démo :<br/>
+              • superadmin@eden.bj (Super Admin)<br/>
+              • admin@eden.bj (Admin Standard)
             </div>
 
             <button type="submit" className="w-full flex items-center justify-center gap-3 py-4 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-xl shadow-[#13ec6d]/20 transition-all hover:scale-[1.02] active:scale-95 group">

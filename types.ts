@@ -9,7 +9,6 @@ export interface University {
   cover: string;
   description: string;
   isStandaloneSchool?: boolean;
-  // Fix: Making cities optional as not all institutions have multiple campuses across different cities
   cities?: string[];
   stats: {
     students: string;
@@ -67,7 +66,13 @@ export interface Application {
   documents: string[];
 }
 
-export type UserRole = 'super_admin' | 'editor' | 'student';
+export type UserRole = 'super_admin' | 'admin' | 'student';
+
+export interface UserPermission {
+  id: string;
+  label: string;
+  code: 'manage_catalog' | 'validate_apps' | 'view_logs' | 'edit_cms';
+}
 
 export interface User {
   id: string;
@@ -77,6 +82,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   ine?: string;
+  permissions?: string[]; // Liste des codes de permissions
 }
 
 export interface Language {

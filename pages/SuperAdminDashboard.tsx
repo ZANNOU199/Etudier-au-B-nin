@@ -2,8 +2,15 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
-import { User, UserRole, ThemeConfig } from '../types';
+import { User, UserRole, ThemeConfig, UserPermission } from '../types';
 import { processAcademicCSV } from '../utils/ImportService';
+
+const AVAILABLE_PERMISSIONS: UserPermission[] = [
+  { id: '1', label: 'Gérer le catalogue', code: 'manage_catalog' },
+  { id: '2', label: 'Valider les dossiers', code: 'validate_apps' },
+  { id: '3', label: 'Voir les logs système', code: 'view_logs' },
+  { id: '4', label: 'Modifier le style (CMS)', code: 'edit_cms' },
+];
 
 const SuperAdminDashboard: React.FC = () => {
   const { 
@@ -24,13 +31,12 @@ const SuperAdminDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [staffList, setStaffList] = useState<User[]>([
-    { id: 'STF-001', firstName: 'Jean', lastName: 'Admin', email: 'jean@eden.bj', role: 'super_admin' },
-    { id: 'STF-002', firstName: 'Alice', lastName: 'Editeur', email: 'alice@eden.bj', role: 'editor' }
+    { id: 'STF-001', firstName: 'Jean', lastName: 'Admin', email: 'jean@eden.bj', role: 'admin', permissions: ['manage_catalog', 'validate_apps'] },
+    { id: 'STF-002', firstName: 'Alice', lastName: 'Super', email: 'alice@eden.bj', role: 'super_admin', permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] }
   ]);
+  
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingTheme, setEditingTheme] = useState<ThemeConfig | null>(null);
-
-  // States pour les paramètres globaux (simulés)
   const [isMaintenance, setIsMaintenance] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,12 +58,17 @@ const SuperAdminDashboard: React.FC = () => {
   const addStaffMember = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const selectedPermissions = AVAILABLE_PERMISSIONS
+      .filter(p => fd.get(`perm_${p.code}`) === 'on')
+      .map(p => p.code);
+
     const newUser: User = {
       id: 'STF-' + Math.floor(Math.random() * 1000),
       firstName: fd.get('fn') as string,
       lastName: fd.get('ln') as string,
       email: fd.get('email') as string,
-      role: fd.get('role') as UserRole
+      role: fd.get('role') as UserRole,
+      permissions: selectedPermissions
     };
     setStaffList([...staffList, newUser]);
     setShowStaffModal(false);
@@ -78,7 +89,7 @@ const SuperAdminDashboard: React.FC = () => {
       <nav className="flex-grow space-y-3">
         {[
           { id: 'csv', label: 'Nexus Import (CSV)', icon: 'terminal' },
-          { id: 'staff', label: 'Staff & Autorités', icon: 'admin_panel_settings' },
+          { id: 'staff', label: 'Staff & Permissions', icon: 'admin_panel_settings' },
           { id: 'cms', label: 'Gestion CMS', icon: 'palette' },
           { id: 'settings', label: 'Paramètres', icon: 'settings' },
           { id: 'logs', label: 'Flux Système', icon: 'monitoring' },
@@ -187,15 +198,15 @@ const SuperAdminDashboard: React.FC = () => {
             <div className="space-y-10 animate-fade-in">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div className="space-y-2 text-left">
-                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Gestion du Staff</h2>
-                    <p className="text-gray-500 font-medium italic">Gérez les accès administrateurs et éditeurs.</p>
+                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Staff & Permissions</h2>
+                    <p className="text-gray-500 font-medium italic">Gérez les comptes administrateurs et leurs droits d'accès.</p>
                   </div>
                   <button 
                     onClick={() => setShowStaffModal(true)}
                     className="flex items-center gap-3 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                   >
                     <span className="material-symbols-outlined text-xl font-bold">person_add</span>
-                    Ajouter Staff
+                    Créer un compte
                   </button>
                </div>
 
@@ -204,8 +215,8 @@ const SuperAdminDashboard: React.FC = () => {
                      <thead>
                         <tr className="border-b border-white/5 bg-white/2">
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Identité</th>
-                           <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Email</th>
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Rôle</th>
+                           <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Permissions actives</th>
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Actions</th>
                         </tr>
                      </thead>
@@ -213,12 +224,14 @@ const SuperAdminDashboard: React.FC = () => {
                         {staffList.map((s) => (
                            <tr key={s.id} className="hover:bg-white/2 transition-colors">
                               <td className="px-8 py-6">
-                                 <div className="flex items-center gap-4">
+                                 <div className="flex items-center gap-4 text-left">
                                     <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 font-black text-xs">{s.firstName[0]}{s.lastName[0]}</div>
-                                    <p className="text-white font-black">{s.firstName} {s.lastName}</p>
+                                    <div>
+                                       <p className="text-white font-black">{s.firstName} {s.lastName}</p>
+                                       <p className="text-[10px] text-gray-500 font-bold">{s.email}</p>
+                                    </div>
                                  </div>
                               </td>
-                              <td className="px-8 py-6 text-gray-400 font-bold">{s.email}</td>
                               <td className="px-8 py-6">
                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
                                     s.role === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
@@ -227,7 +240,31 @@ const SuperAdminDashboard: React.FC = () => {
                                  </span>
                               </td>
                               <td className="px-8 py-6">
-                                 <button className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
+                                 <div className="flex gap-2">
+                                    {AVAILABLE_PERMISSIONS.map(p => (
+                                       <div 
+                                          key={p.code} 
+                                          title={p.label}
+                                          className={`size-8 rounded-lg flex items-center justify-center border ${
+                                             s.permissions?.includes(p.code) 
+                                                ? 'bg-primary/10 border-primary/30 text-primary' 
+                                                : 'bg-white/5 border-white/5 text-gray-600 grayscale'
+                                          }`}
+                                       >
+                                          <span className="material-symbols-outlined text-sm font-bold">
+                                             {p.code === 'manage_catalog' ? 'category' : 
+                                              p.code === 'validate_apps' ? 'check_circle' : 
+                                              p.code === 'view_logs' ? 'monitoring' : 'palette'}
+                                          </span>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </td>
+                              <td className="px-8 py-6">
+                                 <div className="flex gap-4">
+                                    <button className="text-gray-500 hover:text-white transition-colors"><span className="material-symbols-outlined">edit</span></button>
+                                    <button className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
+                                 </div>
                               </td>
                            </tr>
                         ))}
@@ -507,9 +544,9 @@ const SuperAdminDashboard: React.FC = () => {
         {/* MODAL: ADD STAFF */}
         {showStaffModal && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5 my-auto animate-in zoom-in-95 duration-300">
+             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5 my-auto animate-in zoom-in-95 duration-300">
                 <div className="px-10 py-8 bg-white/5 border-b border-white/5 flex justify-between items-center text-left">
-                   <h3 className="text-2xl font-black text-white tracking-tight">Nouvel accès</h3>
+                   <h3 className="text-2xl font-black text-white tracking-tight">Nouvel accès administratif</h3>
                    <button onClick={() => setShowStaffModal(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
                       <span className="material-symbols-outlined">close</span>
                    </button>
@@ -532,11 +569,24 @@ const SuperAdminDashboard: React.FC = () => {
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle</label>
                       <select name="role" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
-                         <option value="editor" className="bg-[#162a1f]">Éditeur</option>
-                         <option value="super_admin" className="bg-[#162a1f]">Super Admin</option>
+                         <option value="admin" className="bg-[#162a1f]">Administrateur (Dashboard Admin)</option>
+                         <option value="super_admin" className="bg-[#162a1f]">Super Admin (Super Console)</option>
                       </select>
                    </div>
-                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6">Créer le compte</button>
+                   
+                   <div className="space-y-4 pt-4">
+                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Permissions granulaires</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                         {AVAILABLE_PERMISSIONS.map(p => (
+                            <label key={p.code} className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                               <input type="checkbox" name={`perm_${p.code}`} className="size-5 rounded border-gray-600 text-primary focus:ring-primary" />
+                               <span className="text-xs font-bold text-gray-300">{p.label}</span>
+                            </label>
+                         ))}
+                      </div>
+                   </div>
+
+                   <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6">Créer le compte & assigner les droits</button>
                 </form>
              </div>
           </div>

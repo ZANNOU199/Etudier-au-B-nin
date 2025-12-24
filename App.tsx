@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { CMSProvider, useCMS } from './CMSContext';
 import Home from './pages/Home';
 import Universities from './pages/Universities';
@@ -40,12 +40,17 @@ const Navbar = () => {
       <header className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-white/5 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl">
         <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto w-full">
           <div className="flex items-center gap-5">
-            <Link to={user.role === 'super_admin' ? '/super-admin' : '/dashboard'} className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary hover:scale-105 transition-transform">
+            <Link 
+              to={user.role === 'super_admin' ? '/super-admin' : user.role === 'admin' ? '/admin' : '/dashboard'} 
+              className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary hover:scale-105 transition-transform"
+            >
               <span className="material-symbols-outlined font-black text-2xl">grid_view</span>
             </Link>
             <div className="flex flex-col">
               <h2 className="text-lg font-black dark:text-white leading-none tracking-tight">Bonjour, {user.firstName}</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Session 2024 • {user.role === 'super_admin' ? 'Super Admin' : 'Candidat'}</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                Session 2024 • {user.role === 'super_admin' ? 'Super Admin' : user.role === 'admin' ? 'Administrateur' : 'Candidat'}
+              </p>
             </div>
           </div>
 
@@ -201,6 +206,14 @@ const Footer = () => {
   );
 };
 
+// Fixed: Made children optional in the type definition to prevent TS errors when content is provided via JSX nesting
+const ProtectedRoute = ({ children, allowedRoles }: { children?: React.ReactNode, allowedRoles: string[] }) => {
+  const { user } = useCMS();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
 const App: React.FC = () => {
   return (
     <CMSProvider>
@@ -217,8 +230,19 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/admin/*" element={<AdminDashboard />} />
-            <Route path="/super-admin/*" element={<SuperAdminDashboard />} />
+            
+            <Route path="/admin/*" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/super-admin/*" element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <SuperAdminDashboard />
+              </ProtectedRoute>
+            } />
+            
             <Route path="/apply" element={<ApplyProcess />} />
             <Route path="/about" element={<About />} />
             <Route path="/pricing" element={<Pricing />} />
