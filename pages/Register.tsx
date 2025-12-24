@@ -1,12 +1,44 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useCMS } from '../CMSContext';
 
 const Register: React.FC = () => {
+  const { login } = useCMS();
+  const navigate = useNavigate();
+  
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: ''
+  });
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Dans une version standalone, on simule la création et on connecte l'utilisateur localement
+    login({
+      id: 'USR-' + Math.floor(Math.random() * 9000 + 1000),
+      firstName: formData.firstName || 'Candidat',
+      lastName: formData.lastName || 'Utilisateur',
+      email: formData.email.toLowerCase().trim(),
+      role: 'student',
+      ine: '2024' + Math.floor(Math.random() * 100000)
+    });
+    
+    navigate('/dashboard');
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
   return (
-    <div className="min-h-screen w-full flex bg-white dark:bg-background-dark">
+    <div className="min-h-screen w-full flex bg-white dark:bg-background-dark font-display">
       {/* Left side: Image & Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative min-h-screen bg-gray-900 overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative min-h-screen bg-gray-900 overflow-hidden text-left">
         <img 
           src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1600&auto=format&fit=crop" 
           className="absolute inset-0 w-full h-full object-cover"
@@ -16,7 +48,7 @@ const Register: React.FC = () => {
         
         <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full text-white">
           <div className="flex items-center gap-3">
-            <div className="size-12 bg-[#13ec6d] rounded-xl flex items-center justify-center">
+            <div className="size-12 bg-primary rounded-xl flex items-center justify-center">
               <span className="material-symbols-outlined text-white text-3xl font-bold">school</span>
             </div>
             <h1 className="text-2xl font-black tracking-tight">Etudier au Bénin</h1>
@@ -37,18 +69,18 @@ const Register: React.FC = () => {
                 <img className="size-14 rounded-full border-4 border-white object-cover shadow-lg" src="https://i.pravatar.cc/150?u=a3" alt="Student" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-[#13ec6d] font-black text-2xl tracking-tight">15k+ Étudiants</p>
-                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Inscrits cette année</p>
+                <p className="text-primary font-black text-2xl tracking-tight">15k+ Étudiants</p>
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest text-left">Inscrits cette année</p>
               </div>
             </div>
           </div>
 
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Portail Indépendant d'Orientation et d'Admission</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 text-left">Portail Indépendant d'Orientation et d'Admission</p>
         </div>
       </div>
 
       {/* Right side: Registration Form */}
-      <div className="flex-1 flex flex-col p-8 md:p-16 lg:p-24 bg-[#f9fafb] dark:bg-background-dark overflow-y-auto">
+      <div className="flex-1 flex flex-col p-8 md:p-16 lg:p-24 bg-[#f9fafb] dark:bg-background-dark overflow-y-auto text-left">
         <div className="flex justify-end mb-12">
           <div className="flex items-center gap-6">
              <span className="text-sm font-bold text-gray-500">Déjà inscrit ?</span>
@@ -64,15 +96,31 @@ const Register: React.FC = () => {
             </p>
           </div>
 
-          <div className="space-y-8">
+          <form onSubmit={handleRegister} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-gray-400">Prénom</label>
-                <input className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] transition-all" type="text" placeholder="Ex: Koffi" />
+                <input 
+                  name="firstName"
+                  required
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  type="text" 
+                  placeholder="Ex: Koffi" 
+                />
               </div>
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-gray-400">Nom</label>
-                <input className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] transition-all" type="text" placeholder="Ex: Mensah" />
+                <input 
+                  name="lastName"
+                  required
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  type="text" 
+                  placeholder="Ex: Mensah" 
+                />
               </div>
             </div>
 
@@ -81,61 +129,61 @@ const Register: React.FC = () => {
                 <label className="text-xs font-black uppercase tracking-widest text-gray-400">Email</label>
                 <div className="relative">
                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">mail</span>
-                   <input className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] transition-all" type="email" placeholder="etudiant@exemple.bj" />
+                   <input 
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                    type="email" 
+                    placeholder="etudiant@exemple.bj" 
+                   />
                 </div>
               </div>
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-gray-400">Téléphone</label>
                 <div className="relative">
                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">call</span>
-                   <input className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] transition-all" type="tel" placeholder="+229 XX XX XX XX" />
+                   <input 
+                    name="phone"
+                    required
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                    type="tel" 
+                    placeholder="+229 XX XX XX XX" 
+                   />
                 </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Pays de résidence</label>
-                <div className="relative">
-                  <select className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] appearance-none font-bold">
-                    <option>Bénin</option>
-                    <option>Togo</option>
-                    <option>France</option>
-                  </select>
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 pointer-events-none">expand_more</span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Ville</label>
-                <input className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] transition-all" type="text" placeholder="Ex: Cotonou" />
               </div>
             </div>
 
             <div className="space-y-3">
               <label className="text-xs font-black uppercase tracking-widest text-gray-400">Mot de passe</label>
               <div className="relative group">
-                 <input className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-[#13ec6d]/10 focus:border-[#13ec6d] transition-all" type="password" placeholder="8 caractères minimum" />
-                 <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 cursor-pointer hover:text-[#13ec6d] transition-colors">visibility</span>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <div className="h-2 flex-1 bg-[#13ec6d] rounded-full"></div>
-                <div className="h-2 flex-1 bg-[#13ec6d] rounded-full"></div>
-                <div className="h-2 flex-1 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
-                <div className="h-2 flex-1 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
+                 <input 
+                  name="password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  type="password" 
+                  placeholder="8 caractères minimum" 
+                 />
+                 <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 cursor-pointer hover:text-primary transition-colors">visibility</span>
               </div>
             </div>
 
             <label className="flex items-start gap-4 cursor-pointer pt-2">
-              <input type="checkbox" className="mt-1 size-6 rounded border-gray-300 text-[#13ec6d] focus:ring-[#13ec6d] transition-all" />
+              <input type="checkbox" required className="mt-1 size-6 rounded border-gray-300 text-primary focus:ring-primary transition-all" />
               <span className="text-sm font-medium text-gray-500 leading-relaxed">
-                J'accepte les <Link to="#" className="text-[#13ec6d] font-black hover:underline">Conditions Générales d'Utilisation</Link> et la politique de confidentialité de la plateforme.
+                J'accepte les <Link to="#" className="text-primary font-black hover:underline">Conditions Générales d'Utilisation</Link> et la politique de confidentialité de la plateforme.
               </span>
             </label>
 
-            <Link to="/dashboard" className="block w-full text-center py-5 bg-[#13ec6d] hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-[#13ec6d]/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm">
+            <button type="submit" className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm">
               S'inscrire gratuitement
-            </Link>
-          </div>
+            </button>
+          </form>
 
           <div className="relative flex items-center py-6">
             <div className="flex-grow border-t border-gray-100 dark:border-gray-800"></div>
