@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Login: React.FC = () => {
-  const { login } = useCMS();
+  const { login, staffUsers } = useCMS();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
@@ -15,32 +15,22 @@ const Login: React.FC = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simulation simple d'authentification basée sur l'email
-    if (email === 'superadmin@eden.bj') {
-      login({
-        id: 'SUP-001',
-        firstName: 'Directeur',
-        lastName: 'Général',
-        email: 'superadmin@eden.bj',
-        role: 'super_admin',
-        permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms']
-      });
-      navigate('/super-admin');
-    } else if (email === 'admin@eden.bj') {
-      login({
-        id: 'ADM-001',
-        firstName: 'Admin',
-        lastName: 'Principal',
-        email: 'admin@eden.bj',
-        role: 'admin',
-        permissions: ['manage_catalog', 'validate_apps']
-      });
-      navigate(redirectPath || '/admin');
+    // Recherche dans la liste dynamique du staff (Super Admins et Admins)
+    const staffMember = staffUsers.find(u => u.email === email);
+    
+    if (staffMember) {
+      login(staffMember);
+      if (staffMember.role === 'super_admin') {
+        navigate('/super-admin');
+      } else {
+        navigate(redirectPath || '/admin');
+      }
     } else {
+      // Sinon, on considère que c'est un candidat (étudiant)
       login({
-        id: 'USR-6329',
+        id: 'USR-' + Math.floor(Math.random() * 9000 + 1000),
         firstName: 'Candidat',
-        lastName: 'Béninois',
+        lastName: 'Utilisateur',
         email: email,
         role: 'student',
         ine: '2024' + Math.floor(Math.random() * 100000)

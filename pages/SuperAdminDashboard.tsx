@@ -20,6 +20,9 @@ const SuperAdminDashboard: React.FC = () => {
     addMajor, 
     logout, 
     user,
+    staffUsers,
+    addStaffUser,
+    deleteStaffUser,
     themes,
     applyTheme,
     updateTheme,
@@ -27,13 +30,8 @@ const SuperAdminDashboard: React.FC = () => {
     toggleLanguage
   } = useCMS();
   
-  const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('csv');
+  const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  const [staffList, setStaffList] = useState<User[]>([
-    { id: 'STF-001', firstName: 'Jean', lastName: 'Admin', email: 'jean@eden.bj', role: 'admin', permissions: ['manage_catalog', 'validate_apps'] },
-    { id: 'STF-002', firstName: 'Alice', lastName: 'Super', email: 'alice@eden.bj', role: 'super_admin', permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] }
-  ]);
   
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingTheme, setEditingTheme] = useState<ThemeConfig | null>(null);
@@ -55,7 +53,7 @@ const SuperAdminDashboard: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const addStaffMember = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddStaffMember = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const selectedPermissions = AVAILABLE_PERMISSIONS
@@ -70,7 +68,8 @@ const SuperAdminDashboard: React.FC = () => {
       role: fd.get('role') as UserRole,
       permissions: selectedPermissions
     };
-    setStaffList([...staffList, newUser]);
+    
+    addStaffUser(newUser);
     setShowStaffModal(false);
   };
 
@@ -80,7 +79,7 @@ const SuperAdminDashboard: React.FC = () => {
         <div className="size-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/20">
           <span className="material-symbols-outlined font-black text-2xl">diamond</span>
         </div>
-        <div>
+        <div className="text-left">
           <h2 className="text-xl font-black tracking-tighter leading-none">Super Console</h2>
           <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1.5">Master Access</p>
         </div>
@@ -221,7 +220,7 @@ const SuperAdminDashboard: React.FC = () => {
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
-                        {staffList.map((s) => (
+                        {staffUsers.map((s) => (
                            <tr key={s.id} className="hover:bg-white/2 transition-colors">
                               <td className="px-8 py-6">
                                  <div className="flex items-center gap-4 text-left">
@@ -263,7 +262,7 @@ const SuperAdminDashboard: React.FC = () => {
                               <td className="px-8 py-6">
                                  <div className="flex gap-4">
                                     <button className="text-gray-500 hover:text-white transition-colors"><span className="material-symbols-outlined">edit</span></button>
-                                    <button className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
+                                    <button onClick={() => deleteStaffUser(s.id)} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
                                  </div>
                               </td>
                            </tr>
@@ -282,7 +281,6 @@ const SuperAdminDashboard: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-                {/* Section Thèmes */}
                 <div className="space-y-6">
                    <div className="flex items-center gap-4 px-2">
                      <span className="material-symbols-outlined text-primary font-bold">palette</span>
@@ -298,33 +296,14 @@ const SuperAdminDashboard: React.FC = () => {
                               </div>
                               <div className="space-y-1">
                                  <h4 className="text-xl font-black text-white tracking-tight">{t.name}</h4>
-                                 <div className="flex gap-2">
-                                    <div className="size-3 rounded-full" style={{ backgroundColor: t.primary }}></div>
-                                    <div className="size-3 rounded-full" style={{ backgroundColor: t.background }}></div>
-                                    <div className="size-3 rounded-full" style={{ backgroundColor: t.surface }}></div>
-                                 </div>
                               </div>
                            </div>
                            <div className="flex gap-4">
-                              <button 
-                                onClick={() => setEditingTheme(t)}
-                                className="size-12 rounded-2xl bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all border border-white/5"
-                              >
+                              <button onClick={() => setEditingTheme(t)} className="size-12 rounded-2xl bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all border border-white/5">
                                 <span className="material-symbols-outlined text-xl">tune</span>
                               </button>
                               {!t.isActive && (
-                                <button 
-                                  onClick={() => applyTheme(t.id)}
-                                  className="px-8 py-3 bg-white text-black font-black rounded-2xl text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                                >
-                                  Activer
-                                </button>
-                              )}
-                              {t.isActive && (
-                                <span className="px-8 py-3 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 flex items-center gap-2">
-                                   Actif
-                                   <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                                </span>
+                                <button onClick={() => applyTheme(t.id)} className="px-8 py-3 bg-white text-black font-black rounded-2xl text-[10px] uppercase tracking-widest hover:scale-105 transition-all shadow-xl">Activer</button>
                               )}
                            </div>
                         </div>
@@ -332,34 +311,24 @@ const SuperAdminDashboard: React.FC = () => {
                    </div>
                 </div>
 
-                {/* Section Langues & International */}
                 <div className="space-y-6">
                    <div className="flex items-center gap-4 px-2">
                      <span className="material-symbols-outlined text-primary font-bold">language</span>
                      <h3 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">Langues du Système</h3>
                    </div>
                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 space-y-6">
-                      <p className="text-gray-400 text-sm font-medium">Cochez les langues disponibles pour les utilisateurs sur le portail public.</p>
                       <div className="grid grid-cols-1 gap-4">
                          {languages.map(lang => (
-                           <div key={lang.code} className="p-6 bg-white/5 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-primary/30 transition-all">
+                           <div key={lang.code} className="p-6 bg-white/5 rounded-3xl border border-white/5 flex items-center justify-between">
                               <div className="flex items-center gap-4">
-                                 <div className="size-12 rounded-xl bg-white/10 flex items-center justify-center text-primary font-black uppercase text-xs">
-                                    {lang.code}
-                                 </div>
+                                 <div className="size-12 rounded-xl bg-white/10 flex items-center justify-center text-primary font-black uppercase text-xs">{lang.code}</div>
                                  <div>
                                     <p className="font-black text-white">{lang.label}</p>
-                                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{lang.isActive ? 'Disponible sur le portail' : 'Désactivé'}</p>
                                  </div>
                               </div>
                               <label className="relative inline-flex items-center cursor-pointer">
-                                <input 
-                                  type="checkbox" 
-                                  checked={lang.isActive} 
-                                  onChange={() => toggleLanguage(lang.code)}
-                                  className="sr-only peer" 
-                                />
-                                <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+                                <input type="checkbox" checked={lang.isActive} onChange={() => toggleLanguage(lang.code)} className="sr-only peer" />
+                                <div className="w-14 h-7 bg-white/10 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:after:translate-x-full"></div>
                               </label>
                            </div>
                          ))}
@@ -374,64 +343,14 @@ const SuperAdminDashboard: React.FC = () => {
             <div className="space-y-12 animate-fade-in text-left">
               <div className="space-y-4">
                 <h2 className="text-5xl font-black text-white tracking-tighter leading-none">Réglages <span className="text-primary italic">Système</span></h2>
-                <p className="text-gray-500 text-lg font-medium">Paramétrez les informations globales et les états du site.</p>
               </div>
-
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-                 {/* Configuration Identité */}
-                 <div className="space-y-6">
-                    <div className="flex items-center gap-4 px-2">
-                       <span className="material-symbols-outlined text-primary font-bold">info</span>
-                       <h3 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">Identité du Portail</h3>
+                 <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 space-y-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom de la Plateforme</label>
+                       <input defaultValue="Etudier au Bénin" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                     </div>
-                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 space-y-6">
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la Plateforme</label>
-                          <input defaultValue="Etudier au Bénin" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                       </div>
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Email de Support Principal</label>
-                          <input defaultValue="contact@etudieraubenin.com" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                       </div>
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Ligne WhatsApp Officielle</label>
-                          <input defaultValue="+229 21 00 00 00" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                       </div>
-                       <button className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20">Sauvegarder les changements</button>
-                    </div>
-                 </div>
-
-                 {/* Configuration État & Maintenance */}
-                 <div className="space-y-6">
-                    <div className="flex items-center gap-4 px-2">
-                       <span className="material-symbols-outlined text-primary font-bold">power_settings_new</span>
-                       <h3 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">État du Système</h3>
-                    </div>
-                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 space-y-8">
-                       <div className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/5">
-                          <div>
-                             <p className="font-black text-white">Mode Maintenance</p>
-                             <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">Désactive le portail public pour tous</p>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={isMaintenance} 
-                              onChange={() => setIsMaintenance(!isMaintenance)}
-                              className="sr-only peer" 
-                            />
-                            <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-red-500"></div>
-                          </label>
-                       </div>
-
-                       <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-3xl space-y-3">
-                          <div className="flex items-center gap-2 text-amber-500">
-                             <span className="material-symbols-outlined font-bold">warning</span>
-                             <p className="text-[10px] font-black uppercase tracking-widest">Attention</p>
-                          </div>
-                          <p className="text-xs text-amber-500/80 font-medium">L'activation du mode maintenance rendra le site inaccessible aux étudiants. Seuls les comptes Super Admin pourront se connecter.</p>
-                       </div>
-                    </div>
+                    <button className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20">Sauvegarder</button>
                  </div>
               </div>
             </div>
@@ -450,97 +369,6 @@ const SuperAdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* MODAL: EDIT THEME */}
-        {editingTheme && (
-          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5 my-auto animate-in zoom-in-95 duration-300">
-                <div className="px-10 py-8 bg-white/5 border-b border-white/5 flex justify-between items-center text-left">
-                   <div className="flex items-center gap-4">
-                      <div className="size-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined font-bold">tune</span>
-                      </div>
-                      <h3 className="text-2xl font-black text-white tracking-tight">Personnaliser {editingTheme.name}</h3>
-                   </div>
-                   <button onClick={() => setEditingTheme(null)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
-                </div>
-                <div className="p-10 space-y-8">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Couleur Primaire</label>
-                         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                            <input 
-                              type="color" 
-                              value={editingTheme.primary} 
-                              onChange={(e) => updateTheme(editingTheme.id, { primary: e.target.value })}
-                              className="size-10 bg-transparent border-none cursor-pointer" 
-                            />
-                            <span className="font-mono text-xs text-white uppercase">{editingTheme.primary}</span>
-                         </div>
-                      </div>
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Arrière-plan</label>
-                         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                            <input 
-                              type="color" 
-                              value={editingTheme.background} 
-                              onChange={(e) => updateTheme(editingTheme.id, { background: e.target.value })}
-                              className="size-10 bg-transparent border-none cursor-pointer" 
-                            />
-                            <span className="font-mono text-xs text-white uppercase">{editingTheme.background}</span>
-                         </div>
-                      </div>
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Surface des cartes</label>
-                         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                            <input 
-                              type="color" 
-                              value={editingTheme.surface} 
-                              onChange={(e) => updateTheme(editingTheme.id, { surface: e.target.value })}
-                              className="size-10 bg-transparent border-none cursor-pointer" 
-                            />
-                            <span className="font-mono text-xs text-white uppercase">{editingTheme.surface}</span>
-                         </div>
-                      </div>
-                      <div className="space-y-3">
-                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rayon des coins (Radius)</label>
-                         <select 
-                            value={editingTheme.radius} 
-                            onChange={(e) => updateTheme(editingTheme.id, { radius: e.target.value })}
-                            className="w-full bg-white/5 p-4 rounded-2xl border border-white/10 font-black text-xs text-white appearance-none outline-none focus:ring-2 focus:ring-primary/20"
-                         >
-                            <option value="0px" className="bg-[#162a1f]">Carré (0px)</option>
-                            <option value="0.5rem" className="bg-[#162a1f]">Classique (0.5rem)</option>
-                            <option value="1rem" className="bg-[#162a1f]">Arrondi (1rem)</option>
-                            <option value="2rem" className="bg-[#162a1f]">Premium (2rem)</option>
-                            <option value="3rem" className="bg-[#162a1f]">Ultra (3rem)</option>
-                         </select>
-                      </div>
-                   </div>
-
-                   <div className="p-8 rounded-[32px] border-2 border-dashed border-white/5 bg-white/2 space-y-4">
-                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest text-center">Aperçu en temps réel</p>
-                      <div className="flex justify-center">
-                         <div className="w-full p-6 rounded-[2rem] shadow-2xl border border-white/5" style={{ backgroundColor: editingTheme.surface, borderRadius: editingTheme.radius }}>
-                            <div className="h-4 w-24 mb-4 rounded-full" style={{ backgroundColor: editingTheme.primary }}></div>
-                            <div className="h-2 w-full mb-2 bg-white/5 rounded-full"></div>
-                            <div className="h-2 w-3/4 bg-white/5 rounded-full"></div>
-                         </div>
-                      </div>
-                   </div>
-
-                   <button 
-                    onClick={() => setEditingTheme(null)}
-                    className="w-full py-5 bg-white text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl mt-6"
-                   >
-                    Fermer le Customiseur
-                   </button>
-                </div>
-             </div>
-          </div>
-        )}
-
         {/* MODAL: ADD STAFF */}
         {showStaffModal && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
@@ -551,7 +379,7 @@ const SuperAdminDashboard: React.FC = () => {
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
-                <form onSubmit={addStaffMember} className="p-10 space-y-6 text-left">
+                <form onSubmit={handleAddStaffMember} className="p-10 space-y-6 text-left">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Prénom</label>

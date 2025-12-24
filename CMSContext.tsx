@@ -11,6 +11,7 @@ interface CMSContextType {
   activeTheme: ThemeConfig;
   userRole: UserRole;
   user: User | null;
+  staffUsers: User[]; // Liste dynamique du staff
   applications: Application[];
   universities: University[];
   majors: Major[];
@@ -26,13 +27,15 @@ interface CMSContextType {
   addApplication: (app: Application) => void;
   updateApplicationStatus: (id: string, status: Application['status']) => void;
   deleteApplication: (id: string) => void;
-  // Admin Methods
   addUniversity: (uni: University) => void;
   updateUniversity: (uni: University) => void;
   deleteUniversity: (id: string) => void;
   addMajor: (major: Major) => void;
   updateMajor: (major: Major) => void;
   deleteMajor: (id: string) => void;
+  // Staff Methods
+  addStaffUser: (user: User) => void;
+  deleteStaffUser: (id: string) => void;
 }
 
 const DEFAULT_CONTENT: CMSContent = {
@@ -58,6 +61,11 @@ const DEFAULT_THEMES: ThemeConfig[] = [
   { id: 'royal', name: 'Royal (Or)', primary: '#eab308', background: '#1c1917', surface: '#292524', radius: '0.5rem', isActive: false }
 ];
 
+const DEFAULT_STAFF: User[] = [
+  { id: 'SUP-001', firstName: 'Directeur', lastName: 'Général', email: 'superadmin@eden.bj', role: 'super_admin', permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] },
+  { id: 'ADM-001', firstName: 'Admin', lastName: 'Principal', email: 'admin@eden.bj', role: 'admin', permissions: ['manage_catalog', 'validate_apps'] }
+];
+
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
 export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,6 +77,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('auth_user_v1');
     return saved ? JSON.parse(saved) : null;
+  });
+
+  const [staffUsers, setStaffUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('db_staff_v1');
+    return saved ? JSON.parse(saved) : DEFAULT_STAFF;
   });
 
   const [universities, setUniversities] = useState<University[]>(() => {
@@ -107,9 +120,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('db_universities_v1', JSON.stringify(universities));
     localStorage.setItem('db_majors_v1', JSON.stringify(majors));
     localStorage.setItem('db_applications_v1', JSON.stringify(applications));
+    localStorage.setItem('db_staff_v1', JSON.stringify(staffUsers));
     if (user) localStorage.setItem('auth_user_v1', JSON.stringify(user));
     else localStorage.removeItem('auth_user_v1');
-  }, [content, universities, majors, applications, user]);
+  }, [content, universities, majors, applications, user, staffUsers]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -131,6 +145,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUserRole('student');
   };
 
+  const addStaffUser = (u: User) => setStaffUsers(prev => [u, ...prev]);
+  const deleteStaffUser = (id: string) => setStaffUsers(prev => prev.filter(u => u.id !== id));
+
   const addApplication = (app: Application) => setApplications(prev => [app, ...prev]);
   const updateApplicationStatus = (id: string, status: Application['status']) => 
     setApplications(prev => prev.map(a => a.id === id ? { ...a, status } : a));
@@ -138,18 +155,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addUniversity = (uni: University) => setUniversities(prev => [uni, ...prev]);
   const updateUniversity = (uni: University) => setUniversities(prev => prev.map(u => u.id === uni.id ? uni : u));
-  
-  // CASCADE DELETE IMPLEMENTATION
   const deleteUniversity = (id: string) => {
-    // 1. Remove the university
     setUniversities(prev => prev.filter(u => u.id !== id));
-    // 2. Cascade remove all related majors
     setMajors(prevMajors => prevMajors.filter(m => m.universityId !== id));
-    // 3. Optional: Remove related applications if desired (usually kept for audit, but here we clean up)
-    setApplications(prevApps => prevApps.filter(a => {
-       const relatedMajor = majors.find(m => m.id === a.majorId);
-       return relatedMajor ? relatedMajor.universityId !== id : true;
-    }));
   };
 
   const addMajor = (major: Major) => setMajors(prev => [major, ...prev]);
@@ -178,10 +186,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <CMSContext.Provider value={{ 
-      content, languages, themes, currentLang, activeTheme, userRole, user, applications, universities, majors,
+      content, languages, themes, currentLang, activeTheme, userRole, user, staffUsers, applications, universities, majors,
       translate, updateContent, setLanguage, toggleLanguage,
       applyTheme, updateTheme, setUserRole, login, logout, addApplication, updateApplicationStatus, deleteApplication,
-      addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor
+      addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor,
+      addStaffUser, deleteStaffUser
     }}>
       {children}
     </CMSContext.Provider>
