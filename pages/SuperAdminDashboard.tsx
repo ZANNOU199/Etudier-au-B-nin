@@ -20,7 +20,7 @@ const SuperAdminDashboard: React.FC = () => {
     toggleLanguage
   } = useCMS();
   
-  const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'logs' | 'cms'>('csv');
+  const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('csv');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [staffList, setStaffList] = useState<User[]>([
@@ -29,6 +29,9 @@ const SuperAdminDashboard: React.FC = () => {
   ]);
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingTheme, setEditingTheme] = useState<ThemeConfig | null>(null);
+
+  // States pour les paramètres globaux (simulés)
+  const [isMaintenance, setIsMaintenance] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -77,6 +80,7 @@ const SuperAdminDashboard: React.FC = () => {
           { id: 'csv', label: 'Nexus Import (CSV)', icon: 'terminal' },
           { id: 'staff', label: 'Staff & Autorités', icon: 'admin_panel_settings' },
           { id: 'cms', label: 'Gestion CMS', icon: 'palette' },
+          { id: 'settings', label: 'Paramètres', icon: 'settings' },
           { id: 'logs', label: 'Flux Système', icon: 'monitoring' },
         ].map((item) => (
           <button 
@@ -325,6 +329,73 @@ const SuperAdminDashboard: React.FC = () => {
                       </div>
                    </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="space-y-12 animate-fade-in text-left">
+              <div className="space-y-4">
+                <h2 className="text-5xl font-black text-white tracking-tighter leading-none">Réglages <span className="text-primary italic">Système</span></h2>
+                <p className="text-gray-500 text-lg font-medium">Paramétrez les informations globales et les états du site.</p>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                 {/* Configuration Identité */}
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-2">
+                       <span className="material-symbols-outlined text-primary font-bold">info</span>
+                       <h3 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">Identité du Portail</h3>
+                    </div>
+                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 space-y-6">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la Plateforme</label>
+                          <input defaultValue="Etudier au Bénin" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Email de Support Principal</label>
+                          <input defaultValue="contact@etudieraubenin.com" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Ligne WhatsApp Officielle</label>
+                          <input defaultValue="+229 21 00 00 00" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                       </div>
+                       <button className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20">Sauvegarder les changements</button>
+                    </div>
+                 </div>
+
+                 {/* Configuration État & Maintenance */}
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-2">
+                       <span className="material-symbols-outlined text-primary font-bold">power_settings_new</span>
+                       <h3 className="text-[12px] font-black text-white uppercase tracking-[0.3em]">État du Système</h3>
+                    </div>
+                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/5 space-y-8">
+                       <div className="flex items-center justify-between p-6 bg-white/5 rounded-3xl border border-white/5">
+                          <div>
+                             <p className="font-black text-white">Mode Maintenance</p>
+                             <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">Désactive le portail public pour tous</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              checked={isMaintenance} 
+                              onChange={() => setIsMaintenance(!isMaintenance)}
+                              className="sr-only peer" 
+                            />
+                            <div className="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-red-500"></div>
+                          </label>
+                       </div>
+
+                       <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-3xl space-y-3">
+                          <div className="flex items-center gap-2 text-amber-500">
+                             <span className="material-symbols-outlined font-bold">warning</span>
+                             <p className="text-[10px] font-black uppercase tracking-widest">Attention</p>
+                          </div>
+                          <p className="text-xs text-amber-500/80 font-medium">L'activation du mode maintenance rendra le site inaccessible aux étudiants. Seuls les comptes Super Admin pourront se connecter.</p>
+                       </div>
+                    </div>
+                 </div>
               </div>
             </div>
           )}
