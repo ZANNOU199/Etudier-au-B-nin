@@ -11,8 +11,7 @@ interface CMSContextType {
   activeTheme: ThemeConfig;
   userRole: UserRole;
   user: User | null;
-  token: string | null;
-  staffUsers: User[];
+  staffUsers: User[]; // Liste dynamique du staff
   applications: Application[];
   universities: University[];
   majors: Major[];
@@ -23,9 +22,8 @@ interface CMSContextType {
   applyTheme: (themeId: string) => void;
   updateTheme: (themeId: string, updates: Partial<ThemeConfig>) => void;
   setUserRole: (role: UserRole) => void;
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
-  register: (data: any) => Promise<{ success: boolean; message: string }>;
-  logout: () => Promise<void>;
+  login: (userData: User) => void;
+  logout: () => void;
   addApplication: (app: Application) => void;
   updateApplicationStatus: (id: string, status: Application['status']) => void;
   deleteApplication: (id: string) => void;
@@ -35,11 +33,10 @@ interface CMSContextType {
   addMajor: (major: Major) => void;
   updateMajor: (major: Major) => void;
   deleteMajor: (id: string) => void;
+  // Staff Methods
   addStaffUser: (user: User) => void;
   deleteStaffUser: (id: string) => void;
 }
-
-const API_BASE_URL = "https://api.cipaph.com/api";
 
 const DEFAULT_CONTENT: CMSContent = {
   'hero_title_line1': { fr: "Ouvrez les portes", en: "Open the doors" },
@@ -82,10 +79,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('auth_token_v1');
-  });
-
   const [staffUsers, setStaffUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('db_staff_v1');
     return saved ? JSON.parse(saved) : DEFAULT_STAFF;
@@ -106,7 +99,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [languages] = useState<Language[]>([
+  const [languages, setLanguages] = useState<Language[]>([
     { code: 'fr', label: 'Français', isActive: true },
     { code: 'en', label: 'English', isActive: true }
   ]);
@@ -128,19 +121,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('db_majors_v1', JSON.stringify(majors));
     localStorage.setItem('db_applications_v1', JSON.stringify(applications));
     localStorage.setItem('db_staff_v1', JSON.stringify(staffUsers));
-    
-    if (user) {
-      localStorage.setItem('auth_user_v1', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('auth_user_v1');
-    }
-
-    if (token) {
-      localStorage.setItem('auth_token_v1', token);
-    } else {
-      localStorage.removeItem('auth_token_v1');
-    }
-  }, [content, universities, majors, applications, user, staffUsers, token]);
+    if (user) localStorage.setItem('auth_user_v1', JSON.stringify(user));
+    else localStorage.removeItem('auth_user_v1');
+  }, [content, universities, majors, applications, user, staffUsers]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -148,68 +131,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     root.style.setProperty('--bg-color', activeTheme.background);
     root.style.setProperty('--surface-color', activeTheme.surface);
     root.style.setProperty('--radius-main', activeTheme.radius);
-  }, [activeTheme]);
+  }, [themes, activeTheme]);
 
   const translate = (key: string) => content[key]?.[currentLang] || content[key]?.fr || key;
 
-  const register = async (data: any) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await response.json();
-      if (result.status === "success") {
-        setUser(result.user);
-        setToken(result.token);
-        setUserRole(result.user.role);
-        return { success: true, message: result.message };
-      }
-      return { success: false, message: result.message || "Erreur d'inscription" };
-    } catch (error) {
-      return { success: false, message: "Erreur de connexion au serveur" };
-    }
+  const login = (userData: User) => {
+    setUser(userData);
+    setUserRole(userData.role);
   };
 
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const result = await response.json();
-      if (result.status === "success") {
-        setUser(result.user);
-        setToken(result.token);
-        setUserRole(result.user.role);
-        return { success: true, message: result.message };
-      }
-      return { success: false, message: result.message || "Identifiants invalides" };
-    } catch (error) {
-      return { success: false, message: "Erreur de connexion au serveur" };
-    }
-  };
-
-  const logout = async () => {
-    try {
-      if (token) {
-        await fetch(`${API_BASE_URL}/logout`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Erreur déconnexion:", error);
-    } finally {
-      setUser(null);
-      setToken(null);
-      setUserRole('student');
-    }
+  const logout = () => {
+    setUser(null);
+    setUserRole('student');
   };
 
   const addStaffUser = (u: User) => setStaffUsers(prev => [u, ...prev]);
@@ -240,7 +173,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setLanguage = (code: string) => setCurrentLang(code);
   const toggleLanguage = (code: string) => {
-    // Non implémenté pour simplifier
+    setLanguages(prev => prev.map(l => l.code === code ? { ...l, isActive: !l.isActive } : l));
   };
 
   const applyTheme = (themeId: string) => {
@@ -253,9 +186,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <CMSContext.Provider value={{ 
-      content, languages, themes, currentLang, activeTheme, userRole, user, token, staffUsers, applications, universities, majors,
+      content, languages, themes, currentLang, activeTheme, userRole, user, staffUsers, applications, universities, majors,
       translate, updateContent, setLanguage, toggleLanguage,
-      applyTheme, updateTheme, setUserRole, login, register, logout, addApplication, updateApplicationStatus, deleteApplication,
+      applyTheme, updateTheme, setUserRole, login, logout, addApplication, updateApplicationStatus, deleteApplication,
       addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor,
       addStaffUser, deleteStaffUser
     }}>
