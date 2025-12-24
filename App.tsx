@@ -51,7 +51,7 @@ const Navbar = () => {
   // Vue pour utilisateur connecté
   if (user) {
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-white/5 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-white/5 bg-white dark:bg-background-dark">
         <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto w-full text-left">
           <div className="flex items-center gap-5">
             <Link 
@@ -84,7 +84,7 @@ const Navbar = () => {
 
   // Vue publique avec Menu Mobile
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border-light dark:border-white/5 bg-white/80 dark:bg-background-dark/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-border-light dark:border-white/5 bg-white/90 dark:bg-background-dark/95 backdrop-blur-xl">
       <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto">
         <Link to="/" className="flex items-center gap-4 shrink-0 group">
           <div className="size-10 flex items-center justify-center text-primary bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
@@ -137,7 +137,7 @@ const Navbar = () => {
         {/* Mobile Hamburger Button */}
         <button 
           onClick={() => setIsMobileMenuOpen(true)}
-          className="lg:hidden size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary transition-all"
+          className="lg:hidden size-11 rounded-xl bg-gray-50 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-primary transition-all border border-gray-100 dark:border-white/10"
         >
           <span className="material-symbols-outlined text-2xl">menu</span>
         </button>
@@ -146,25 +146,25 @@ const Navbar = () => {
       {/* Mobile Drawer Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[100] lg:hidden">
-          {/* Backdrop */}
+          {/* Backdrop (Assombrit le site en dessous) */}
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300"
             onClick={() => setIsMobileMenuOpen(false)}
           />
           
-          {/* Drawer Content */}
-          <aside className="absolute right-0 top-0 bottom-0 w-80 bg-white dark:bg-surface-dark shadow-2xl flex flex-col animate-in slide-in-from-right duration-500">
-            <div className="p-8 border-b border-gray-100 dark:border-white/5 flex justify-between items-center">
-              <span className="font-black text-sm uppercase tracking-widest text-gray-400">Navigation</span>
+          {/* Drawer Content (Le panneau blanc/noir 100% OPAQUE) */}
+          <aside className="absolute right-0 top-0 bottom-0 w-[280px] sm:w-[320px] bg-white dark:bg-[#162a1f] shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col animate-in slide-in-from-right duration-500 border-l border-gray-100 dark:border-white/10">
+            <div className="p-8 border-b border-gray-100 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-black/20">
+              <span className="font-black text-[10px] uppercase tracking-[0.3em] text-gray-400">Navigation</span>
               <button 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="size-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500"
+                className="size-10 rounded-xl bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500 hover:text-primary transition-colors"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto p-6 space-y-2 text-left">
+            <nav className="flex-1 overflow-y-auto p-6 space-y-2 text-left bg-white dark:bg-[#162a1f]">
               {navLinks.map((link) => (
                 <Link 
                   key={link.path}
@@ -173,7 +173,7 @@ const Navbar = () => {
                   className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest transition-all ${
                     isActive(link.path) 
                     ? 'bg-primary text-black shadow-lg shadow-primary/20' 
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-primary/5 hover:text-primary'
+                    : 'text-gray-500 dark:text-gray-300 hover:bg-primary/5 hover:text-primary'
                   }`}
                 >
                   {link.name}
@@ -181,7 +181,7 @@ const Navbar = () => {
               ))}
             </nav>
 
-            <div className="p-8 border-t border-gray-100 dark:border-white/5 space-y-6">
+            <div className="p-8 border-t border-gray-100 dark:border-white/10 space-y-8 bg-gray-50/50 dark:bg-black/20">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Langue</span>
                 <div className="flex gap-2">
@@ -189,7 +189,7 @@ const Navbar = () => {
                     <button 
                       key={lang.code}
                       onClick={() => setLanguage(lang.code)}
-                      className={`size-8 rounded-lg text-[9px] font-black uppercase transition-all ${currentLang === lang.code ? 'bg-primary text-black' : 'bg-gray-100 dark:bg-white/5 text-gray-400'}`}
+                      className={`size-9 rounded-xl text-[10px] font-black uppercase transition-all ${currentLang === lang.code ? 'bg-primary text-black shadow-md' : 'bg-white dark:bg-white/5 text-gray-400 border border-gray-100 dark:border-white/5'}`}
                     >
                       {lang.code}
                     </button>
@@ -197,18 +197,18 @@ const Navbar = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-3">
                  <Link 
                    to="/login" 
                    onClick={() => setIsMobileMenuOpen(false)}
-                   className="py-4 rounded-xl border-2 border-gray-100 dark:border-white/5 text-center font-black text-[10px] uppercase tracking-widest dark:text-white"
+                   className="w-full py-4 rounded-xl border-2 border-gray-100 dark:border-white/10 text-center font-black text-[10px] uppercase tracking-widest dark:text-white bg-white dark:bg-transparent"
                  >
                    Connexion
                  </Link>
                  <Link 
                    to="/register" 
                    onClick={() => setIsMobileMenuOpen(false)}
-                   className="py-4 rounded-xl bg-primary text-black text-center font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20"
+                   className="w-full py-4 rounded-xl bg-primary text-black text-center font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
                  >
                    S'inscrire
                  </Link>
