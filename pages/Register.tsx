@@ -140,21 +140,7 @@ const Register: React.FC = () => {
                    />
                 </div>
               </div>
-              <div className="space-y-3">
-                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Téléphone</label>
-                <div className="relative">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">call</span>
-                   <input 
-                    name="phone"
-                    required
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
-                    type="tel" 
-                    placeholder="+229 XX XX XX XX" 
-                   />
-                </div>
-              </div>
+              
             </div>
 
             <div className="space-y-3">
