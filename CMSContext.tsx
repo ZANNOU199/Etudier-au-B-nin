@@ -23,8 +23,8 @@ interface CMSContextType {
   applyTheme: (themeId: string) => void;
   updateTheme: (themeId: string, updates: Partial<ThemeConfig>) => void;
   setUserRole: (role: UserRole) => void;
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
-  register: (data: any) => Promise<{ success: boolean; message: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: User }>;
+  register: (data: any) => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => Promise<void>;
   addApplication: (app: Application) => void;
   updateApplicationStatus: (id: string, status: Application['status']) => void;
@@ -128,10 +128,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('db_majors_v1', JSON.stringify(majors));
     localStorage.setItem('db_applications_v1', JSON.stringify(applications));
     localStorage.setItem('db_staff_v1', JSON.stringify(staffUsers));
-    if (user) localStorage.setItem('auth_user_v1', JSON.stringify(user));
-    else localStorage.removeItem('auth_user_v1');
-    if (token) localStorage.setItem('auth_token_v1', token);
-    else localStorage.removeItem('auth_token_v1');
+    
+    if (user) {
+      localStorage.setItem('auth_user_v1', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('auth_user_v1');
+    }
+
+    if (token) {
+      localStorage.setItem('auth_token_v1', token);
+    } else {
+      localStorage.removeItem('auth_token_v1');
+    }
   }, [content, universities, majors, applications, user, staffUsers, token]);
 
   useEffect(() => {
@@ -149,22 +157,28 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password
+        })
       });
       const result = await response.json();
       if (result.status === "success") {
-        const loggedUser: User = {
-            ...result.user,
-            id: result.user.id.toString()
+        const userData: User = {
+          ...result.user,
+          id: result.user.id.toString(),
+          role: result.user.role || 'student'
         };
-        setUser(loggedUser);
+        setUser(userData);
         setToken(result.token);
-        setUserRole(loggedUser.role);
-        return { success: true, message: result.message };
+        setUserRole(userData.role);
+        return { success: true, message: result.message, user: userData };
       }
       return { success: false, message: result.message || "Erreur d'inscription" };
     } catch (error) {
-      return { success: false, message: "Erreur réseau" };
+      return { success: false, message: "Erreur de connexion au serveur" };
     }
   };
 
@@ -177,18 +191,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const result = await response.json();
       if (result.status === "success") {
-        const loggedUser: User = {
-            ...result.user,
-            id: result.user.id.toString()
+        const userData: User = {
+          ...result.user,
+          id: result.user.id.toString(),
+          role: result.user.role || 'student'
         };
-        setUser(loggedUser);
+        setUser(userData);
         setToken(result.token);
-        setUserRole(loggedUser.role);
-        return { success: true, message: result.message };
+        setUserRole(userData.role);
+        return { success: true, message: result.message, user: userData };
       }
-      return { success: false, message: result.message || "Email ou mot de passe incorrect" };
+      return { success: false, message: result.message || "Identifiants incorrects" };
     } catch (error) {
-      return { success: false, message: "Erreur réseau" };
+      return { success: false, message: "Erreur de connexion au serveur" };
     }
   };
 
@@ -204,7 +219,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error("Erreur lors de la déconnexion API:", error);
     } finally {
       setUser(null);
       setToken(null);
@@ -239,7 +254,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setLanguage = (code: string) => setCurrentLang(code);
-  const toggleLanguage = (code: string) => {};
+  const toggleLanguage = (code: string) => {
+    // Non utilisé actuellement
+  };
 
   const applyTheme = (themeId: string) => {
     setThemes(prev => prev.map(t => ({ ...t, isActive: t.id === themeId })));

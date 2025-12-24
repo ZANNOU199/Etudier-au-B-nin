@@ -22,18 +22,17 @@ const Login: React.FC = () => {
     const result = await login(email.toLowerCase().trim(), password);
     
     setLoading(false);
-    if (result.success) {
-      // Le context a déjà mis à jour l'utilisateur, on peut vérifier le rôle
-      const userStr = localStorage.getItem('auth_user_v1');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user.role === 'super_admin') {
-          navigate('/super-admin');
-        } else if (user.role === 'admin') {
-          navigate('/admin');
-        } else {
-          navigate(redirectPath || '/dashboard');
-        }
+    if (result.success && result.user) {
+      // Redirection intelligente selon le rôle
+      const role = result.user.role;
+      
+      if (role === 'super_admin') {
+        navigate('/super-admin');
+      } else if (role === 'admin') {
+        navigate('/admin');
+      } else {
+        // Pour les étudiants, on respecte le redirectPath s'il existe
+        navigate(redirectPath || '/dashboard');
       }
     } else {
       setError(result.message);

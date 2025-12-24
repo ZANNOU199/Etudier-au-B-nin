@@ -30,8 +30,16 @@ const Register: React.FC = () => {
     });
     
     setLoading(false);
-    if (result.success) {
-      navigate('/dashboard');
+    if (result.success && result.user) {
+      // Redirection après inscription
+      const role = result.user.role;
+      if (role === 'super_admin') {
+        navigate('/super-admin');
+      } else if (role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.message);
     }
@@ -68,7 +76,7 @@ const Register: React.FC = () => {
               Rejoignez la plateforme de référence pour l'orientation universitaire. Comparez les établissements, choisissez votre parcours et préparez votre succès.
             </p>
 
-            <div className="flex items-center gap-6 pt-6">
+            <div className="flex items-center gap-6 pt-6 text-left">
               <div className="flex -space-x-4">
                 <img className="size-14 rounded-full border-4 border-white object-cover shadow-lg" src="https://i.pravatar.cc/150?u=a1" alt="Student" />
                 <img className="size-14 rounded-full border-4 border-white object-cover shadow-lg" src="https://i.pravatar.cc/150?u=a2" alt="Student" />
@@ -76,7 +84,7 @@ const Register: React.FC = () => {
               </div>
               <div className="space-y-0.5">
                 <p className="text-primary font-black text-2xl tracking-tight">15k+ Étudiants</p>
-                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest text-left">Inscrits cette année</p>
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">Inscrits cette année</p>
               </div>
             </div>
           </div>
