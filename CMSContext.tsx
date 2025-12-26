@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major } from './types';
-import { UNIVERSITIES as STATIC_UNIS, MAJORS as STATIC_MAJORS } from './constants';
+import { UNIVERSITIES, MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -12,31 +12,29 @@ interface CMSContextType {
   userRole: UserRole;
   user: User | null;
   token: string | null;
-  staffUsers: User[];
   applications: Application[];
   universities: University[];
   majors: Major[];
+  isLoading: boolean;
+  apiError: string | null;
   translate: (key: string) => string;
   updateContent: (key: string, lang: string, value: string) => void;
   setLanguage: (code: string) => void;
-  toggleLanguage: (code: string) => void;
   applyTheme: (themeId: string) => void;
   updateTheme: (themeId: string, updates: Partial<ThemeConfig>) => void;
   setUserRole: (role: UserRole) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: User }>;
   register: (data: any) => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => Promise<void>;
-  addApplication: (app: Application) => void;
-  updateApplicationStatus: (id: string, status: Application['status']) => void;
-  deleteApplication: (id: string) => void;
-  addUniversity: (uni: University) => void;
-  updateUniversity: (uni: University) => void;
-  deleteUniversity: (id: string) => void;
-  addMajor: (major: Major) => void;
-  updateMajor: (major: Major) => void;
-  deleteMajor: (id: string) => void;
-  addStaffUser: (user: User) => void;
-  deleteStaffUser: (id: string) => void;
+  addApplication: (formData: FormData) => Promise<{ success: boolean; message: string }>;
+  refreshData: () => Promise<void>;
+  deleteApplication: (id: string) => Promise<void>;
+  addUniversity: (uni: any) => Promise<void>;
+  updateUniversity: (id: string, uni: any) => Promise<void>;
+  deleteUniversity: (id: string) => Promise<void>;
+  addMajor: (major: any) => Promise<void>;
+  updateMajor: (id: string, major: any) => Promise<void>;
+  deleteMajor: (id: string) => Promise<void>;
 }
 
 const API_BASE_URL = "https://api.cipaph.com/api";
@@ -44,8 +42,6 @@ const API_BASE_URL = "https://api.cipaph.com/api";
 const DEFAULT_CONTENT: CMSContent = {
   'hero_title_line1': { fr: "Ouvrez les portes", en: "Open the doors" },
   'hero_title_accent': { fr: "destinée", en: "destiny" },
-  'hero_subtitle': { fr: "Trouvez la formation idéale parmi les établissements d'excellence au Bénin et gérez vos préinscriptions en quelques clics.", en: "Find the ideal training among the institutions of excellence in Benin and manage your pre-registrations in a few clicks." },
-  'btn_explore': { fr: "Explorer", en: "Explore" },
   'nav_home': { fr: "Accueil", en: "Home" },
   'nav_universities': { fr: "Universités", en: "Universities" },
   'nav_schools': { fr: "Ecoles", en: "Schools" },
@@ -53,94 +49,131 @@ const DEFAULT_CONTENT: CMSContent = {
   'nav_pricing': { fr: "Tarifs", en: "Pricing" },
   'nav_contact': { fr: "Nous Contacter", en: "Contact Us" },
   'footer_desc': { fr: "La plateforme de référence pour l'orientation, les préinscriptions et l'admission dans le supérieur au Bénin.", en: "The reference platform for orientation, pre-registration and admission to higher education in Benin." },
-  'cta_title': { fr: "Lancez votre futur", en: "Launch your future" },
-  'cta_today': { fr: "aujourd'hui", en: "today" },
-  'cta_desc': { fr: "Rejoignez plus de 15,000 étudiants qui ont déjà trouvé leur voie grâce à notre plateforme d'orientation intelligente.", en: "Join more than 15,000 students who have already found their way thanks to our intelligent orientation platform." }
 };
 
 const DEFAULT_THEMES: ThemeConfig[] = [
-  { id: 'default', name: 'Nature (Actuel)', primary: '#13ec6d', background: '#0d1b13', surface: '#162a1f', radius: '2rem', isActive: true },
-  { id: 'ocean', name: 'Ocean (Bleu)', primary: '#3b82f6', background: '#0f172a', surface: '#1e293b', radius: '1rem', isActive: false },
-  { id: 'royal', name: 'Royal (Or)', primary: '#eab308', background: '#1c1917', surface: '#292524', radius: '0.5rem', isActive: false }
-];
-
-const DEFAULT_STAFF: User[] = [
-  { id: 'SUP-001', firstName: 'Directeur', lastName: 'Général', email: 'superadmin@eden.bj', role: 'super_admin', permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] },
-  { id: 'ADM-001', firstName: 'Admin', lastName: 'Principal', email: 'admin@eden.bj', role: 'admin', permissions: ['manage_catalog', 'validate_apps'] }
+  { id: 'default', name: 'Nature', primary: '#13ec6d', background: '#0d1b13', surface: '#162a1f', radius: '2rem', isActive: true },
 ];
 
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
 export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [content, setContent] = useState<CMSContent>(() => {
-    const saved = localStorage.getItem('cms_content_v1');
-    return saved ? JSON.parse(saved) : DEFAULT_CONTENT;
-  });
-
+  const [content] = useState<CMSContent>(DEFAULT_CONTENT);
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('auth_user_v1');
     return saved ? JSON.parse(saved) : null;
   });
-
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('auth_token_v1');
-  });
-
-  const [staffUsers, setStaffUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('db_staff_v1');
-    return saved ? JSON.parse(saved) : DEFAULT_STAFF;
-  });
-
-  const [universities, setUniversities] = useState<University[]>(() => {
-    const saved = localStorage.getItem('db_universities_v1');
-    return saved ? JSON.parse(saved) : STATIC_UNIS;
-  });
-
-  const [majors, setMajors] = useState<Major[]>(() => {
-    const saved = localStorage.getItem('db_majors_v1');
-    return saved ? JSON.parse(saved) : STATIC_MAJORS;
-  });
-
-  const [applications, setApplications] = useState<Application[]>(() => {
-    const saved = localStorage.getItem('db_applications_v1');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [languages] = useState<Language[]>([
-    { code: 'fr', label: 'Français', isActive: true },
-    { code: 'en', label: 'English', isActive: true }
-  ]);
-
+  const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token_v1'));
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [currentLang, setCurrentLang] = useState('fr');
-  
-  const [themes, setThemes] = useState<ThemeConfig[]>(() => {
-    const saved = localStorage.getItem('cms_themes_v1');
-    return saved ? JSON.parse(saved) : DEFAULT_THEMES;
-  });
-
+  const [themes, setThemes] = useState<ThemeConfig[]>(DEFAULT_THEMES);
   const [userRole, setUserRole] = useState<UserRole>(user?.role || 'student');
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
-  useEffect(() => {
-    localStorage.setItem('cms_content_v1', JSON.stringify(content));
-    localStorage.setItem('db_universities_v1', JSON.stringify(universities));
-    localStorage.setItem('db_majors_v1', JSON.stringify(majors));
-    localStorage.setItem('db_applications_v1', JSON.stringify(applications));
-    localStorage.setItem('db_staff_v1', JSON.stringify(staffUsers));
-    
-    if (user) {
-      localStorage.setItem('auth_user_v1', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('auth_user_v1');
-    }
+  const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+    // Nettoyage de l'endpoint pour éviter les doubles slashes
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${API_BASE_URL}${cleanEndpoint}`;
 
-    if (token) {
-      localStorage.setItem('auth_token_v1', token);
-    } else {
-      localStorage.removeItem('auth_token_v1');
+    const headers: any = {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(!(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers,
+    };
+
+    try {
+      const response = await fetch(url, { 
+        ...options, 
+        headers,
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (response.status === 401) {
+        handleLogoutLocal();
+        throw new Error("Session expirée");
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`Fetch error on ${url}:`, error);
+      throw error;
     }
-  }, [content, universities, majors, applications, user, staffUsers, token]);
+  };
+
+  const refreshData = async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      // 1. Universités (Endpoint public)
+      try {
+        const uniRes = await apiRequest('/universities');
+        if (uniRes.ok) {
+          const uniData = await uniRes.json();
+          const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
+          const mappedUnis: University[] = rawUnis.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            location: u.city || u.location || 'Bénin',
+            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+            faculties: u.faculties || []
+          }));
+          setUniversities(mappedUnis);
+        } else {
+          throw new Error("Erreur serveur Universités");
+        }
+      } catch (err) {
+        console.warn("API Universités inaccessible, chargement des données locales.");
+        setUniversities(UNIVERSITIES);
+      }
+
+      // 2. Données privées (si token présent)
+      if (token) {
+        try {
+          const appRes = await apiRequest('/applications');
+          if (appRes.ok) {
+            const appData = await appRes.json();
+            const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+            setApplications(rawApps.map((a: any) => ({
+              ...a,
+              id: a.id.toString(),
+              status: a.status || 'En attente'
+            })));
+          }
+
+          if (user?.role !== 'student') {
+            const majorRes = await apiRequest('/admin/majors');
+            if (majorRes.ok) {
+              const majorData = await majorRes.json();
+              setMajors(Array.isArray(majorData) ? majorData : (majorData.data || []));
+            }
+          }
+        } catch (err) {
+          console.error("Erreur chargement données privées:", err);
+          setApiError("Certaines données n'ont pas pu être synchronisées.");
+        }
+      } else {
+        // Chargement des filières locales par défaut pour les visiteurs
+        setMajors(MAJORS);
+      }
+
+    } catch (err) {
+      setApiError("Erreur de connexion au serveur. Mode hors-ligne activé.");
+      console.error("Erreur de synchronisation globale:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+  }, [token]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -152,127 +185,140 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const translate = (key: string) => content[key]?.[currentLang] || content[key]?.fr || key;
 
-  const register = async (data: any) => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/register`, {
+      const res = await apiRequest('/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          password: data.password
-        })
+        body: JSON.stringify({ email, password })
       });
-      const result = await response.json();
-      if (result.status === "success") {
-        const userData: User = {
-          ...result.user,
-          id: result.user.id.toString(),
-          role: result.user.role || 'student'
-        };
+      const data = await res.json();
+      if (res.ok) {
+        const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
-        setToken(result.token);
-        setUserRole(userData.role);
-        return { success: true, message: result.message, user: userData };
+        setToken(data.token);
+        localStorage.setItem('auth_token_v1', data.token);
+        localStorage.setItem('auth_user_v1', JSON.stringify(userData));
+        return { success: true, message: "Connecté avec succès", user: userData };
       }
-      return { success: false, message: result.message || "Erreur d'inscription" };
-    } catch (error) {
-      return { success: false, message: "Erreur de connexion au serveur" };
+      return { success: false, message: data.message || "Identifiants invalides" };
+    } catch (e) {
+      return { success: false, message: "Le serveur est injoignable (Erreur Réseau/CORS)." };
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const register = async (formData: any) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const res = await apiRequest('/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(formData)
       });
-      const result = await response.json();
-      if (result.status === "success") {
-        const userData: User = {
-          ...result.user,
-          id: result.user.id.toString(),
-          role: result.user.role || 'student'
-        };
+      const data = await res.json();
+      if (res.status === 201 || res.status === 200) {
+        const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
-        setToken(result.token);
-        setUserRole(userData.role);
-        return { success: true, message: result.message, user: userData };
+        setToken(data.token);
+        localStorage.setItem('auth_token_v1', data.token);
+        localStorage.setItem('auth_user_v1', JSON.stringify(userData));
+        return { success: true, message: "Bienvenue !", user: userData };
       }
-      return { success: false, message: result.message || "Identifiants incorrects" };
-    } catch (error) {
-      return { success: false, message: "Erreur de connexion au serveur" };
+      return { success: false, message: data.message || "Erreur d'inscription" };
+    } catch (e) {
+      return { success: false, message: "Le serveur est injoignable." };
     }
+  };
+
+  const handleLogoutLocal = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('auth_token_v1');
+    localStorage.removeItem('auth_user_v1');
   };
 
   const logout = async () => {
+    try { await apiRequest('/logout', { method: 'POST' }); } catch(e) {}
+    handleLogoutLocal();
+  };
+
+  const addApplication = async (formData: FormData) => {
     try {
-      if (token) {
-        await fetch(`${API_BASE_URL}/logout`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+      const res = await apiRequest('/applications', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.status === 201 || res.status === 200) {
+        refreshData();
+        return { success: true, message: "Dossier transmis" };
       }
-    } catch (error) {
-      console.error("Erreur lors de la déconnexion API:", error);
-    } finally {
-      setUser(null);
-      setToken(null);
-      setUserRole('student');
+      return { success: false, message: data.message || "Erreur" };
+    } catch (e) {
+      return { success: false, message: "Erreur réseau lors de l'envoi." };
     }
   };
 
-  const addStaffUser = (u: User) => setStaffUsers(prev => [u, ...prev]);
-  const deleteStaffUser = (id: string) => setStaffUsers(prev => prev.filter(u => u.id !== id));
-
-  const addApplication = (app: Application) => setApplications(prev => [app, ...prev]);
-  const updateApplicationStatus = (id: string, status: Application['status']) => 
-    setApplications(prev => prev.map(a => a.id === id ? { ...a, status } : a));
-  const deleteApplication = (id: string) => setApplications(prev => prev.filter(a => a.id !== id));
-
-  const addUniversity = (uni: University) => setUniversities(prev => [uni, ...prev]);
-  const updateUniversity = (uni: University) => setUniversities(prev => prev.map(u => u.id === uni.id ? uni : u));
-  const deleteUniversity = (id: string) => {
-    setUniversities(prev => prev.filter(u => u.id !== id));
-    setMajors(prevMajors => prevMajors.filter(m => m.universityId !== id));
+  const deleteApplication = async (id: string) => {
+    try {
+      await apiRequest(`/applications/${id}`, { method: 'DELETE' });
+      refreshData();
+    } catch (e) {}
   };
 
-  const addMajor = (major: Major) => setMajors(prev => [major, ...prev]);
-  const updateMajor = (major: Major) => setMajors(prev => prev.map(m => m.id === major.id ? major : m));
-  const deleteMajor = (id: string) => setMajors(prev => prev.filter(m => m.id !== id));
-
-  const updateContent = (key: string, lang: string, value: string) => {
-    setContent(prev => ({
-      ...prev,
-      [key]: { ...prev[key], [lang]: value }
-    }));
+  const addUniversity = async (uni: any) => {
+    const payload = {
+      name: uni.name,
+      acronym: uni.acronym,
+      city: uni.location || uni.city,
+      type: uni.type.toLowerCase(),
+      description: uni.description || "Établissement"
+    };
+    try {
+      await apiRequest('/admin/universities', { method: 'POST', body: JSON.stringify(payload) });
+      refreshData();
+    } catch (e) {}
   };
 
-  const setLanguage = (code: string) => setCurrentLang(code);
-  const toggleLanguage = (code: string) => {
-    // Non utilisé actuellement
+  const updateUniversity = async (id: string, uni: any) => {
+    try {
+      await apiRequest(`/admin/universities/${id}`, { method: 'PUT', body: JSON.stringify(uni) });
+      refreshData();
+    } catch (e) {}
   };
 
-  const applyTheme = (themeId: string) => {
-    setThemes(prev => prev.map(t => ({ ...t, isActive: t.id === themeId })));
+  const deleteUniversity = async (id: string) => {
+    try {
+      await apiRequest(`/admin/universities/${id}`, { method: 'DELETE' });
+      refreshData();
+    } catch (e) {}
   };
 
-  const updateTheme = (themeId: string, updates: Partial<ThemeConfig>) => {
-    setThemes(prev => prev.map(t => t.id === themeId ? { ...t, ...updates } : t));
+  const addMajor = async (major: any) => {
+    try {
+      await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
+      refreshData();
+    } catch (e) {}
+  };
+
+  const updateMajor = async (id: string, major: any) => {
+    try {
+      await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(major) });
+      refreshData();
+    } catch (e) {}
+  };
+
+  const deleteMajor = async (id: string) => {
+    try {
+      await apiRequest(`/admin/majors/${id}`, { method: 'DELETE' });
+      refreshData();
+    } catch (e) {}
   };
 
   return (
     <CMSContext.Provider value={{ 
-      content, languages, themes, currentLang, activeTheme, userRole, user, token, staffUsers, applications, universities, majors,
-      translate, updateContent, setLanguage, toggleLanguage,
-      applyTheme, updateTheme, setUserRole, login, register, logout, addApplication, updateApplicationStatus, deleteApplication,
-      addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor,
-      addStaffUser, deleteStaffUser
+      content, languages: [{ code: 'fr', label: 'Français', isActive: true }], themes, currentLang, activeTheme, userRole, user, token, applications, universities, majors, isLoading, apiError,
+      translate, updateContent: () => {}, setLanguage: setCurrentLang,
+      applyTheme: (id) => setThemes(prev => prev.map(t => ({ ...t, isActive: t.id === id }))),
+      updateTheme: () => {}, setUserRole, login, register, logout, addApplication, refreshData, deleteApplication,
+      addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor
     }}>
       {children}
     </CMSContext.Provider>

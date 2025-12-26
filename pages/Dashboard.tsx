@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Dashboard: React.FC = () => {
-  const { user, applications, logout } = useCMS();
+  const { user, applications, logout, refreshData, isLoading, apiError } = useCMS();
   const [activeTab, setActiveTab] = useState<'home' | 'applications' | 'profile'>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -12,12 +12,14 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!user) {
       navigate('/login');
+    } else {
+      refreshData();
     }
-  }, [user, navigate]);
+  }, [user]);
 
   const userApplications = useMemo(() => {
-    return applications.filter(a => a.studentId === user?.id);
-  }, [applications, user]);
+    return applications;
+  }, [applications]);
 
   const menuItems = [
     { id: 'home', label: 'Dashboard', icon: 'grid_view' },
@@ -96,15 +98,13 @@ const Dashboard: React.FC = () => {
               </button>
               <div className="space-y-0.5">
                  <h2 className="text-xl font-black dark:text-white tracking-tight">Bonjour, {user.firstName}</h2>
-                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Session 2024 • Connecté</p>
+                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                   {isLoading ? 'Synchronisation...' : 'Session active'}
+                 </p>
               </div>
            </div>
            
            <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                 <p className="text-xs font-black dark:text-white leading-none">{user.firstName} {user.lastName}</p>
-                 <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">ID #{user.id.split('-')[1]}</p>
-              </div>
               <button onClick={() => { logout(); navigate('/login'); }} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all">
                  <span className="material-symbols-outlined text-xl">logout</span>
               </button>
@@ -112,20 +112,27 @@ const Dashboard: React.FC = () => {
         </header>
 
         <div className="p-6 lg:p-12 space-y-10">
+          {apiError && (
+            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-3 text-red-500 animate-fade-in">
+              <span className="material-symbols-outlined">cloud_off</span>
+              <p className="text-xs font-black uppercase tracking-widest">{apiError}</p>
+              <button onClick={() => refreshData()} className="ml-auto bg-red-500 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase">Réessayer</button>
+            </div>
+          )}
+
           {activeTab === 'home' && (
             <div className="space-y-10 animate-fade-in">
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
                     { label: 'Candidatures', val: userApplications.length.toString().padStart(2, '0'), icon: 'description', color: 'text-primary' },
-                    { label: 'Documents', val: '02', icon: 'folder_zip', color: 'text-blue-500' },
                     { label: 'Alertes', val: '00', icon: 'campaign', color: 'text-amber-500' }
                   ].map((s, i) => (
-                    <div key={i} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
+                    <div key={i} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm flex items-center justify-between">
                       <div>
                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{s.label}</p>
                         <p className="text-3xl font-black dark:text-white">{s.val}</p>
                       </div>
-                      <div className={`size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center ${s.color} group-hover:scale-110 transition-transform`}>
+                      <div className={`size-14 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center ${s.color}`}>
                         <span className="material-symbols-outlined text-2xl font-bold">{s.icon}</span>
                       </div>
                     </div>
@@ -134,8 +141,8 @@ const Dashboard: React.FC = () => {
 
                <div className="bg-[#0f1a13] rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
                   <div className="max-w-xl space-y-6">
-                    <h2 className="text-4xl font-black leading-tight tracking-tighter">Complétez votre <br/><span className="text-primary italic">avenir académique</span>.</h2>
-                    <p className="text-gray-400 font-medium">Parcourez les filières d'excellence et postulez en quelques clics.</p>
+                    <h2 className="text-4xl font-black leading-tight tracking-tighter">Votre futur <span className="text-primary italic">académique</span>.</h2>
+                    <p className="text-gray-400 font-medium">Parcourez les filières et gérez vos préinscriptions.</p>
                     <Link to="/majors" className="inline-block bg-primary text-black font-black px-10 py-4 rounded-2xl shadow-xl hover:scale-105 transition-all text-xs uppercase tracking-widest">
                       Découvrir les formations
                     </Link>
@@ -143,17 +150,17 @@ const Dashboard: React.FC = () => {
                </div>
 
                <section className="space-y-6">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 px-2">Suivi de mes dossiers</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 px-2">Suivi récent</h3>
                   <div className="grid grid-cols-1 gap-4">
                     {userApplications.map((app) => (
                       <div key={app.id} className="bg-white dark:bg-surface-dark p-6 md:p-8 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:border-primary/20 transition-all shadow-sm">
                         <div className="flex items-center gap-6 flex-1 w-full">
-                           <div className={`size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0`}>
+                           <div className="size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0">
                               <span className="material-symbols-outlined text-2xl font-bold">description</span>
                            </div>
                            <div className="space-y-1">
-                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{app.id}</p>
-                              <h4 className="text-lg font-black dark:text-white leading-tight">{app.majorName}</h4>
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">DOSSIER #{app.id}</p>
+                              <h4 className="text-lg font-black dark:text-white leading-tight">{app.majorName || 'Filière'}</h4>
                               <p className="text-xs font-bold text-gray-500">{app.universityName}</p>
                            </div>
                         </div>
@@ -164,15 +171,12 @@ const Dashboard: React.FC = () => {
                            }`}>
                              {app.status}
                            </span>
-                           <button onClick={() => navigate(`/major/${app.majorId}`)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all shrink-0">
-                              <span className="material-symbols-outlined">visibility</span>
-                           </button>
                         </div>
                       </div>
                     ))}
-                    {userApplications.length === 0 && (
-                      <div className="text-center py-10 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
-                        <p className="text-gray-400 text-sm">Vous n'avez pas encore de dossier en cours.</p>
+                    {userApplications.length === 0 && !isLoading && (
+                      <div className="text-center py-10 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200">
+                        <p className="text-gray-400 text-sm font-black uppercase">AUCUN DOSSIER EN COURS</p>
                       </div>
                     )}
                   </div>
@@ -189,21 +193,11 @@ const Dashboard: React.FC = () => {
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="space-y-4">
                            <div className="space-y-1">
-                              <span className="text-[10px] font-black text-primary uppercase tracking-widest">{app.id}</span>
                               <h3 className="text-2xl font-black dark:text-white tracking-tight">{app.majorName}</h3>
                               <p className="text-gray-500 font-bold">{app.universityName}</p>
                            </div>
-                           <div className="flex flex-wrap gap-2">
-                              {app.documents.map(doc => (
-                                <span key={doc} className="px-3 py-1 bg-gray-50 dark:bg-white/5 rounded-lg text-[10px] font-bold text-gray-400 border border-gray-100 dark:border-gray-800 flex items-center gap-1">
-                                   <span className="material-symbols-outlined text-xs">attach_file</span>
-                                   {doc}
-                                </span>
-                              ))}
-                           </div>
                         </div>
                         <div className="text-right space-y-2">
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Soumis le {app.date}</p>
                            <span className={`inline-block px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
                              app.status === 'Validé' ? 'bg-primary text-black' : 
                              app.status === 'Rejeté' ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'
@@ -220,11 +214,6 @@ const Dashboard: React.FC = () => {
 
           {activeTab === 'profile' && (
             <div className="space-y-10 animate-fade-in max-w-4xl">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-black dark:text-white tracking-tighter">Profil Étudiant</h2>
-                <p className="text-gray-500 font-medium">Gérez vos informations personnelles et académiques.</p>
-              </div>
-
               <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 border border-gray-100 dark:border-white/5 shadow-sm space-y-10">
                 <div className="flex items-center gap-8 border-b border-gray-50 dark:border-white/5 pb-10">
                    <div className="size-24 rounded-[32px] bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
@@ -232,42 +221,18 @@ const Dashboard: React.FC = () => {
                    </div>
                    <div className="space-y-1">
                       <h3 className="text-3xl font-black dark:text-white tracking-tight">{user.firstName} {user.lastName}</h3>
-                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Candidat Session 2024</p>
-                      <span className="inline-block px-4 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase mt-2">Compte Vérifié</span>
+                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">ID #{user.id}</p>
                    </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nom complet</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
-                         {user.firstName} {user.lastName}
-                      </div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Email</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 font-bold dark:text-white">{user.email}</div>
                    </div>
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Adresse Email</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
-                         {user.email}
-                      </div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rôle</label>
+                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 font-bold dark:text-white uppercase text-[10px]">{user.role}</div>
                    </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifiant National (INE)</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
-                         {user.ine || 'Non renseigné'}
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rôle Utilisateur</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white uppercase tracking-widest text-[10px]">
-                         {user.role}
-                      </div>
-                   </div>
-                </div>
-
-                <div className="pt-6 border-t border-gray-50 dark:border-white/5">
-                   <button className="px-10 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">
-                      Modifier mes informations
-                   </button>
                 </div>
               </div>
             </div>
