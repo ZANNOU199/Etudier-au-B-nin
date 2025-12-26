@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Dashboard: React.FC = () => {
-  const { user, applications, logout } = useCMS();
+  const { user, applications, logout, refreshData, isLoading } = useCMS();
   const [activeTab, setActiveTab] = useState<'home' | 'applications' | 'profile'>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -15,8 +15,10 @@ const Dashboard: React.FC = () => {
     }
   }, [user, navigate]);
 
+  // Filtrage robuste basé sur l'ID de l'étudiant
   const userApplications = useMemo(() => {
-    return applications.filter(a => a.studentId === user?.id);
+    if (!user) return [];
+    return applications.filter(a => String(a.studentId) === String(user.id));
   }, [applications, user]);
 
   const menuItems = [
@@ -27,8 +29,10 @@ const Dashboard: React.FC = () => {
 
   if (!user) return null;
 
+  const displayId = user.id.includes('-') ? user.id.split('-')[1] : user.id;
+
   const SidebarContent = () => (
-    <div className="flex flex-col h-full py-8 px-6">
+    <div className="flex flex-col h-full py-8 px-6 text-left">
       <div className="flex items-center gap-3 px-2 mb-10">
         <div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
           <span className="material-symbols-outlined font-bold">school</span>
@@ -94,16 +98,23 @@ const Dashboard: React.FC = () => {
               <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden size-10 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-500">
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 text-left">
                  <h2 className="text-xl font-black dark:text-white tracking-tight">Bonjour, {user.firstName}</h2>
                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Session 2024 • Connecté</p>
               </div>
            </div>
            
            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => refreshData()}
+                className={`size-11 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-primary transition-all ${isLoading ? 'animate-spin' : ''}`}
+                title="Actualiser"
+              >
+                <span className="material-symbols-outlined text-xl">refresh</span>
+              </button>
               <div className="text-right hidden sm:block">
                  <p className="text-xs font-black dark:text-white leading-none">{user.firstName} {user.lastName}</p>
-                 <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">ID #{user.id.split('-')[1]}</p>
+                 <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">ID #{displayId}</p>
               </div>
               <button onClick={() => { logout(); navigate('/login'); }} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all">
                  <span className="material-symbols-outlined text-xl">logout</span>
@@ -113,11 +124,11 @@ const Dashboard: React.FC = () => {
 
         <div className="p-6 lg:p-12 space-y-10">
           {activeTab === 'home' && (
-            <div className="space-y-10 animate-fade-in">
+            <div className="space-y-10 animate-fade-in text-left">
                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
                     { label: 'Candidatures', val: userApplications.length.toString().padStart(2, '0'), icon: 'description', color: 'text-primary' },
-                    { label: 'Documents', val: '02', icon: 'folder_zip', color: 'text-blue-500' },
+                    { label: 'Documents', val: userApplications.reduce((acc, app) => acc + (app.documents?.length || 0), 0).toString().padStart(2, '0'), icon: 'folder_zip', color: 'text-blue-500' },
                     { label: 'Alertes', val: '00', icon: 'campaign', color: 'text-amber-500' }
                   ].map((s, i) => (
                     <div key={i} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm flex items-center justify-between group hover:border-primary/30 transition-all">
@@ -143,16 +154,19 @@ const Dashboard: React.FC = () => {
                </div>
 
                <section className="space-y-6">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 px-2">Suivi de mes dossiers</h3>
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Suivi de mes dossiers</h3>
+                    <button onClick={() => setActiveTab('applications')} className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Voir tout</button>
+                  </div>
                   <div className="grid grid-cols-1 gap-4">
                     {userApplications.map((app) => (
                       <div key={app.id} className="bg-white dark:bg-surface-dark p-6 md:p-8 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:border-primary/20 transition-all shadow-sm">
-                        <div className="flex items-center gap-6 flex-1 w-full">
+                        <div className="flex items-center gap-6 flex-1 w-full text-left">
                            <div className={`size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0`}>
                               <span className="material-symbols-outlined text-2xl font-bold">description</span>
                            </div>
                            <div className="space-y-1">
-                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{app.id}</p>
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dossier #{app.id}</p>
                               <h4 className="text-lg font-black dark:text-white leading-tight">{app.majorName}</h4>
                               <p className="text-xs font-bold text-gray-500">{app.universityName}</p>
                            </div>
@@ -181,7 +195,7 @@ const Dashboard: React.FC = () => {
           )}
 
           {activeTab === 'applications' && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-6 animate-fade-in text-left">
               <h2 className="text-3xl font-black dark:text-white tracking-tighter">Mes Candidatures</h2>
               <div className="grid grid-cols-1 gap-6">
                  {userApplications.map(app => (
@@ -189,20 +203,39 @@ const Dashboard: React.FC = () => {
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="space-y-4">
                            <div className="space-y-1">
-                              <span className="text-[10px] font-black text-primary uppercase tracking-widest">{app.id}</span>
+                              <span className="text-[10px] font-black text-primary uppercase tracking-widest">Identifiant : {app.id}</span>
                               <h3 className="text-2xl font-black dark:text-white tracking-tight">{app.majorName}</h3>
                               <p className="text-gray-500 font-bold">{app.universityName}</p>
                            </div>
                            <div className="flex flex-wrap gap-2">
-                              {app.documents.map(doc => (
-                                <span key={doc} className="px-3 py-1 bg-gray-50 dark:bg-white/5 rounded-lg text-[10px] font-bold text-gray-400 border border-gray-100 dark:border-gray-800 flex items-center gap-1">
+                              {app.documents && app.documents.length > 0 ? app.documents.map((doc: any, i: number) => (
+                                <a 
+                                  key={i} 
+                                  href={doc.url ? `https://api.cipaph.com${doc.url}` : '#'} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="px-3 py-1 bg-gray-50 dark:bg-white/5 rounded-lg text-[10px] font-bold text-gray-400 border border-gray-100 dark:border-gray-800 flex items-center gap-1 hover:text-primary transition-colors"
+                                >
                                    <span className="material-symbols-outlined text-xs">attach_file</span>
-                                   {doc}
-                                </span>
-                              ))}
+                                   Pièce jointe #{i+1}
+                                </a>
+                              )) : (
+                                <span className="text-[10px] text-gray-500 italic">Aucun document attaché</span>
+                              )}
+                              {app.primary_document_url && (
+                                <a 
+                                  href={app.primary_document_url} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="px-3 py-1 bg-primary/10 rounded-lg text-[10px] font-bold text-primary border border-primary/20 flex items-center gap-1"
+                                >
+                                  <span className="material-symbols-outlined text-xs">description</span>
+                                  Document Principal
+                                </a>
+                              )}
                            </div>
                         </div>
-                        <div className="text-right space-y-2">
+                        <div className="text-left md:text-right space-y-2">
                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Soumis le {app.date}</p>
                            <span className={`inline-block px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
                              app.status === 'Validé' ? 'bg-primary text-black' : 
@@ -214,12 +247,18 @@ const Dashboard: React.FC = () => {
                       </div>
                    </div>
                  ))}
+                 {userApplications.length === 0 && (
+                   <div className="text-center py-20 bg-white dark:bg-surface-dark rounded-[40px] border border-dashed border-gray-200">
+                     <p className="text-gray-500 font-bold">Vous n'avez aucune candidature enregistrée.</p>
+                     <Link to="/majors" className="inline-block mt-4 text-primary font-black uppercase text-xs tracking-widest hover:underline">Déposer un dossier</Link>
+                   </div>
+                 )}
               </div>
             </div>
           )}
 
           {activeTab === 'profile' && (
-            <div className="space-y-10 animate-fade-in max-w-4xl">
+            <div className="space-y-10 animate-fade-in max-w-4xl text-left">
               <div className="space-y-2">
                 <h2 className="text-3xl font-black dark:text-white tracking-tighter">Profil Étudiant</h2>
                 <p className="text-gray-500 font-medium">Gérez vos informations personnelles et académiques.</p>

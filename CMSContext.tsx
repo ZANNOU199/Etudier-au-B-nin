@@ -75,7 +75,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('auth_token_v1');
   });
 
-  // Initialisation avec les Mocks pour garantir un affichage immédiat
   const [universities, setUniversities] = useState<University[]>(MOCK_UNIS);
   const [majors, setMajors] = useState<Major[]>(MOCK_MAJORS);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -90,10 +89,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+    const isGet = !options.method || options.method.toUpperCase() === 'GET';
     const headers: any = {
       'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(!(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.body && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...options.headers,
     };
 
@@ -101,8 +101,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
       
       if (response.status === 401) {
-        handleLogoutLocal();
-        throw new Error("Session expirée");
+        if (endpoint !== '/majors' && endpoint !== '/universities') {
+          handleLogoutLocal();
+          throw new Error("Session expirée");
+        }
       }
 
       if (!response.ok) {
@@ -125,7 +127,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     
-    // 1. Universités (Public)
+    // Universités
     try {
       const uniRes = await fetch(`${API_BASE_URL}/universities`, {
         headers: { 'Accept': 'application/json' }
@@ -143,11 +145,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           })));
         }
       }
-    } catch (e) {
-      console.warn("Échec chargement universités publiques");
-    }
+    } catch (e) {}
 
-    // 2. Filières (Public - Toujours accessible)
+    // Filières
     try {
       const majorRes = await fetch(`${API_BASE_URL}/majors`, {
         headers: { 'Accept': 'application/json' }
@@ -171,26 +171,42 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           })));
         }
       }
-    } catch (e) {
-      console.warn("Échec chargement filières publiques");
-    }
+    } catch (e) {}
 
-    // 3. Données privées (Candidatures, etc.)
-    if (token) {
-      if (userRole === 'student') {
-        try {
-          const appRes = await apiRequest('/applications');
-          const appData = await appRes.json();
-          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-          setApplications(rawApps.map((a: any) => ({
+    // Candidatures
+    if (token && user) {
+      try {
+        const appRes = await apiRequest('/applications');
+        const appData = await appRes.json();
+        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+        
+        const statusMap: Record<string, Application['status']> = {
+          'pending': 'En attente',
+          'validated': 'Validé',
+          'rejected': 'Rejeté',
+          'processing': 'En cours'
+        };
+
+        setApplications(rawApps.map((a: any) => {
+          // Rechercher les détails de l'université via les filières connues
+          const mId = (a.major?.id || a.major_id)?.toString();
+          const knownMajor = majors.find(m => m.id === mId);
+
+          return {
             ...a,
             id: a.id.toString(),
-            status: a.status || 'En attente',
-            majorId: a.major_id?.toString()
-          })));
-        } catch (e) {
-          console.warn("Route candidatures inaccessible");
-        }
+            studentId: (a.user_id || user.id).toString(),
+            majorId: mId,
+            majorName: a.major?.name || knownMajor?.name || 'Filière',
+            universityName: a.major?.university?.acronym || knownMajor?.universityName || 'Établissement',
+            status: statusMap[a.status] || a.status || 'En attente',
+            date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Récemment',
+            documents: a.documents || [],
+            primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
+          };
+        }));
+      } catch (e) {
+        console.warn("Échec du chargement des dossiers privés");
       }
     }
     
