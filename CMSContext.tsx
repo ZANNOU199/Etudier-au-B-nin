@@ -114,7 +114,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       return response;
     } catch (error) {
-      console.error(`API Fetch Failure on ${endpoint}:`, error);
+      console.error(`API Error on ${endpoint}:`, error);
       throw error;
     }
   };
@@ -137,11 +137,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })));
       }
     } catch (e) {
-      console.warn("Échec silencieux chargement universités:", e);
+      console.warn("Échec silencieux chargement universités");
     }
 
     if (token) {
-      // 2. Candidatures (Étudiants seulement)
+      // 2. Candidatures - UNIQUEMENT SI ÉTUDIANT (Évite l'erreur 405 pour les admins)
       if (userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
@@ -154,7 +154,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: a.major_id?.toString()
           })));
         } catch (e) {
-          console.warn("Échec silencieux chargement candidatures");
+          console.warn("Route candidatures inaccessible pour ce profil");
         }
       }
 
@@ -168,7 +168,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setMajors(rawMajors.map((m: any) => ({
             ...m,
             id: m.id.toString(),
-            universityId: (m.university_id || m.institution_id)?.toString(),
+            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
             facultyId: m.faculty_id?.toString(),
             universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
             facultyName: m.faculty?.name || 'Tronc commun'

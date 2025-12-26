@@ -353,7 +353,7 @@ const AdminDashboard: React.FC = () => {
                         </form>
 
                         <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                           {currentUni?.faculties.map(f => (
+                           {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
                               <div key={f.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
                                  <p className="font-black text-xs text-white uppercase tracking-wider">{f.name}</p>
                                  <button onClick={() => deleteFaculty(f.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button>
@@ -404,6 +404,7 @@ const AdminDashboard: React.FC = () => {
 
                              await addMajor(majorPayload);
                              formRef.reset();
+                             // Rafraîchissement forcé pour garantir l'update UI locale
                              await refreshData();
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout de la filière : " + err.message);
