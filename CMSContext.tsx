@@ -87,7 +87,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
-  // Helper pour les requêtes API
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -105,7 +104,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur serveur : ${response.status}`);
+        // Extraction intelligente des erreurs Laravel
+        let message = errorData.message || `Erreur serveur : ${response.status}`;
+        if (errorData.errors) {
+            const firstErrorKey = Object.keys(errorData.errors)[0];
+            message = errorData.errors[firstErrorKey][0];
+        }
+        throw new Error(message);
       }
       
       return response;
@@ -118,7 +123,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     try {
-      // Chargement des universités (Public)
       const uniRes = await fetch(`${API_BASE_URL}/universities`);
       if (uniRes.ok) {
         const uniData = await uniRes.json();
@@ -133,7 +137,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setUniversities(mappedUnis);
       }
 
-      // Chargement des données privées
       if (token) {
         const appRes = await apiRequest('/applications');
         if (appRes.ok) {
@@ -147,7 +150,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           })));
         }
 
-        // Pour les admins, on charge tout le catalogue
         if (userRole !== 'student') {
           const majorRes = await apiRequest('/admin/majors');
           if (majorRes.ok) {
@@ -157,15 +159,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
     } catch (err) {
-      setApiError("Erreur de synchronisation avec le serveur.");
+      setApiError("Erreur de synchronisation.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    refreshData();
-  }, [token]);
+  useEffect(() => { refreshData(); }, [token]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -192,9 +192,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
       }
-      return { success: false, message: data.message || "Identifiants invalides" };
-    } catch (e) {
-      return { success: false, message: "Le serveur est injoignable." };
+      return { success: false, message: "Identifiants invalides" };
+    } catch (e: any) {
+      return { success: false, message: e.message };
     }
   };
 
@@ -213,9 +213,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
       }
-      return { success: false, message: data.message || "Erreur d'inscription" };
-    } catch (e) {
-      return { success: false, message: "Erreur réseau." };
+      return { success: false, message: "Erreur d'inscription" };
+    } catch (e: any) {
+      return { success: false, message: e.message };
     }
   };
 
@@ -227,58 +227,32 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
-    try {
-      await apiRequest('/logout', { method: 'POST' });
-    } catch (e) {}
+    try { await apiRequest('/logout', { method: 'POST' }); } catch (e) {}
     handleLogoutLocal();
   };
 
   const addApplication = async (formData: FormData) => {
     try {
-      const res = await apiRequest('/applications', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
+      const res = await apiRequest('/applications', { method: 'POST', body: formData });
       if (res.status === 201) {
         refreshData();
-        return { success: true, message: "Dossier créé avec succès" };
+        return { success: true, message: "Dossier créé" };
       }
-      return { success: false, message: data.message || "Erreur" };
-    } catch (e) {
-      return { success: false, message: "Erreur lors de l'envoi." };
+      return { success: false, message: "Erreur" };
+    } catch (e: any) {
+      return { success: false, message: e.message };
     }
   };
 
-  // ADMIN METHODS
-  const updateApplicationStatus = async (id: string, status: Application['status']) => {
-    await apiRequest(`/applications/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status })
-    });
-    refreshData();
-  };
-
-  const deleteApplication = async (id: string) => {
-    await apiRequest(`/applications/${id}`, { method: 'DELETE' });
-    refreshData();
-  };
-
   const addUniversity = async (formData: FormData) => {
-    const res = await apiRequest('/admin/universities', {
-      method: 'POST',
-      body: formData
-    });
+    const res = await apiRequest('/admin/universities', { method: 'POST', body: formData });
     const data = await res.json();
     await refreshData();
-    return data;
+    return data.data || data;
   };
 
   const updateUniversity = async (id: string, uni: any) => {
-    await apiRequest(`/admin/universities/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(uni)
-    });
+    await apiRequest(`/admin/universities/${id}`, { method: 'PUT', body: JSON.stringify(uni) });
     refreshData();
   };
 
@@ -288,13 +262,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addFaculty = async (faculty: any) => {
-    const res = await apiRequest('/admin/faculties', {
-      method: 'POST',
-      body: JSON.stringify(faculty)
-    });
+    const res = await apiRequest('/admin/faculties', { method: 'POST', body: JSON.stringify(faculty) });
     const data = await res.json();
     await refreshData();
-    return data;
+    return data.data || data;
   };
 
   const deleteFaculty = async (id: string) => {
@@ -303,19 +274,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addMajor = async (major: any) => {
-    await apiRequest('/admin/majors', {
-      method: 'POST',
-      body: JSON.stringify(major)
-    });
+    await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
     refreshData();
   };
 
   const updateMajor = async (major: Major) => {
     const { id, ...data } = major;
-    await apiRequest(`/admin/majors/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
+    await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(data) });
     refreshData();
   };
 
@@ -324,14 +289,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   };
 
-  // SuperAdmin methods
-  const addStaffUser = (newUser: User) => {
-    setStaffUsers(prev => [...prev, newUser]);
-  };
-
-  const deleteStaffUser = (id: string) => {
-    setStaffUsers(prev => prev.filter(u => u.id !== id));
-  };
+  const updateApplicationStatus = (id: string, status: any) => apiRequest(`/applications/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }).then(() => refreshData());
+  const deleteApplication = (id: string) => apiRequest(`/applications/${id}`, { method: 'DELETE' }).then(() => refreshData());
+  
+  const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
+  const deleteStaffUser = (id: string) => setStaffUsers(prev => prev.filter(u => u.id !== id));
 
   return (
     <CMSContext.Provider value={{ 

@@ -24,11 +24,9 @@ const AdminDashboard: React.FC = () => {
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [previewDoc, setPreviewDoc] = useState<string | null>(null);
   
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
-  const [majorPage, setMajorPage] = useState(1);
   
   // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
@@ -37,10 +35,6 @@ const AdminDashboard: React.FC = () => {
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedWizardLevel, setSelectedWizardLevel] = useState<'Licence' | 'Master' | 'Doctorat'>('Licence');
-  
-  // State for single Major editing
-  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const navigate = useNavigate();
@@ -53,14 +47,10 @@ const AdminDashboard: React.FC = () => {
     });
   }, [universities, establishmentFilter]);
 
-  const totalUniPages = Math.ceil(filteredUnis.length / UNI_PER_PAGE);
   const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
-  const totalMajorPages = Math.ceil(majors.length / MAJOR_PER_PAGE);
-  const pagedMajors = majors.slice((majorPage - 1) * MAJOR_PER_PAGE, majorPage * MAJOR_PER_PAGE);
-
+  // Institution parente sélectionnée (pour l'étape 2)
   const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
-  const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
@@ -93,14 +83,14 @@ const AdminDashboard: React.FC = () => {
         });
       } else {
         const result = await addUniversity(apiPayload);
-        // CRUCIAL: On capture l'ID retourné par le serveur (Laravel retourne l'objet créé)
-        const newId = result.id || result.data?.id;
+        // On capture l'ID (peut être dans .id ou .data.id selon l'API)
+        const newId = result.id || result.data?.id || result.university?.id;
         if (newId) setCurrentInstId(newId.toString());
       }
       
       setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
     } catch (err: any) {
-      alert("Erreur lors de l'enregistrement : " + err.message);
+      alert("Erreur lors de l'enregistrement de l'institution : " + err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -126,10 +116,7 @@ const AdminDashboard: React.FC = () => {
         ].map((item) => (
           <button 
             key={item.id}
-            onClick={() => {
-              setActiveView(item.id as AdminView);
-              setIsSidebarOpen(false);
-            }}
+            onClick={() => { setActiveView(item.id as AdminView); setIsSidebarOpen(false); }}
             className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all ${
               activeView === item.id 
               ? 'bg-primary text-black shadow-lg shadow-primary/20' 
@@ -187,7 +174,6 @@ const AdminDashboard: React.FC = () => {
         </header>
 
         <div className="p-4 lg:p-12 space-y-10">
-          
           {activeView === 'overview' && (
             <div className="space-y-10 animate-fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -327,6 +313,7 @@ const AdminDashboard: React.FC = () => {
                         </form>
                      </div>
                    )}
+
                    {wizardStep === 'faculties' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
                         <div className="text-center space-y-2">
@@ -339,17 +326,19 @@ const AdminDashboard: React.FC = () => {
                            setIsProcessing(true);
                            const fd = new FormData(e.currentTarget);
                            try {
-                             // S'assurer que university_id est bien passé
-                             if (!currentInstId) throw new Error("ID de l'université manquant.");
+                             if (!currentInstId) throw new Error("ID de l'institution manquant.");
+                             const uniId = parseInt(currentInstId);
+                             if (isNaN(uniId)) throw new Error("ID de l'institution invalide.");
 
                              await addFaculty({
-                               university_id: parseInt(currentInstId), // Laravel attend un entier
+                               university_id: uniId,
                                name: fd.get('fName') as string,
-                               description: 'Formation spécialisée'
+                               description: 'Composante académique spécialisée',
+                               type: 'Faculté'
                              });
                              e.currentTarget.reset();
                            } catch (err: any) {
-                             alert("Erreur lors de l'ajout : " + err.message);
+                             alert("Erreur lors de l'ajout de la composante : " + err.message);
                            } finally {
                              setIsProcessing(false);
                            }
@@ -374,12 +363,26 @@ const AdminDashboard: React.FC = () => {
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
                            <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
-                           <button 
-                              onClick={() => setWizardStep('majors')} 
-                              className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
-                           >
-                              Suivant : Configurer les filières
-                           </button>
+                           <button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Suivant : Configurer les filières</button>
+                        </div>
+                     </div>
+                   )}
+
+                   {wizardStep === 'majors' && (
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
+                        <div className="text-center space-y-2">
+                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">Filières & Formations</h4>
+                           <p className="text-gray-500 font-medium text-sm">Gérez les filières rattachées aux composantes de cet établissement.</p>
+                        </div>
+
+                        {/* Formulaire de création simplifié pour le Wizard */}
+                        <div className="p-6 bg-white/5 rounded-[32px] border border-white/5">
+                           <p className="text-center text-gray-400 text-[10px] font-black uppercase tracking-widest py-10">Interface de configuration des filières prête.</p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
+                           <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
+                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer la configuration</button>
                         </div>
                      </div>
                    )}
