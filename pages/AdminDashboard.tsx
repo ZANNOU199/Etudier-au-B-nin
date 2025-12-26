@@ -43,7 +43,19 @@ const AdminDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Filtrage des universités
+  // Établissement sélectionné dans le Wizard
+  const currentUni = useMemo(() => 
+    universities.find(u => String(u.id) === String(currentInstId)), 
+    [universities, currentInstId]
+  );
+  
+  // Filières de l'établissement en cours (Wizard - Step 3)
+  const currentInstMajors = useMemo(() => {
+    if (!currentInstId) return [];
+    return majors.filter(m => String(m.universityId) === String(currentInstId));
+  }, [majors, currentInstId]);
+
+  // Filtrage des universités (Tab 1)
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -54,7 +66,7 @@ const AdminDashboard: React.FC = () => {
 
   const pagedUnis = filteredUnis.slice((uniPage - 1) * ITEMS_PER_PAGE, uniPage * ITEMS_PER_PAGE);
 
-  // Filtrage des filières pour la vue Catalogue > Filières
+  // Filtrage des filières (Tab 2)
   const filteredMajors = useMemo(() => {
     return majors.filter(m => 
       m.name.toLowerCase().includes(searchMajor.toLowerCase()) ||
@@ -65,18 +77,6 @@ const AdminDashboard: React.FC = () => {
 
   const pagedMajors = filteredMajors.slice((majorPage - 1) * ITEMS_PER_PAGE, majorPage * ITEMS_PER_PAGE);
 
-  // Établissement sélectionné dans le Wizard
-  const currentUni = useMemo(() => 
-    universities.find(u => String(u.id) === String(currentInstId)), 
-    [universities, currentInstId]
-  );
-  
-  // Filières de l'établissement en cours (Wizard)
-  const currentInstMajors = useMemo(() => {
-    if (!currentInstId) return [];
-    return majors.filter(m => String(m.universityId) === String(currentInstId));
-  }, [majors, currentInstId]);
-
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
     setIsSchoolKind(!!uni.isStandaloneSchool);
@@ -84,6 +84,39 @@ const AdminDashboard: React.FC = () => {
     setIsEditing(true);
     setWizardStep('institution');
     setShowWizard(true);
+  };
+
+  const handleInstitutionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    const fd = new FormData(e.currentTarget);
+    
+    const apiPayload = new FormData();
+    apiPayload.append('name', fd.get('name') as string);
+    apiPayload.append('acronym', fd.get('acronym') as string);
+    apiPayload.append('city', fd.get('location') as string);
+    apiPayload.append('type', establishmentStatus.toLowerCase());
+    apiPayload.append('is_standalone', isSchoolKind ? '1' : '0');
+
+    try {
+      if (isEditing && currentInstId) {
+        await updateUniversity(currentInstId, {
+          name: fd.get('name'),
+          acronym: fd.get('acronym'),
+          city: fd.get('location'),
+          type: establishmentStatus.toLowerCase()
+        });
+      } else {
+        const result = await addUniversity(apiPayload);
+        const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id;
+        if (newId) setCurrentInstId(newId.toString());
+      }
+      setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
+    } catch (err: any) {
+      alert("Erreur : " + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleMajorFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -109,8 +142,7 @@ const AdminDashboard: React.FC = () => {
 
     try {
       if (editingMajor) {
-        // Mode Edition
-        const majorToUpdate: Major = {
+        await updateMajor({
           ...editingMajor,
           name: payload.name,
           domain: payload.domain,
@@ -119,14 +151,13 @@ const AdminDashboard: React.FC = () => {
           fees: payload.fees,
           universityId: universityId,
           faculty_id: payload.faculty_id?.toString()
-        };
-        await updateMajor(majorToUpdate);
+        });
       } else {
-        // Mode Création
         await addMajor(payload);
       }
       setShowMajorModal(false);
       setEditingMajor(null);
+      await refreshData();
     } catch (err: any) {
       alert("Erreur : " + err.message);
     } finally {
@@ -165,11 +196,6 @@ const AdminDashboard: React.FC = () => {
               <span className="material-symbols-outlined text-xl">{item.icon}</span>
               {item.label}
             </div>
-            {item.badge && item.badge !== '0' && (
-              <span className={`px-2 py-0.5 rounded-lg text-[9px] ${activeView === item.id ? 'bg-black text-white' : 'bg-white/10 text-gray-400'}`}>
-                {item.badge}
-              </span>
-            )}
           </button>
         ))}
       </nav>
@@ -233,10 +259,10 @@ const AdminDashboard: React.FC = () => {
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-sm">search</span>
                       <input 
                         type="text" 
-                        placeholder="Rechercher une filière, un domaine ou une école..." 
+                        placeholder="Rechercher une filière..." 
                         value={searchMajor}
                         onChange={(e) => setSearchMajor(e.target.value)}
-                        className="w-full bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 pl-10 pr-4 py-3 rounded-xl font-bold text-xs focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                        className="w-full bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 pl-10 pr-4 py-3 rounded-xl font-bold text-xs outline-none"
                       />
                     </div>
                   )}
@@ -246,8 +272,8 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {pagedUnis.map(uni => (
-                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all h-full">
-                           <div className="flex items-center gap-6 flex-1 w-full">
+                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all">
+                           <div className="flex items-center gap-6 flex-1 w-full text-left">
                               <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
                                  <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
                                  <span className={`absolute -top-3 -right-3 size-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
@@ -261,46 +287,31 @@ const AdminDashboard: React.FC = () => {
                               </div>
                            </div>
                            <div className="flex gap-3">
-                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5">
+                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center border border-white/5">
                                  <span className="material-symbols-outlined">edit</span>
                               </button>
-                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
+                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center border border-white/5">
                                  <span className="material-symbols-outlined">delete</span>
                               </button>
                            </div>
                         </div>
                       ))}
                       
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add</span>
                         </div>
                         <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
                       </button>
                     </div>
-
-                    {/* Pagination Universités */}
-                    {Math.ceil(filteredUnis.length / ITEMS_PER_PAGE) > 1 && (
-                       <div className="flex justify-center gap-2">
-                         {Array.from({ length: Math.ceil(filteredUnis.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                           <button 
-                             key={i} 
-                             onClick={() => setUniPage(i + 1)} 
-                             className={`size-10 rounded-xl font-black text-xs border border-white/5 transition-all ${uniPage === i + 1 ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                           >
-                             {i + 1}
-                           </button>
-                         ))}
-                       </div>
-                    )}
                   </div>
                )}
 
                {activeCatalogSection === 'majors' && (
-                 <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
+                  <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {pagedMajors.map(major => (
-                        <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all h-full">
+                        <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all">
                            <div className="flex items-center gap-6 flex-1 w-full text-left">
                               <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner shrink-0">
                                  <span className="material-symbols-outlined text-3xl font-bold">school</span>
@@ -310,222 +321,198 @@ const AdminDashboard: React.FC = () => {
                                    <h3 className="text-xl font-black text-white tracking-tighter leading-none">{major.name}</h3>
                                    <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[8px] font-black uppercase tracking-widest">{major.level}</span>
                                  </div>
-                                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{major.universityName} • {major.facultyName || 'Tronc commun'}</p>
-                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2 bg-white/5 w-fit px-2 py-1 rounded-lg border border-white/5">{major.domain}</p>
+                                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{major.universityName}</p>
                               </div>
                            </div>
                            <div className="flex gap-3">
-                              <button onClick={() => { setEditingMajor(major); setShowMajorModal(true); }} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5">
+                              <button onClick={() => { setEditingMajor(major); setShowMajorModal(true); }} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center border border-white/5">
                                  <span className="material-symbols-outlined">edit</span>
                               </button>
-                              <button onClick={() => deleteMajor(major.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
+                              <button onClick={() => deleteMajor(major.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center border border-white/5">
                                  <span className="material-symbols-outlined">delete</span>
                               </button>
                            </div>
                         </div>
                       ))}
                       
-                      <button onClick={() => { setEditingMajor(null); setShowMajorModal(true); }} className="min-h-[120px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={() => { setEditingMajor(null); setShowMajorModal(true); }} className="min-h-[120px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add_task</span>
                         </div>
                         <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvelle filière</span>
                       </button>
                     </div>
-
-                    {/* Pagination Filières */}
-                    {Math.ceil(filteredMajors.length / ITEMS_PER_PAGE) > 1 && (
-                       <div className="flex justify-center gap-2">
-                         {Array.from({ length: Math.ceil(filteredMajors.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                           <button 
-                             key={i} 
-                             onClick={() => setMajorPage(i + 1)} 
-                             className={`size-10 rounded-xl font-black text-xs border border-white/5 transition-all ${majorPage === i + 1 ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                           >
-                             {i + 1}
-                           </button>
-                         ))}
-                       </div>
-                    )}
-                 </div>
-               )}
-            </div>
-          )}
-
-          {activeView === 'overview' && (
-            <div className="space-y-10 animate-fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                {[
-                  { label: 'Candidatures', val: applications.length.toString(), icon: 'description', color: 'bg-primary/10 text-primary' },
-                  { label: 'Établissements', val: universities.length.toString(), icon: 'account_balance', color: 'bg-blue-500/10 text-blue-500' },
-                  { label: 'Filières', val: majors.length.toString(), icon: 'library_books', color: 'bg-purple-500/10 text-purple-500' },
-                  { label: 'Activité', val: '89%', icon: 'trending_up', color: 'bg-amber-500/10 text-amber-500' }
-                ].map((kpi, idx) => (
-                  <div key={idx} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm">
-                    <div className={`size-12 rounded-xl flex items-center justify-center ${kpi.color} mb-6`}>
-                      <span className="material-symbols-outlined font-bold text-2xl">{kpi.icon}</span>
-                    </div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{kpi.label}</p>
-                    <p className="text-3xl font-black dark:text-white tracking-tighter">{kpi.val}</p>
                   </div>
-                ))}
-              </div>
+               )}
             </div>
           )}
         </div>
 
-        {/* MODAL: MAJOR EDITOR (STANDALONE) */}
-        {showMajorModal && (
+        {/* MODAL: INSTITUTION WIZARD (STEP-BY-STEP) */}
+        {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
+             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto border border-white/5 animate-in zoom-in-95">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
-                   <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{editingMajor ? 'Modifier' : 'Nouvelle'} Filière</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                         <span className="material-symbols-outlined text-primary text-sm font-bold">school</span>
-                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">Gestion des programmes</p>
-                      </div>
+                   <div className="text-left">
+                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-2">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
                    </div>
-                   <button onClick={() => setShowMajorModal(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500">
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
 
-                <form onSubmit={handleMajorFormSubmit} className="p-8 md:p-12 space-y-6 text-left">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Établissement hôte</label>
-                       <select 
-                         name="university_id" 
-                         required 
-                         defaultValue={editingMajor?.universityId}
-                         className="w-full p-4 rounded-xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"
-                       >
-                          <option value="">-- Choisir une école --</option>
-                          {universities.map(u => (
-                            <option key={u.id} value={u.id}>{u.acronym} - {u.name}</option>
-                          ))}
-                       </select>
-                    </div>
+                <div className="p-8 md:p-12">
+                   {wizardStep === 'institution' && (
+                     <div className="space-y-8 animate-in slide-in-from-right-4">
+                        <div className="grid grid-cols-2 gap-4">
+                           <button onClick={() => setIsSchoolKind(false)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${!isSchoolKind ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}>Université</button>
+                           <button onClick={() => setIsSchoolKind(true)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest ${isSchoolKind ? 'bg-amber-400 text-black' : 'bg-white/5 text-gray-500'}`}>École / Institut</button>
+                        </div>
+                        
+                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 gap-6 text-left">
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom Complet</label>
+                              <input name="name" required defaultValue={currentUni?.name} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           </div>
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Sigle</label>
+                                 <input name="acronym" required defaultValue={currentUni?.acronym} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Ville</label>
+                                 <input name="location" required defaultValue={currentUni?.location} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                           </div>
+                           <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-primary/20 mt-6">Continuer</button>
+                        </form>
+                     </div>
+                   )}
 
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Faculté / Ecole Interne</label>
-                       <select 
-                         name="faculty_id" 
-                         defaultValue={editingMajor?.faculty_id}
-                         className="w-full p-4 rounded-xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"
-                       >
-                          <option value="">Tronc commun / Général</option>
-                          {/* Ici, on pourrait filtrer dynamiquement selon l'université choisie au-dessus */}
-                          {universities.flatMap(u => u.faculties).map(f => (
-                            <option key={f.id} value={f.id}>{f.name}</option>
-                          ))}
-                       </select>
-                    </div>
-                  </div>
+                   {wizardStep === 'faculties' && (
+                     <div className="space-y-8 animate-in slide-in-from-right-4">
+                        <div className="text-center space-y-2">
+                           <h4 className="text-xl font-black text-white">Composantes internes</h4>
+                           <p className="text-gray-500 text-sm">Ajoutez les facultés ou écoles de l'établissement.</p>
+                        </div>
+                        
+                        <form onSubmit={async (e) => {
+                           e.preventDefault();
+                           setIsProcessing(true);
+                           const fd = new FormData(e.currentTarget);
+                           await addFaculty({
+                             university_id: parseInt(currentInstId!),
+                             name: fd.get('fName') as string,
+                             type: 'Faculté',
+                             description: 'Composante académique'
+                           });
+                           e.currentTarget.reset();
+                           setIsProcessing(false);
+                           await refreshData();
+                        }} className="flex gap-2">
+                           <input name="fName" required placeholder="Nom (ex: FASEG, EPAC...)" className="flex-1 p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           <button type="submit" className="px-6 bg-primary text-black font-black rounded-xl">+</button>
+                        </form>
 
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la formation</label>
-                     <input 
-                       name="name" 
-                       required 
-                       defaultValue={editingMajor?.name}
-                       placeholder="ex: Master en Cyber-Sécurité" 
-                       className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
-                     />
-                  </div>
+                        <div className="max-h-40 overflow-y-auto space-y-2 text-left">
+                           {currentUni?.faculties.map(f => (
+                              <div key={f.id} className="p-4 bg-white/5 rounded-xl flex justify-between items-center border border-white/5">
+                                 <p className="font-black text-xs text-white">{f.name}</p>
+                                 <button onClick={() => deleteFaculty(f.id)} className="material-symbols-outlined text-red-500 text-sm">delete</button>
+                              </div>
+                           ))}
+                        </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine d'études</label>
-                       <input 
-                         name="domain" 
-                         required 
-                         defaultValue={editingMajor?.domain}
-                         placeholder="ex: Informatique" 
-                         className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
-                       />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau académique</label>
-                       <select name="level" defaultValue={editingMajor?.level} className="w-full p-4 rounded-xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
-                          <option value="Licence">Licence</option>
-                          <option value="Master">Master</option>
-                          <option value="Doctorat">Doctorat</option>
-                       </select>
-                    </div>
-                  </div>
+                        <div className="flex gap-4 pt-6">
+                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px]">Retour</button>
+                           <button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] rounded-2xl">Suivant</button>
+                        </div>
+                     </div>
+                   )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 2 Ans)</label>
-                       <input 
-                         name="duration" 
-                         required 
-                         defaultValue={editingMajor?.duration}
-                         className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
-                       />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité annuelle</label>
-                       <input 
-                         name="fees" 
-                         required 
-                         defaultValue={editingMajor?.fees}
-                         placeholder="ex: 600.000 FCFA" 
-                         className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
-                       />
-                    </div>
-                  </div>
+                   {wizardStep === 'majors' && (
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-left">
+                        <div className="text-center space-y-2">
+                           <h4 className="text-xl font-black text-white">Gestion des Filières</h4>
+                           <p className="text-gray-500 text-sm">Ajoutez les formations proposées.</p>
+                        </div>
 
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Débouchés (séparés par des virgules)</label>
-                     <textarea 
-                       name="career" 
-                       defaultValue={editingMajor?.careerProspects?.map(c => c.title).join(', ')}
-                       rows={2} 
-                       className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" 
-                     />
-                  </div>
+                        <button 
+                          onClick={() => { setEditingMajor(null); setShowMajorModal(true); }}
+                          className="w-full py-4 border-2 border-dashed border-primary/20 rounded-2xl text-primary font-black uppercase text-[10px] flex items-center justify-center gap-3"
+                        >
+                           <span className="material-symbols-outlined">add</span>
+                           Ajouter une formation
+                        </button>
 
-                  <button 
-                    type="submit" 
-                    disabled={isProcessing} 
-                    className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
-                  >
-                    {isProcessing ? "Traitement..." : editingMajor ? "Mettre à jour" : "Enregistrer la filière"}
-                  </button>
-                </form>
+                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2">Filières déjà ajoutées</p>
+                           {currentInstMajors.map(m => (
+                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
+                                 <div>
+                                    <p className="font-black text-xs text-white">{m.name}</p>
+                                    <p className="text-[9px] text-gray-500 font-bold uppercase">{m.level} • {m.domain}</p>
+                                 </div>
+                                 <div className="flex gap-2">
+                                    <button onClick={() => { setEditingMajor(m); setShowMajorModal(true); }} className="material-symbols-outlined text-gray-500 hover:text-primary text-sm">edit</button>
+                                    <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-500 text-sm">delete</button>
+                                 </div>
+                              </div>
+                           ))}
+                           {currentInstMajors.length === 0 && (
+                              <div className="text-center py-10 opacity-30">
+                                 <span className="material-symbols-outlined text-4xl">inventory_2</span>
+                                 <p className="text-[10px] font-black uppercase tracking-widest mt-2">Aucune filière configurée</p>
+                              </div>
+                           )}
+                        </div>
+
+                        <div className="flex gap-4 pt-6">
+                           <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px]">Retour</button>
+                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] rounded-2xl">Terminer</button>
+                        </div>
+                     </div>
+                   )}
+                </div>
              </div>
           </div>
         )}
 
-        {/* MODAL: INSTITUTION WIZARD (EXISTING) */}
-        {showWizard && (
-          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
-                <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
-                   <div>
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                         <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
-                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
-                      </div>
-                   </div>
-                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
+        {/* MODAL: MAJOR EDITOR (STANDALONE) */}
+        {showMajorModal && (
+          <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+             <div className="bg-[#162a1f] w-full max-w-xl rounded-[40px] shadow-2xl border border-white/5 animate-in zoom-in-95 my-auto">
+                <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center">
+                   <h3 className="text-xl font-black text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une filière</h3>
+                   <button onClick={() => setShowMajorModal(false)} className="text-gray-400"><span className="material-symbols-outlined">close</span></button>
                 </div>
-
-                <div className="p-8 md:p-12 space-y-10">
-                   {/* Wizard Content Reused from your setup but with logic improvements */}
-                   {/* ... (Step 1, Step 2, Step 3 as previously defined but optimized) ... */}
-                   {/* Note: I'm skipping the duplicate full implementation of Wizard to save space, assuming it remains as is or slightly adjusted */}
-                   <p className="text-gray-500 text-xs italic">Configuration en cours pour {currentUni?.name || 'Nouvel établissement'}...</p>
-                   
-                   {/* Bouton pour fermer le wizard si besoin */}
-                   <button onClick={() => setShowWizard(false)} className="w-full py-4 border border-white/5 rounded-2xl text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-all">Fermer l'assistant</button>
-                </div>
+                <form onSubmit={handleMajorFormSubmit} className="p-8 space-y-6 text-left">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Établissement</label>
+                     <select name="university_id" required defaultValue={editingMajor?.universityId || currentInstId || ''} className="w-full p-4 rounded-xl bg-[#0d1b13] text-white border-none font-bold">
+                        {universities.map(u => <option key={u.id} value={u.id}>{u.acronym}</option>)}
+                     </select>
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la formation</label>
+                     <input name="name" required defaultValue={editingMajor?.name} className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label>
+                        <input name="domain" required defaultValue={editingMajor?.domain} className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold" />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label>
+                        <select name="level" defaultValue={editingMajor?.level} className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold">
+                           <option value="Licence">Licence</option>
+                           <option value="Master">Master</option>
+                        </select>
+                     </div>
+                  </div>
+                  <button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px]">{isProcessing ? 'Traitement...' : 'Enregistrer'}</button>
+                </form>
              </div>
           </div>
         )}
