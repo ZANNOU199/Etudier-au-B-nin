@@ -136,6 +136,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...u,
             id: u.id.toString(),
             location: u.city || u.location || 'Bénin',
+            // NORMALISATION DU TYPE POUR LES FILTRES
             type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
             stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
             faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []

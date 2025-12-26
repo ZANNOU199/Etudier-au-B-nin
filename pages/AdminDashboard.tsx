@@ -11,6 +11,7 @@ type CreationStep = 'institution' | 'faculties' | 'majors';
 
 const UNI_PER_PAGE = 4;
 const APPS_PER_PAGE = 8;
+const MAJORS_PER_PAGE = 8;
 
 const AdminDashboard: React.FC = () => {
   const { 
@@ -27,7 +28,9 @@ const AdminDashboard: React.FC = () => {
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
   const [appsPage, setAppsPage] = useState(1);
+  const [majorsPage, setMajorsPage] = useState(1);
   const [appSearch, setAppSearch] = useState('');
+  const [majorSearch, setMajorSearch] = useState('');
   
   // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
@@ -51,6 +54,18 @@ const AdminDashboard: React.FC = () => {
 
   const pagedApps = filteredApps.slice((appsPage - 1) * APPS_PER_PAGE, appsPage * APPS_PER_PAGE);
   const totalAppsPages = Math.ceil(filteredApps.length / APPS_PER_PAGE);
+
+  // Filtrage des filières (Majors)
+  const filteredMajorsList = useMemo(() => {
+    return majors.filter(m => 
+      m.name.toLowerCase().includes(majorSearch.toLowerCase()) ||
+      m.universityName.toLowerCase().includes(majorSearch.toLowerCase()) ||
+      m.domain.toLowerCase().includes(majorSearch.toLowerCase())
+    );
+  }, [majors, majorSearch]);
+
+  const pagedMajors = filteredMajorsList.slice((majorsPage - 1) * MAJORS_PER_PAGE, majorsPage * MAJORS_PER_PAGE);
+  const totalMajorsPages = Math.ceil(filteredMajorsList.length / MAJORS_PER_PAGE);
 
   // Filtrage des universités pour la vue principale
   const filteredUnis = useMemo(() => {
@@ -130,7 +145,7 @@ const AdminDashboard: React.FC = () => {
 
   const SidebarNav = () => (
     <div className="flex flex-col h-full py-10 px-6">
-      <div className="flex items-center gap-4 px-4 mb-12">
+      <div className="flex items-center gap-4 px-4 mb-12 text-left">
         <div className="size-11 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shrink-0">
           <span className="material-symbols-outlined text-2xl font-black">shield_person</span>
         </div>
@@ -262,7 +277,7 @@ const AdminDashboard: React.FC = () => {
 
                <div className="bg-white dark:bg-surface-dark rounded-[40px] border border-gray-100 dark:border-white/5 overflow-hidden shadow-premium">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-[1000px]">
                       <thead className="bg-gray-50/50 dark:bg-white/2 border-b border-gray-100 dark:border-white/5">
                         <tr>
                           <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Candidat / ID</th>
@@ -385,6 +400,19 @@ const AdminDashboard: React.FC = () => {
                        ))}
                     </div>
                   )}
+
+                  {activeCatalogSection === 'majors' && (
+                    <div className="w-full lg:w-80 relative">
+                       <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
+                       <input 
+                         type="text" 
+                         placeholder="Chercher une filière..." 
+                         value={majorSearch}
+                         onChange={(e) => { setMajorSearch(e.target.value); setMajorsPage(1); }}
+                         className="w-full pl-12 pr-4 py-3 bg-white dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-white/10 outline-none text-xs font-bold dark:text-white"
+                       />
+                    </div>
+                  )}
                </div>
 
                {activeCatalogSection === 'universities' && (
@@ -392,14 +420,14 @@ const AdminDashboard: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {pagedUnis.map(uni => (
                         <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all h-full">
-                           <div className="flex items-center gap-6 flex-1 w-full">
+                           <div className="flex items-center gap-6 flex-1 w-full text-left">
                               <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
                                  <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
                                  <span className={`absolute -top-3 -right-3 size-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
                                     {uni.isStandaloneSchool ? 'E' : 'U'}
                                  </span>
                               </div>
-                              <div className="space-y-1 flex-1">
+                              <div className="space-y-1 flex-1 text-left">
                                  <h3 className="text-2xl font-black text-white tracking-tighter leading-none">{uni.acronym}</h3>
                                  <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
                                  <p className="text-sm font-black text-gray-300 line-clamp-1">{uni.name}</p>
@@ -423,6 +451,83 @@ const AdminDashboard: React.FC = () => {
                         <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
                       </button>
                     </div>
+
+                    {totalAppsPages > 1 && (
+                      <div className="flex justify-center gap-2 mt-10">
+                         {Array.from({ length: Math.ceil(filteredUnis.length / UNI_PER_PAGE) }).map((_, i) => (
+                            <button 
+                               key={i} 
+                               onClick={() => setUniPage(i+1)}
+                               className={`size-10 rounded-xl font-black text-xs transition-all ${uniPage === i+1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}
+                            >
+                               {i+1}
+                            </button>
+                         ))}
+                      </div>
+                    )}
+                  </div>
+               )}
+
+               {activeCatalogSection === 'majors' && (
+                  <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
+                    <div className="overflow-x-auto rounded-[32px] border border-white/5 bg-white/2">
+                       <table className="w-full text-left border-collapse min-w-[1000px]">
+                          <thead className="border-b border-white/5">
+                             <tr>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Formation</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Établissement</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Domaine</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Frais</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em] text-right">Actions</th>
+                             </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                             {pagedMajors.map(major => (
+                               <tr key={major.id} className="hover:bg-white/2 transition-colors">
+                                  <td className="px-8 py-5">
+                                     <div className="space-y-1">
+                                        <p className="text-white font-black">{major.name}</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{major.level} • {major.duration}</p>
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                     <p className="text-sm font-black text-gray-300">{major.universityName}</p>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                     <p className="text-[10px] font-black text-primary uppercase tracking-widest">{major.domain}</p>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                     <p className="text-sm font-black text-gray-400">{major.fees}</p>
+                                  </td>
+                                  <td className="px-8 py-5 text-right">
+                                     <div className="flex justify-end gap-3">
+                                        <button onClick={() => { setCurrentInstId(major.universityId || null); setIsEditing(true); setShowWizard(true); setWizardStep('majors'); }} className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-primary transition-all">
+                                           <span className="material-symbols-outlined text-lg">edit</span>
+                                        </button>
+                                        <button onClick={() => deleteMajor(major.id)} className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-red-500 transition-all">
+                                           <span className="material-symbols-outlined text-lg">delete</span>
+                                        </button>
+                                     </div>
+                                  </td>
+                               </tr>
+                             ))}
+                          </tbody>
+                       </table>
+                    </div>
+
+                    {totalMajorsPages > 1 && (
+                      <div className="flex justify-center gap-2">
+                         {Array.from({ length: totalMajorsPages }).map((_, i) => (
+                            <button 
+                               key={i} 
+                               onClick={() => setMajorsPage(i + 1)}
+                               className={`size-10 rounded-xl font-black text-xs transition-all ${majorsPage === i + 1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}
+                            >
+                               {i + 1}
+                            </button>
+                         ))}
+                      </div>
+                    )}
                   </div>
                )}
             </div>
