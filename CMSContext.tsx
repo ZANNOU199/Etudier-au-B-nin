@@ -110,7 +110,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, { 
         ...options, 
         headers,
-        mode: 'cors'
+        mode: 'cors',
+        cache: 'no-cache'
       });
       
       if (response.status === 401) {
@@ -130,6 +131,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       return response;
     } catch (error) {
+      console.error(`Erreur API [${endpoint}]:`, error);
       throw error;
     }
   };
@@ -174,7 +176,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })));
     } catch (e: any) {
       console.error("Échec chargement filières:", e.message);
-      setApiError("Impossible de charger les formations.");
+      setApiError("Impossible de charger les formations (Erreur Réseau).");
     }
 
     // 3. Candidatures (Si connecté)
@@ -185,8 +187,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
         
         setApplications(rawApps.map((a: any) => {
-          // MAPPAGE ROBUSTE : On cherche l'ID utilisateur sous toutes ses formes possibles
+          // MAPPAGE ROBUSTE : On utilise user_id en priorité car c'est ce que renvoie la table applications
           const sId = (a.user_id || a.student_id || a.studentId || a.id_candidat || a.candidat_id || a.owner_id)?.toString();
+          
+          // Mappage des statuts (pending -> En attente, etc.)
+          const statusMap: any = { 
+            'pending': 'En attente', 
+            'validated': 'Validé', 
+            'rejected': 'Rejeté',
+            'En attente': 'En attente',
+            'Validé': 'Validé',
+            'Rejeté': 'Rejeté'
+          };
           
           // Extraction du nom de la filière et de l'université
           const mName = a.major?.name || a.filiere?.name || a.major_name || a.majorName || "Filière non renseignée";
@@ -200,7 +212,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: mId,
             majorName: mName,
             universityName: uName,
-            status: a.status || 'En attente',
+            status: statusMap[a.status] || a.status || 'En attente',
             date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : (a.date || 'Récemment'),
             documents: a.documents || []
           };
