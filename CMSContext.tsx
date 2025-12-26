@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major, Faculty } from './types';
-import { UNIVERSITIES as MOCK_UNIS, MAJORS as MOCK_MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -75,9 +74,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('auth_token_v1');
   });
 
-  // Initialisation avec les Mocks pour garantir un affichage immédiat
-  const [universities, setUniversities] = useState<University[]>(MOCK_UNIS);
-  const [majors, setMajors] = useState<Major[]>(MOCK_MAJORS);
+  // Initialisation à vide (Zéro Mock)
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -124,8 +123,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
+    setApiError(null);
     
-    // 1. Universités (Public)
+    // 1. Universités (Endpoint Public)
     try {
       const uniRes = await fetch(`${API_BASE_URL}/universities`, {
         headers: { 'Accept': 'application/json' }
@@ -133,21 +133,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        if (rawUnis.length > 0) {
-          setUniversities(rawUnis.map((u: any) => ({
-            ...u,
-            id: u.id.toString(),
-            location: u.city || u.location || 'Bénin',
-            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-          })));
-        }
+        setUniversities(rawUnis.map((u: any) => ({
+          ...u,
+          id: u.id.toString(),
+          location: u.city || u.location || 'Bénin',
+          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+        })));
       }
     } catch (e) {
-      console.warn("Échec chargement universités publiques");
+      console.error("Impossible de charger les universités depuis la base de données.");
     }
 
-    // 2. Filières (Public - Toujours accessible)
+    // 2. Filières (Endpoint Public /majors)
     try {
       const majorRes = await fetch(`${API_BASE_URL}/majors`, {
         headers: { 'Accept': 'application/json' }
@@ -156,26 +154,24 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
         
-        if (rawMajors.length > 0) {
-          setMajors(rawMajors.map((m: any) => ({
-            ...m,
-            id: m.id.toString(),
-            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-            facultyId: m.faculty_id?.toString(),
-            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-            facultyName: m.faculty?.name || 'Tronc commun',
-            location: m.location || m.university?.city || 'Bénin',
-            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-            careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
-            requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
-          })));
-        }
+        setMajors(rawMajors.map((m: any) => ({
+          ...m,
+          id: m.id.toString(),
+          universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
+          facultyId: m.faculty_id?.toString(),
+          universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
+          facultyName: m.faculty?.name || 'Tronc commun',
+          location: m.location || m.university?.city || 'Bénin',
+          image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+          careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
+          requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
+        })));
       }
     } catch (e) {
-      console.warn("Échec chargement filières publiques");
+      console.error("Impossible de charger les filières depuis la base de données.");
     }
 
-    // 3. Données privées (Candidatures, etc.)
+    // 3. Données privées (Candidatures)
     if (token) {
       if (userRole === 'student') {
         try {
@@ -189,7 +185,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: a.major_id?.toString()
           })));
         } catch (e) {
-          console.warn("Route candidatures inaccessible");
+          console.warn("Échec de récupération des candidatures.");
         }
       }
     }
