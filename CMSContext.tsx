@@ -56,6 +56,7 @@ const DEFAULT_CONTENT: CMSContent = {
   'nav_pricing': { fr: "Tarifs", en: "Pricing" },
   'nav_contact': { fr: "Nous Contacter", en: "Contact Us" },
   'footer_desc': { fr: "La plateforme de référence pour l'orientation, les préinscriptions et l'admission dans le supérieur au Bénin.", en: "The reference platform for orientation, pre-registration and admission to higher education in Benin." },
+  'btn_explore': { fr: "Rechercher", en: "Search" }
 };
 
 const DEFAULT_THEMES: ThemeConfig[] = [
@@ -105,10 +106,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         let message = errorData.message || `Erreur serveur : ${response.status}`;
-        if (errorData.errors) {
-            const firstErrorKey = Object.keys(errorData.errors)[0];
-            message = errorData.errors[firstErrorKey][0];
-        }
         throw new Error(message);
       }
       
@@ -121,27 +118,79 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
+    let currentUnis: University[] = [];
     
-    // 1. Universités (Public)
+    // 1. Récupération des Universités (Public)
     try {
       const uniRes = await fetch(`${API_BASE_URL}/universities`);
       if (uniRes.ok) {
         const uniData = await uniRes.json();
-        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        setUniversities(rawUnis.map((u: any) => ({
+        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || uniData.universities || []);
+        currentUnis = rawUnis.map((u: any) => ({
           ...u,
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
           stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
           faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        })));
+        }));
+        setUniversities(currentUnis);
       }
     } catch (e) {
-      console.warn("Échec silencieux chargement universités");
+      console.warn("Échec chargement universités");
+    }
+
+    // 2. Récupération des Filières (Public)
+    try {
+      const majorRes = await fetch(`${API_BASE_URL}/majors`);
+      if (majorRes.ok) {
+        const majorData = await majorRes.json();
+        // Laravel renvoie souvent les données dans .data ou .majors ou directement en tableau
+        const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || majorData.majors || []);
+        
+        const mappedMajors = rawMajors.map((m: any) => {
+          const uId = (m.university_id || m.institution_id || m.universityId)?.toString();
+          const fId = m.faculty_id?.toString();
+          
+          // Trouver l'université correspondante pour récupérer le nom et la localisation
+          const parentUni = currentUnis.find(u => 
+            u.id === uId || 
+            u.faculties.some(f => f.id === fId)
+          );
+
+          // Parsing des champs JSON
+          let careers = m.career_prospects;
+          if (typeof careers === 'string') {
+            try { careers = JSON.parse(careers); } catch(e) { careers = []; }
+          }
+          
+          let diplomas = m.required_diplomas;
+          if (typeof diplomas === 'string') {
+            try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
+          }
+
+          return {
+            ...m,
+            id: m.id.toString(),
+            universityId: uId || parentUni?.id,
+            facultyId: fId,
+            universityName: m.university?.acronym || m.institution?.acronym || parentUni?.acronym || 'N/A',
+            facultyName: m.faculty?.name || 'Général',
+            domain: m.domain || 'Général',
+            level: m.level || 'Licence',
+            location: m.location || parentUni?.location || 'Bénin',
+            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+            careerProspects: Array.isArray(careers) ? careers.map((c: any) => typeof c === 'string' ? { title: c, icon: 'work' } : c) : [],
+            requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => typeof d === 'string' ? { name: d, icon: 'school' } : d) : []
+          };
+        });
+        
+        setMajors(mappedMajors);
+      }
+    } catch (e) {
+      console.warn("Échec chargement filières");
     }
 
     if (token) {
-      // 2. Candidatures
       if (userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
@@ -154,28 +203,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: a.major_id?.toString()
           })));
         } catch (e) {
-          console.warn("Route candidatures inaccessible");
-        }
-      }
-
-      // 3. Filières (Admin seulement)
-      if (userRole !== 'student') {
-        try {
-          const majorRes = await apiRequest('/admin/majors');
-          const majorData = await majorRes.json();
-          const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
-          
-          setMajors(rawMajors.map((m: any) => ({
-            ...m,
-            id: m.id.toString(),
-            // CRITIQUE : Conversion forcée en String pour universityId
-            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-            facultyId: m.faculty_id?.toString(),
-            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-            facultyName: m.faculty?.name || 'Tronc commun'
-          })));
-        } catch (e) {
-          console.warn("Échec silencieux chargement filières admin");
+          console.warn("Dossiers inaccessibles");
         }
       }
     }
@@ -224,7 +252,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (res.status === 201) {
+      if (res.status === 201 || res.status === 200) {
         const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
         setToken(data.token);
@@ -296,7 +324,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addMajor = async (major: any) => {
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
-    // FORCE LE REFRESH COMPLET
     await refreshData();
   };
 
