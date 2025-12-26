@@ -13,7 +13,6 @@ const UNI_PER_PAGE = 4;
 const MAJOR_PER_PAGE = 3;
 
 const AdminDashboard: React.FC = () => {
-  // Added refreshData to fix the missing reference error on line 476
   const { 
     applications, updateApplicationStatus, deleteApplication,
     universities, addUniversity, updateUniversity, deleteUniversity,
@@ -49,10 +48,7 @@ const AdminDashboard: React.FC = () => {
 
   const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
-  // Institution parente sélectionnée (pour l'étape 2 et 3)
   const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
-  
-  // Filtre les filières appartenant à l'institution en cours
   const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
@@ -390,6 +386,10 @@ const AdminDashboard: React.FC = () => {
                            try {
                              if (!currentInstId) throw new Error("ID de l'institution manquant.");
                              
+                             // Conversion des champs texte en tableaux (séparés par des virgules ou retours à la ligne)
+                             const careerStr = fd.get('career') as string;
+                             const diplomaStr = fd.get('diplomas') as string;
+
                              const majorPayload = {
                                university_id: parseInt(currentInstId),
                                faculty_id: fd.get('faculty_id') ? parseInt(fd.get('faculty_id') as string) : null,
@@ -398,13 +398,15 @@ const AdminDashboard: React.FC = () => {
                                level: fd.get('level') as string,
                                duration: fd.get('duration') as string,
                                fees: fd.get('fees') as string,
-                               location: currentUni?.location || 'Bénin'
+                               location: currentUni?.location || 'Bénin',
+                               careerProspects: careerStr ? careerStr.split(',').map(s => ({ title: s.trim(), icon: 'work' })) : [],
+                               requiredDiplomas: diplomaStr ? diplomaStr.split(',').map(s => ({ name: s.trim(), icon: 'school' })) : []
                              };
 
                              await addMajor(majorPayload);
                              form.reset();
                            } catch (err: any) {
-                             alert("Erreur lors de l'ajout de la filière : " + err.message);
+                             alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
                              setIsProcessing(false);
                            }
@@ -442,13 +444,23 @@ const AdminDashboard: React.FC = () => {
 
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 3 Ans)</label>
-                                 <input name="duration" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée</label>
+                                 <input name="duration" required placeholder="ex: 3 Ans" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
                               <div className="space-y-2">
-                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité (ex: 400.000 FCFA)</label>
-                                 <input name="fees" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité annuelle</label>
+                                 <input name="fees" required placeholder="ex: 400.000 FCFA" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Débouchés (séparés par des virgules)</label>
+                              <textarea name="career" placeholder="ex: Développeur, Chef de projet, Consultant" rows={2} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Diplômes requis (séparés par des virgules)</label>
+                              <textarea name="diplomas" placeholder="ex: BAC C, BAC D, BAC E" rows={2} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
                            </div>
 
                            <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">

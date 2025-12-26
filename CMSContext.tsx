@@ -104,7 +104,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // Extraction intelligente des erreurs Laravel
         let message = errorData.message || `Erreur serveur : ${response.status}`;
         if (errorData.errors) {
             const firstErrorKey = Object.keys(errorData.errors)[0];
@@ -138,8 +137,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (token) {
-        const appRes = await apiRequest('/applications');
-        if (appRes.ok) {
+        // Correction de la route : pour les admins, on utilise /admin/applications
+        const appEndpoint = userRole === 'student' ? '/applications' : '/admin/applications';
+        const appRes = await apiRequest(appEndpoint).catch(() => null);
+        
+        if (appRes && appRes.ok) {
           const appData = await appRes.json();
           const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
           setApplications(rawApps.map((a: any) => ({
@@ -188,6 +190,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
         setToken(data.token);
+        setUserRole(userData.role);
         localStorage.setItem('auth_token_v1', data.token);
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
@@ -209,6 +212,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
         setToken(data.token);
+        setUserRole(userData.role);
         localStorage.setItem('auth_token_v1', data.token);
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
@@ -222,6 +226,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const handleLogoutLocal = () => {
     setUser(null);
     setToken(null);
+    setUserRole('student');
     localStorage.removeItem('auth_token_v1');
     localStorage.removeItem('auth_user_v1');
   };
