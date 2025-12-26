@@ -136,7 +136,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...u,
             id: u.id.toString(),
             location: u.city || u.location || 'Bénin',
-            // NORMALISATION DU TYPE POUR LE FILTRE (Case-sensitive fix)
             type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
             stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
             faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
@@ -173,8 +172,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         const statusMap: Record<string, Application['status']> = {
           'pending': 'En attente',
-          'validated': 'Validé',
           'accepted': 'Validé',
+          'validated': 'Validé',
           'rejected': 'Rejeté',
           'processing': 'En cours'
         };
@@ -183,17 +182,17 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...a,
           id: a.id.toString(),
           studentId: (a.user_id || user.id).toString(),
-          studentName: a.user ? `${a.user.firstName} ${a.user.lastName}` : "Étudiant",
+          studentName: a.user ? `${a.user.firstName} ${a.user.lastName}` : "Candidat",
           majorId: (a.major?.id || a.major_id)?.toString(),
-          majorName: a.major?.name || 'Filière',
-          universityName: a.major?.university?.acronym || "Établissement",
+          majorName: a.major?.name || 'Filière non spécifiée',
+          universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
           status: statusMap[a.status] || a.status || 'En attente',
-          date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Récemment',
+          date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
           documents: a.documents || [],
           primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
         })));
       } catch (e) {
-        console.warn("Échec du chargement des dossiers");
+        console.warn("Échec du chargement des candidatures");
       }
     }
     

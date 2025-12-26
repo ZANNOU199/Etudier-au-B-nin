@@ -10,13 +10,14 @@ type EstablishmentFilter = 'all' | 'university' | 'school';
 type CreationStep = 'institution' | 'faculties' | 'majors';
 
 const UNI_PER_PAGE = 4;
+const APPS_PER_PAGE = 8;
 
 const AdminDashboard: React.FC = () => {
   const { 
     applications, updateApplicationStatus, deleteApplication,
     universities, addUniversity, updateUniversity, deleteUniversity,
     majors, addMajor, updateMajor, deleteMajor, addFaculty, deleteFaculty,
-    logout, user, refreshData
+    logout, user, refreshData, isLoading
   } = useCMS();
   
   const [activeView, setActiveView] = useState<AdminView>('overview');
@@ -25,6 +26,8 @@ const AdminDashboard: React.FC = () => {
   
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
+  const [appsPage, setAppsPage] = useState(1);
+  const [appSearch, setAppSearch] = useState('');
   
   // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
@@ -36,6 +39,18 @@ const AdminDashboard: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const navigate = useNavigate();
+
+  // Filtrage des candidatures
+  const filteredApps = useMemo(() => {
+    return applications.filter(a => 
+      a.majorName.toLowerCase().includes(appSearch.toLowerCase()) ||
+      a.studentName.toLowerCase().includes(appSearch.toLowerCase()) ||
+      a.id.includes(appSearch)
+    );
+  }, [applications, appSearch]);
+
+  const pagedApps = filteredApps.slice((appsPage - 1) * APPS_PER_PAGE, appsPage * APPS_PER_PAGE);
+  const totalAppsPages = Math.ceil(filteredApps.length / APPS_PER_PAGE);
 
   // Filtrage des universités pour la vue principale
   const filteredUnis = useMemo(() => {
@@ -54,14 +69,18 @@ const AdminDashboard: React.FC = () => {
     [universities, currentInstId]
   );
   
-  // FILTRAGE CRITIQUE : Liste des filières de l'établissement en cours
-  // Correction : On utilise String() partout pour s'assurer que la comparaison fonctionne
   const currentInstMajors = useMemo(() => {
     if (!currentInstId) return [];
-    const filtered = majors.filter(m => String(m.universityId) === String(currentInstId));
-    console.log("Majors filtrées pour l'ID", currentInstId, ":", filtered);
-    return filtered;
+    return majors.filter(m => String(m.universityId) === String(currentInstId));
   }, [majors, currentInstId]);
+
+  const handleStatusUpdate = async (id: string, status: string) => {
+    try {
+      await updateApplicationStatus(id, status);
+    } catch (e) {
+      alert("Erreur lors de la mise à jour du statut.");
+    }
+  };
 
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
@@ -115,7 +134,7 @@ const AdminDashboard: React.FC = () => {
         <div className="size-11 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shrink-0">
           <span className="material-symbols-outlined text-2xl font-black">shield_person</span>
         </div>
-        <div>
+        <div className="text-left">
           <h2 className="font-black text-lg text-white tracking-tight leading-none">AdminHub</h2>
           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Console Master</p>
         </div>
@@ -182,19 +201,25 @@ const AdminDashboard: React.FC = () => {
               <h1 className="text-xl lg:text-2xl font-black dark:text-white tracking-tighter uppercase">Admin Console</h1>
            </div>
            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => refreshData()}
+                className={`size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all ${isLoading ? 'animate-spin' : ''}`}
+              >
+                <span className="material-symbols-outlined">refresh</span>
+              </button>
               <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-black font-black text-xs shadow-lg">AD</div>
            </div>
         </header>
 
         <div className="p-4 lg:p-12 space-y-10">
           {activeView === 'overview' && (
-            <div className="space-y-10 animate-fade-in">
+            <div className="space-y-10 animate-fade-in text-left">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                 {[
                   { label: 'Candidatures', val: applications.length.toString(), icon: 'description', color: 'bg-primary/10 text-primary' },
                   { label: 'Établissements', val: universities.length.toString(), icon: 'account_balance', color: 'bg-blue-500/10 text-blue-500' },
                   { label: 'Filières', val: majors.length.toString(), icon: 'library_books', color: 'bg-purple-500/10 text-purple-500' },
-                  { label: 'Activité', val: '89%', icon: 'trending_up', color: 'bg-amber-500/10 text-amber-500' }
+                  { label: 'En attente', val: applications.filter(a => a.status === 'En attente').length.toString(), icon: 'hourglass_top', color: 'bg-amber-500/10 text-amber-500' }
                 ].map((kpi, idx) => (
                   <div key={idx} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 shadow-sm">
                     <div className={`size-12 rounded-xl flex items-center justify-center ${kpi.color} mb-6`}>
@@ -205,11 +230,146 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <div className="bg-[#0f1a13] rounded-[40px] p-12 text-white relative overflow-hidden shadow-2xl flex flex-col md:flex-row items-center justify-between gap-10">
+                <div className="space-y-4 max-w-xl">
+                  <h2 className="text-4xl font-black tracking-tighter uppercase leading-none">Gestion des <span className="text-primary italic">Inscriptions</span></h2>
+                  <p className="text-gray-400 font-medium leading-relaxed">Validez les dossiers des candidats et gérez l'offre académique en temps réel depuis cette console.</p>
+                </div>
+                <button onClick={() => setActiveView('applications')} className="px-10 py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl shadow-primary/20 hover:scale-105 transition-all">Traiter les dossiers</button>
+              </div>
+            </div>
+          )}
+
+          {activeView === 'applications' && (
+            <div className="space-y-8 animate-fade-in text-left">
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div className="space-y-1">
+                    <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Candidatures Étudiantes</h2>
+                    <p className="text-gray-500 font-medium italic">Liste complète des dossiers soumis par les candidats.</p>
+                  </div>
+                  <div className="w-full md:w-80 relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
+                    <input 
+                      type="text" 
+                      placeholder="Rechercher (Nom, Filière, ID)..." 
+                      value={appSearch}
+                      onChange={(e) => { setAppSearch(e.target.value); setAppsPage(1); }}
+                      className="w-full pl-12 pr-4 py-4 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10 outline-none text-sm font-bold dark:text-white focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+               </div>
+
+               <div className="bg-white dark:bg-surface-dark rounded-[40px] border border-gray-100 dark:border-white/5 overflow-hidden shadow-premium">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-gray-50/50 dark:bg-white/2 border-b border-gray-100 dark:border-white/5">
+                        <tr>
+                          <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Candidat / ID</th>
+                          <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Filière / Établissement</th>
+                          <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Documents</th>
+                          <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Statut</th>
+                          <th className="px-8 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                        {pagedApps.map((app) => (
+                          <tr key={app.id} className="hover:bg-gray-50 dark:hover:bg-white/2 transition-colors">
+                            <td className="px-8 py-6">
+                              <div className="flex items-center gap-4">
+                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase">
+                                  {app.studentName.slice(0, 2)}
+                                </div>
+                                <div className="space-y-0.5">
+                                  <p className="text-sm font-black dark:text-white leading-none">{app.studentName}</p>
+                                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest italic">#{app.id} • {app.date}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <div className="space-y-1">
+                                <p className="text-sm font-black dark:text-white">{app.majorName}</p>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{app.universityName}</p>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                               {app.primary_document_url ? (
+                                 <a 
+                                  href={app.primary_document_url} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="flex items-center gap-2 text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline"
+                                 >
+                                    <span className="material-symbols-outlined text-sm">description</span>
+                                    Voir Dossier
+                                 </a>
+                               ) : (
+                                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Aucun doc</span>
+                               )}
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                                app.status === 'Validé' ? 'bg-primary/10 text-primary border-primary/20' :
+                                app.status === 'Rejeté' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                'bg-amber-400/10 text-amber-500 border-amber-400/20'
+                              }`}>
+                                {app.status}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6 text-right">
+                               <div className="flex items-center justify-end gap-2">
+                                  {app.status === 'En attente' && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleStatusUpdate(app.id, 'accepted')}
+                                        className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-black transition-all"
+                                        title="Valider"
+                                      >
+                                        <span className="material-symbols-outlined text-lg font-bold">check</span>
+                                      </button>
+                                      <button 
+                                        onClick={() => handleStatusUpdate(app.id, 'rejected')}
+                                        className="size-9 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                                        title="Rejeter"
+                                      >
+                                        <span className="material-symbols-outlined text-lg">close</span>
+                                      </button>
+                                    </>
+                                  )}
+                                  <button 
+                                    onClick={() => deleteApplication(app.id)}
+                                    className="size-9 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 transition-all"
+                                    title="Supprimer"
+                                  >
+                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                  </button>
+                               </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {totalAppsPages > 1 && (
+                    <div className="p-6 bg-gray-50/50 dark:bg-white/2 border-t border-gray-100 dark:border-white/5 flex justify-center gap-2">
+                       {Array.from({ length: totalAppsPages }).map((_, i) => (
+                          <button 
+                            key={i} 
+                            onClick={() => setAppsPage(i + 1)}
+                            className={`size-10 rounded-xl font-black text-xs transition-all ${appsPage === i + 1 ? 'bg-primary text-black' : 'bg-white dark:bg-white/5 dark:text-white border border-gray-100 dark:border-white/10'}`}
+                          >
+                            {i + 1}
+                          </button>
+                       ))}
+                    </div>
+                  )}
+               </div>
             </div>
           )}
 
           {activeView === 'catalog' && (
-            <div className="space-y-8 animate-fade-in">
+            <div className="space-y-8 animate-fade-in text-left">
                <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
                   <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
                     <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
@@ -274,7 +434,7 @@ const AdminDashboard: React.FC = () => {
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
-                   <div>
+                   <div className="text-left">
                       <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
                       <div className="flex items-center gap-2 mt-2">
                          <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
@@ -288,7 +448,7 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="p-8 md:p-12 space-y-10">
                    {wizardStep === 'institution' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="space-y-6">
                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Type d'établissement</label>
                            <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
@@ -328,7 +488,7 @@ const AdminDashboard: React.FC = () => {
                    )}
 
                    {wizardStep === 'faculties' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="text-center space-y-2">
                            <h4 className="text-2xl font-black text-white tracking-tight leading-none">Composantes internes</h4>
                            <p className="text-gray-500 font-medium text-sm">Ajoutez les écoles ou facultés rattachées à cet établissement.</p>
@@ -384,7 +544,7 @@ const AdminDashboard: React.FC = () => {
                    )}
 
                    {wizardStep === 'majors' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="text-center space-y-2">
                            <h4 className="text-2xl font-black text-white tracking-tight leading-none">Filières & Formations</h4>
                            <p className="text-gray-500 font-medium text-sm">Ajoutez les filières rattachées à cet établissement.</p>
@@ -416,7 +576,6 @@ const AdminDashboard: React.FC = () => {
 
                              await addMajor(majorPayload);
                              formRef.reset();
-                             // Le addMajor appelle déjà refreshData, mais on force un petit délai ou un nouvel appel si besoin
                              await refreshData();
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout de la filière : " + err.message);
@@ -466,45 +625,14 @@ const AdminDashboard: React.FC = () => {
                               </div>
                            </div>
 
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Débouchés (séparés par des virgules)</label>
-                              <textarea name="career" placeholder="ex: Développeur, Chef de projet, Consultant" rows={2} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
-                           </div>
-
-                           <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Diplômes requis (séparés par des virgules)</label>
-                              <textarea name="diplomas" placeholder="ex: BAC C, BAC D, BAC E" rows={2} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
-                           </div>
-
                            <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">
                               {isProcessing ? "Enregistrement..." : "+ Ajouter la filière"}
                            </button>
                         </form>
 
-                        <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Filières déjà ajoutées</label>
-                           {currentInstMajors.map(m => (
-                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 hover:bg-white/10 transition-colors">
-                                 <div className="text-left">
-                                    <p className="font-black text-xs text-white uppercase tracking-wider leading-none">{m.name}</p>
-                                    <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase">
-                                      {m.level} • {m.domain} • {m.facultyName || 'Tronc commun'}
-                                    </p>
-                                 </div>
-                                 <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button>
-                              </div>
-                           ))}
-                           {currentInstMajors.length === 0 && (
-                              <div className="text-center py-8 bg-white/2 rounded-2xl border border-dashed border-white/5">
-                                 <span className="material-symbols-outlined text-gray-700 text-3xl mb-2">inventory_2</span>
-                                 <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Aucune filière configurée</p>
-                              </div>
-                           )}
-                        </div>
-
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
                            <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
-                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer la configuration</button>
+                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer</button>
                         </div>
                      </div>
                    )}
