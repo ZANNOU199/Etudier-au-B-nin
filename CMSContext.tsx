@@ -132,75 +132,68 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
       ]);
 
-      // --- Traitement des Universités ---
-      let fetchedUnis: University[] = [...UNIVERSITIES];
+      // --- Traitement des Universités (On part de vide []) ---
+      let fetchedUnis: University[] = [];
       if (uniRes?.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        if (rawUnis.length > 0) {
-          fetchedUnis = rawUnis.map((u: any) => ({
-            ...u,
-            id: u.id.toString(),
-            location: u.city || u.location || 'Bénin',
-            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-          }));
-        }
+        fetchedUnis = rawUnis.map((u: any) => ({
+          ...u,
+          id: u.id.toString(),
+          location: u.city || u.location || 'Bénin',
+          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+        }));
       }
       setUniversities(fetchedUnis);
 
-      // --- Traitement des Facultés (nécessaire pour mapper Major -> University) ---
+      // --- Traitement des Facultés ---
       let fetchedFacs: Faculty[] = [];
       if (facRes?.ok) {
         const facData = await facRes.json();
         fetchedFacs = Array.isArray(facData) ? facData : (facData.data || []);
       }
 
-      // --- Traitement des Filières (Désormais PUBLIC) ---
-      let fetchedMajors: Major[] = [...MAJORS];
+      // --- Traitement des Filières (On part de vide []) ---
+      let fetchedMajors: Major[] = [];
       if (majRes?.ok) {
         const majData = await majRes.json();
         const rawMajors = Array.isArray(majData) ? majData : (majData.data || []);
         
-        if (rawMajors.length > 0) {
-          fetchedMajors = rawMajors.map((m: any) => {
-            const fId = m.faculty_id?.toString();
-            
-            // On retrouve l'université parente via la faculté
-            const faculty = fetchedFacs.find(f => f.id.toString() === fId);
-            const uId = faculty?.university_id?.toString() || m.university_id?.toString();
-            const uni = fetchedUnis.find(u => u.id === uId);
+        fetchedMajors = rawMajors.map((m: any) => {
+          const fId = m.faculty_id?.toString();
+          const faculty = fetchedFacs.find(f => f.id.toString() === fId);
+          const uId = faculty?.university_id?.toString() || m.university_id?.toString();
+          const uni = fetchedUnis.find(u => u.id === uId);
 
-            // Parsing des données JSON si présentes (phpMyAdmin stores them as JSON strings)
-            let careers = m.career_prospects;
-            if (typeof careers === 'string') {
-              try { careers = JSON.parse(careers); } catch(e) { careers = []; }
-            }
-            let diplomas = m.required_diplomas;
-            if (typeof diplomas === 'string') {
-              try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
-            }
+          let careers = m.career_prospects;
+          if (typeof careers === 'string') {
+            try { careers = JSON.parse(careers); } catch(e) { careers = []; }
+          }
+          let diplomas = m.required_diplomas;
+          if (typeof diplomas === 'string') {
+            try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
+          }
 
-            return {
-              ...m,
-              id: m.id.toString(),
-              universityId: uId,
-              facultyId: fId,
-              universityName: m.university?.acronym || uni?.acronym || 'Établissement',
-              facultyName: m.faculty?.name || faculty?.name || 'Tronc commun',
-              domain: m.domain || 'Général',
-              level: m.level || 'Licence',
-              location: m.location || uni?.location || 'Bénin',
-              image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-              careerProspects: Array.isArray(careers) ? careers.map((c: any) => ({ title: typeof c === 'string' ? c : c.title, icon: 'work' })) : [],
-              requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => ({ name: typeof d === 'string' ? d : d.name, icon: 'school' })) : []
-            };
-          });
-        }
+          return {
+            ...m,
+            id: m.id.toString(),
+            universityId: uId,
+            facultyId: fId,
+            universityName: m.university?.acronym || uni?.acronym || 'Établissement',
+            facultyName: m.faculty?.name || faculty?.name || 'Tronc commun',
+            domain: m.domain || 'Général',
+            level: m.level || 'Licence',
+            location: m.location || uni?.location || 'Bénin',
+            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+            careerProspects: Array.isArray(careers) ? careers.map((c: any) => ({ title: typeof c === 'string' ? c : c.title, icon: 'work' })) : [],
+            requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => ({ name: typeof d === 'string' ? d : d.name, icon: 'school' })) : []
+          };
+        });
       }
       setMajors(fetchedMajors);
 
-      // --- Traitement des données PRIVÉES (seulement si authentifié) ---
+      // --- Traitement des données PRIVÉES ---
       if (token && userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
@@ -219,9 +212,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     } catch (error) {
       console.error("Erreur critique lors du rafraîchissement des données:", error);
-      // Fallback sur les constantes locales en cas de panne API totale
-      setUniversities(UNIVERSITIES);
-      setMajors(MAJORS);
+      // Fallback vide si erreur API
+      setUniversities([]);
+      setMajors([]);
     }
     
     setIsLoading(false);
