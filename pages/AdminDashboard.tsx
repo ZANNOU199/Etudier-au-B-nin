@@ -82,11 +82,11 @@ const AdminDashboard: React.FC = () => {
         });
       } else {
         const result = await addUniversity(apiPayload);
-        const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id;
+        const newId = result?.id || result?.data?.id || result?.university?.id;
         if (newId) {
           setCurrentInstId(newId.toString());
         } else {
-           throw new Error("L'ID de l'établissement n'a pas pu être récupéré.");
+           throw new Error("L'ID de l'université n'a pas pu être récupéré.");
         }
       }
       
@@ -326,8 +326,8 @@ const AdminDashboard: React.FC = () => {
                         <form onSubmit={async (e) => {
                            e.preventDefault();
                            setIsProcessing(true);
-                           const formRef = e.currentTarget; 
-                           const fd = new FormData(formRef);
+                           const form = e.currentTarget; 
+                           const fd = new FormData(form);
                            try {
                              if (!currentInstId) throw new Error("ID de l'institution manquant.");
                              const uniId = parseInt(currentInstId);
@@ -339,7 +339,7 @@ const AdminDashboard: React.FC = () => {
                                description: 'Composante académique spécialisée',
                                type: 'Faculté'
                              });
-                             formRef.reset(); 
+                             form.reset(); 
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
@@ -381,11 +381,12 @@ const AdminDashboard: React.FC = () => {
                         <form onSubmit={async (e) => {
                            e.preventDefault();
                            setIsProcessing(true);
-                           const formRef = e.currentTarget;
-                           const fd = new FormData(formRef);
+                           const form = e.currentTarget;
+                           const fd = new FormData(form);
                            try {
                              if (!currentInstId) throw new Error("ID de l'institution manquant.");
                              
+                             // Conversion des champs texte en tableaux (séparés par des virgules ou retours à la ligne)
                              const careerStr = fd.get('career') as string;
                              const diplomaStr = fd.get('diplomas') as string;
 
@@ -398,15 +399,14 @@ const AdminDashboard: React.FC = () => {
                                duration: fd.get('duration') as string,
                                fees: fd.get('fees') as string,
                                location: currentUni?.location || 'Bénin',
-                               // Correction des noms de champs pour le backend
-                               career_prospects: careerStr ? careerStr.split(',').map(s => s.trim()) : [],
-                               required_diplomas: diplomaStr ? diplomaStr.split(',').map(s => s.trim()) : []
+                               careerProspects: careerStr ? careerStr.split(',').map(s => ({ title: s.trim(), icon: 'work' })) : [],
+                               requiredDiplomas: diplomaStr ? diplomaStr.split(',').map(s => ({ name: s.trim(), icon: 'school' })) : []
                              };
 
                              await addMajor(majorPayload);
-                             formRef.reset();
+                             form.reset();
                            } catch (err: any) {
-                             alert("Erreur lors de l'ajout de la filière : " + err.message);
+                             alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
                              setIsProcessing(false);
                            }
@@ -444,12 +444,12 @@ const AdminDashboard: React.FC = () => {
 
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 3 Ans)</label>
-                                 <input name="duration" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée</label>
+                                 <input name="duration" required placeholder="ex: 3 Ans" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
                               <div className="space-y-2">
-                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité (ex: 400.000 FCFA)</label>
-                                 <input name="fees" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité annuelle</label>
+                                 <input name="fees" required placeholder="ex: 400.000 FCFA" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
                            </div>
 
