@@ -30,10 +30,12 @@ interface CMSContextType {
   // Admin methods
   updateApplicationStatus: (id: string, status: Application['status']) => Promise<void>;
   deleteApplication: (id: string) => Promise<void>;
-  addUniversity: (uni: University) => Promise<void>;
-  updateUniversity: (uni: University) => Promise<void>;
+  addUniversity: (formData: FormData) => Promise<void>;
+  updateUniversity: (id: string, uni: any) => Promise<void>;
   deleteUniversity: (id: string) => Promise<void>;
-  addMajor: (major: Major) => Promise<void>;
+  addFaculty: (faculty: any) => Promise<void>;
+  deleteFaculty: (id: string) => Promise<void>;
+  addMajor: (major: any) => Promise<void>;
   updateMajor: (major: Major) => Promise<void>;
   deleteMajor: (id: string) => Promise<void>;
   // SuperAdmin methods
@@ -244,7 +246,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // ADMIN METHODS
-  // Fixed signature and implementation for updateApplicationStatus
   const updateApplicationStatus = async (id: string, status: Application['status']) => {
     await apiRequest(`/applications/${id}/status`, {
       method: 'PUT',
@@ -258,20 +259,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   };
 
-  const addUniversity = async (uni: University) => {
+  const addUniversity = async (formData: FormData) => {
     await apiRequest('/admin/universities', {
       method: 'POST',
-      body: JSON.stringify(uni)
+      body: formData
     });
     refreshData();
   };
 
-  // Corrected signature to accept University object matching AdminDashboard usage
-  const updateUniversity = async (uni: University) => {
-    const { id, ...data } = uni;
+  const updateUniversity = async (id: string, uni: any) => {
     await apiRequest(`/admin/universities/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: JSON.stringify(uni)
     });
     refreshData();
   };
@@ -281,7 +280,20 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   };
 
-  const addMajor = async (major: Major) => {
+  const addFaculty = async (faculty: any) => {
+    await apiRequest('/admin/faculties', {
+      method: 'POST',
+      body: JSON.stringify(faculty)
+    });
+    refreshData();
+  };
+
+  const deleteFaculty = async (id: string) => {
+    await apiRequest(`/admin/faculties/${id}`, { method: 'DELETE' });
+    refreshData();
+  };
+
+  const addMajor = async (major: any) => {
     await apiRequest('/admin/majors', {
       method: 'POST',
       body: JSON.stringify(major)
@@ -289,7 +301,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   };
 
-  // Corrected signature to accept Major object matching AdminDashboard usage
   const updateMajor = async (major: Major) => {
     const { id, ...data } = major;
     await apiRequest(`/admin/majors/${id}`, {
@@ -304,7 +315,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   };
 
-  // SuperAdmin methods - implemented as requested by SuperAdminDashboard
+  // SuperAdmin methods
   const addStaffUser = (newUser: User) => {
     setStaffUsers(prev => [...prev, newUser]);
   };
@@ -319,7 +330,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       translate, updateContent: () => {}, setLanguage: setCurrentLang,
       applyTheme: (id) => setThemes(prev => prev.map(t => ({ ...t, isActive: t.id === id }))),
       updateTheme: () => {}, setUserRole, login, register, logout, addApplication, refreshData, deleteApplication,
-      addUniversity, updateUniversity, deleteUniversity, addMajor, updateMajor, deleteMajor,
+      addUniversity, updateUniversity, deleteUniversity, addFaculty, deleteFaculty, addMajor, updateMajor, deleteMajor,
       updateApplicationStatus, staffUsers, addStaffUser, deleteStaffUser
     }}>
       {children}
