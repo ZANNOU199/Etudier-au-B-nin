@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
-import { User, UserRole, ThemeConfig, University, Major } from '../types';
+import { User, UserRole, University } from '../types';
 import { processAcademicCSV } from '../utils/ImportService';
 
 const SuperAdminDashboard: React.FC = () => {
@@ -20,7 +20,7 @@ const SuperAdminDashboard: React.FC = () => {
     applyTheme,
     updateTheme,
     languages
-    // Removed toggleLanguage as it doesn't exist on CMSContextType
+    // toggleLanguage property removed as it does not exist on CMSContextType
   } = useCMS();
   
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
@@ -36,22 +36,28 @@ const SuperAdminDashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      // Fix: Provided wrapper functions to bridge between processAcademicCSV's expected types 
-      // and the CMSContext API methods (converting University objects to FormData where required).
+      // Fix: Provided wrapper functions to handle conversion to FormData and match processAcademicCSV signature
       const result = await processAcademicCSV(
         file, 
         universities, 
-        (u: University) => {
+        async (u: University) => {
           const fd = new FormData();
           fd.append('name', u.name);
           fd.append('acronym', u.acronym);
           fd.append('city', u.location);
           fd.append('type', u.type.toLowerCase());
           fd.append('is_standalone', u.isStandaloneSchool ? '1' : '0');
-          addUniversity(fd);
-        },
-        (u: University) => updateUniversity(u.id, u),
-        (m: Major) => addMajor(m)
+          return await addUniversity(fd);
+        }, 
+        async (u: University) => {
+          return await updateUniversity(u.id, {
+            name: u.name,
+            acronym: u.acronym,
+            city: u.location,
+            type: u.type.toLowerCase()
+          });
+        }, 
+        addMajor
       );
       alert(`IMPORTATION TERMINÉE :\n- ${result.uniCount} Établissements\n- ${result.majorCount} Filières.`);
     } catch (err) {
