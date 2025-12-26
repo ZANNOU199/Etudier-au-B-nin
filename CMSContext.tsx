@@ -88,10 +88,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
+  const handleLogoutLocal = () => {
+    setUser(null);
+    setToken(null);
+    setUserRole('student');
+    localStorage.removeItem('auth_token_v1');
+    localStorage.removeItem('auth_user_v1');
+  };
+
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+    const isPublic = endpoint === '/majors' || endpoint === '/universities';
     const headers: any = {
       'Accept': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(token && !isPublic ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(!(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...options.headers,
     };
@@ -99,7 +108,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
       
-      if (response.status === 401) {
+      if (response.status === 401 && !isPublic) {
         handleLogoutLocal();
         throw new Error("Session expirée");
       }
@@ -107,16 +116,12 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         let message = errorData.message || `Erreur serveur : ${response.status}`;
-        if (errorData.errors) {
-            const firstErrorKey = Object.keys(errorData.errors)[0];
-            message = errorData.errors[firstErrorKey][0];
-        }
         throw new Error(message);
       }
       
       return response;
     } catch (error) {
-      console.error(`API Error on ${endpoint}:`, error);
+      console.error(`Erreur sur l'endpoint ${endpoint}:`, error);
       throw error;
     }
   };
@@ -125,69 +130,59 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoading(true);
     setApiError(null);
     
-    // 1. Universités (Endpoint Public)
+    // 1. Universités (Base de données uniquement)
     try {
-      const uniRes = await fetch(`${API_BASE_URL}/universities`, {
-        headers: { 'Accept': 'application/json' }
-      });
-      if (uniRes.ok) {
-        const uniData = await uniRes.json();
-        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        setUniversities(rawUnis.map((u: any) => ({
-          ...u,
-          id: u.id.toString(),
-          location: u.city || u.location || 'Bénin',
-          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        })));
-      }
-    } catch (e) {
-      console.error("Impossible de charger les universités depuis la base de données.");
+      const uniRes = await apiRequest('/universities');
+      const uniData = await uniRes.json();
+      const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
+      setUniversities(rawUnis.map((u: any) => ({
+        ...u,
+        id: u.id.toString(),
+        location: u.city || u.location || 'Bénin',
+        stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+        faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+      })));
+    } catch (e: any) {
+      console.error("Échec chargement universités:", e.message);
+      setApiError(e.message);
     }
 
-    // 2. Filières (Endpoint Public /majors)
+    // 2. Filières (Base de données uniquement via /majors)
     try {
-      const majorRes = await fetch(`${API_BASE_URL}/majors`, {
-        headers: { 'Accept': 'application/json' }
-      });
-      if (majorRes.ok) {
-        const majorData = await majorRes.json();
-        const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
-        
-        setMajors(rawMajors.map((m: any) => ({
-          ...m,
-          id: m.id.toString(),
-          universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-          facultyId: m.faculty_id?.toString(),
-          universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-          facultyName: m.faculty?.name || 'Tronc commun',
-          location: m.location || m.university?.city || 'Bénin',
-          image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-          careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
-          requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
-        })));
-      }
-    } catch (e) {
-      console.error("Impossible de charger les filières depuis la base de données.");
+      const majorRes = await apiRequest('/majors');
+      const majorData = await majorRes.json();
+      const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
+      
+      setMajors(rawMajors.map((m: any) => ({
+        ...m,
+        id: m.id.toString(),
+        universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
+        facultyId: m.faculty_id?.toString(),
+        universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
+        facultyName: m.faculty?.name || 'Tronc commun',
+        location: m.location || m.university?.city || 'Bénin',
+        image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+        careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
+        requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
+      })));
+    } catch (e: any) {
+      console.error("Échec chargement filières:", e.message);
+      setApiError(e.message);
     }
 
-    // 3. Données privées (Candidatures)
-    if (token) {
-      if (userRole === 'student') {
-        try {
-          const appRes = await apiRequest('/applications');
-          const appData = await appRes.json();
-          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-          setApplications(rawApps.map((a: any) => ({
-            ...a,
-            id: a.id.toString(),
-            status: a.status || 'En attente',
-            majorId: a.major_id?.toString()
-          })));
-        } catch (e) {
-          console.warn("Échec de récupération des candidatures.");
-        }
-      }
+    // 3. Candidatures (Si connecté)
+    if (token && userRole === 'student') {
+      try {
+        const appRes = await apiRequest('/applications');
+        const appData = await appRes.json();
+        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+        setApplications(rawApps.map((a: any) => ({
+          ...a,
+          id: a.id.toString(),
+          status: a.status || 'En attente',
+          majorId: a.major_id?.toString()
+        })));
+      } catch (e) {}
     }
     
     setIsLoading(false);
@@ -247,14 +242,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e: any) {
       return { success: false, message: e.message };
     }
-  };
-
-  const handleLogoutLocal = () => {
-    setUser(null);
-    setToken(null);
-    setUserRole('student');
-    localStorage.removeItem('auth_token_v1');
-    localStorage.removeItem('auth_user_v1');
   };
 
   const logout = async () => {
