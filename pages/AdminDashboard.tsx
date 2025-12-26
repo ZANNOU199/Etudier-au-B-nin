@@ -82,7 +82,6 @@ const AdminDashboard: React.FC = () => {
         });
       } else {
         const result = await addUniversity(apiPayload);
-        // Récupération de l'ID avec fallback robuste
         const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id;
         if (newId) {
           setCurrentInstId(newId.toString());
@@ -405,6 +404,7 @@ const AdminDashboard: React.FC = () => {
 
                              await addMajor(majorPayload);
                              formRef.reset();
+                             await refreshData();
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout de la filière : " + err.message);
                            } finally {
@@ -416,7 +416,7 @@ const AdminDashboard: React.FC = () => {
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Composante de rattachement</label>
                               <select name="faculty_id" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
                                  <option value="">-- Sélectionner une faculté / école --</option>
-                                 {currentUni?.faculties.map(f => (
+                                 {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
                                     <option key={f.id} value={f.id}>{f.name}</option>
                                  ))}
                               </select>

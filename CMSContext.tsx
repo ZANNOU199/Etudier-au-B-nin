@@ -114,7 +114,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       return response;
     } catch (error) {
-      console.error(`API Error on ${endpoint}:`, error);
+      console.error(`API Fetch Failure on ${endpoint}:`, error);
       throw error;
     }
   };
@@ -122,7 +122,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     
-    // Charger les universités (toujours public)
+    // 1. Universités (Public)
     try {
       const uniRes = await fetch(`${API_BASE_URL}/universities`);
       if (uniRes.ok) {
@@ -133,30 +133,32 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
           stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: (u.faculties || []).map((f: any) => ({ ...f, id: f.id.toString() }))
+          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
         })));
       }
     } catch (e) {
-      console.warn("Erreur chargement universités:", e);
+      console.warn("Échec silencieux chargement universités:", e);
     }
 
     if (token) {
-      // Charger les candidatures (Indépendant)
-      try {
-        const appRes = await apiRequest('/applications');
-        const appData = await appRes.json();
-        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-        setApplications(rawApps.map((a: any) => ({
-          ...a,
-          id: a.id.toString(),
-          status: a.status || 'En attente',
-          majorId: a.major_id?.toString()
-        })));
-      } catch (e) {
-        console.warn("Route candidatures non trouvée ou accès refusé (404/405)");
+      // 2. Candidatures (Étudiants seulement)
+      if (userRole === 'student') {
+        try {
+          const appRes = await apiRequest('/applications');
+          const appData = await appRes.json();
+          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+          setApplications(rawApps.map((a: any) => ({
+            ...a,
+            id: a.id.toString(),
+            status: a.status || 'En attente',
+            majorId: a.major_id?.toString()
+          })));
+        } catch (e) {
+          console.warn("Échec silencieux chargement candidatures");
+        }
       }
 
-      // Charger les filières (Indépendant)
+      // 3. Filières (Admin seulement)
       if (userRole !== 'student') {
         try {
           const majorRes = await apiRequest('/admin/majors');
@@ -166,13 +168,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setMajors(rawMajors.map((m: any) => ({
             ...m,
             id: m.id.toString(),
-            universityId: m.university_id?.toString(), // Mapping crucial pour le filtrage local
+            universityId: (m.university_id || m.institution_id)?.toString(),
             facultyId: m.faculty_id?.toString(),
-            universityName: m.university?.acronym || 'N/A',
+            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
             facultyName: m.faculty?.name || 'Tronc commun'
           })));
         } catch (e) {
-          console.warn("Route filières admin indisponible");
+          console.warn("Échec silencieux chargement filières admin");
         }
       }
     }
