@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major, Faculty } from './types';
+import { UNIVERSITIES, MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -90,13 +91,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
+      'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(!(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...options.headers,
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, { 
+        ...options, 
+        headers,
+        mode: 'cors'
+      });
       
       if (response.status === 401) {
         handleLogoutLocal();
@@ -118,93 +124,98 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
-    let currentUnis: University[] = [];
+    let allUnis: University[] = [...UNIVERSITIES]; // Fallback initial
+    let allMajors: Major[] = [...MAJORS]; // Fallback initial
     
-    // 1. Récupération des Universités (Public)
+    // 1. Récupération des Universités
     try {
-      const uniRes = await fetch(`${API_BASE_URL}/universities`);
+      const uniRes = await fetch(`${API_BASE_URL}/universities`, {
+        headers: { 'Accept': 'application/json' },
+        mode: 'cors'
+      });
       if (uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || uniData.universities || []);
-        currentUnis = rawUnis.map((u: any) => ({
-          ...u,
-          id: u.id.toString(),
-          location: u.city || u.location || 'Bénin',
-          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        }));
-        setUniversities(currentUnis);
+        if (rawUnis.length > 0) {
+          allUnis = rawUnis.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            location: u.city || u.location || 'Bénin',
+            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+          }));
+        }
       }
     } catch (e) {
-      console.warn("Échec chargement universités");
+      console.warn("API Universités injoignable, utilisation des données locales.");
     }
+    setUniversities(allUnis);
 
-    // 2. Récupération des Filières (Public)
+    // 2. Récupération des Filières (Majors)
     try {
-      const majorRes = await fetch(`${API_BASE_URL}/majors`);
+      const majorRes = await fetch(`${API_BASE_URL}/majors`, {
+        headers: { 'Accept': 'application/json' },
+        mode: 'cors'
+      });
       if (majorRes.ok) {
         const majorData = await majorRes.json();
-        // Laravel renvoie souvent les données dans .data ou .majors ou directement en tableau
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || majorData.majors || []);
         
-        const mappedMajors = rawMajors.map((m: any) => {
-          const uId = (m.university_id || m.institution_id || m.universityId)?.toString();
-          const fId = m.faculty_id?.toString();
-          
-          // Trouver l'université correspondante pour récupérer le nom et la localisation
-          const parentUni = currentUnis.find(u => 
-            u.id === uId || 
-            u.faculties.some(f => f.id === fId)
-          );
+        if (rawMajors.length > 0) {
+          allMajors = rawMajors.map((m: any) => {
+            const uId = (m.university_id || m.institution_id || m.universityId)?.toString();
+            const fId = m.faculty_id?.toString();
+            
+            let parentUni = allUnis.find(u => 
+              (uId && u.id === uId) || 
+              (fId && u.faculties.some(f => f.id === fId))
+            );
 
-          // Parsing des champs JSON
-          let careers = m.career_prospects;
-          if (typeof careers === 'string') {
-            try { careers = JSON.parse(careers); } catch(e) { careers = []; }
-          }
-          
-          let diplomas = m.required_diplomas;
-          if (typeof diplomas === 'string') {
-            try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
-          }
+            let careers = m.career_prospects;
+            if (typeof careers === 'string' && careers.startsWith('[')) {
+              try { careers = JSON.parse(careers); } catch(e) { careers = []; }
+            }
+            
+            let diplomas = m.required_diplomas;
+            if (typeof diplomas === 'string' && diplomas.startsWith('[')) {
+              try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
+            }
 
-          return {
-            ...m,
-            id: m.id.toString(),
-            universityId: uId || parentUni?.id,
-            facultyId: fId,
-            universityName: m.university?.acronym || m.institution?.acronym || parentUni?.acronym || 'N/A',
-            facultyName: m.faculty?.name || 'Général',
-            domain: m.domain || 'Général',
-            level: m.level || 'Licence',
-            location: m.location || parentUni?.location || 'Bénin',
-            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-            careerProspects: Array.isArray(careers) ? careers.map((c: any) => typeof c === 'string' ? { title: c, icon: 'work' } : c) : [],
-            requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => typeof d === 'string' ? { name: d, icon: 'school' } : d) : []
-          };
-        });
-        
-        setMajors(mappedMajors);
+            return {
+              ...m,
+              id: m.id.toString(),
+              universityId: uId || parentUni?.id,
+              facultyId: fId,
+              universityName: m.university?.acronym || m.institution?.acronym || parentUni?.acronym || 'Établissement',
+              facultyName: m.faculty?.name || parentUni?.faculties.find(f => f.id === fId)?.name || 'Général',
+              domain: m.domain || 'Formation',
+              level: m.level || 'Licence',
+              location: m.location || parentUni?.location || 'Bénin',
+              image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+              careerProspects: Array.isArray(careers) ? careers.map((c: any) => typeof c === 'string' ? { title: c, icon: 'work' } : c) : [],
+              requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => typeof d === 'string' ? { name: d, icon: 'school' } : d) : []
+            };
+          });
+        }
       }
     } catch (e) {
-      console.warn("Échec chargement filières");
+      console.warn("API Filières injoignable, utilisation des données locales.");
     }
+    setMajors(allMajors);
 
-    if (token) {
-      if (userRole === 'student') {
-        try {
-          const appRes = await apiRequest('/applications');
-          const appData = await appRes.json();
-          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-          setApplications(rawApps.map((a: any) => ({
-            ...a,
-            id: a.id.toString(),
-            status: a.status || 'En attente',
-            majorId: a.major_id?.toString()
-          })));
-        } catch (e) {
-          console.warn("Dossiers inaccessibles");
-        }
+    if (token && userRole === 'student') {
+      try {
+        const appRes = await apiRequest('/applications');
+        const appData = await appRes.json();
+        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+        setApplications(rawApps.map((a: any) => ({
+          ...a,
+          id: a.id.toString(),
+          status: a.status || 'En attente',
+          majorId: a.major_id?.toString()
+        })));
+      } catch (e) {
+        console.warn("Impossible de récupérer les candidatures.");
       }
     }
     
