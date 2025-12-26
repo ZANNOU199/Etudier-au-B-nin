@@ -14,7 +14,7 @@ const Universities: React.FC = () => {
   const filtered = useMemo(() => {
     return universities.filter(u => 
       (u.name.toLowerCase().includes(search.toLowerCase()) || u.acronym.toLowerCase().includes(search.toLowerCase())) &&
-      (typeFilter === 'All' || u.type === typeFilter)
+      (typeFilter === 'All' || u.type?.toLowerCase() === typeFilter.toLowerCase())
     );
   }, [search, typeFilter, universities]);
 
