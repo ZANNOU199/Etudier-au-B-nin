@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 import { University, Major, Application, Faculty } from '../types';
@@ -10,14 +10,13 @@ type EstablishmentFilter = 'all' | 'university' | 'school';
 type CreationStep = 'institution' | 'faculties' | 'majors';
 
 const UNI_PER_PAGE = 4;
-const MAJOR_PER_PAGE = 3;
 
 const AdminDashboard: React.FC = () => {
   const { 
     applications, updateApplicationStatus, deleteApplication,
     universities, addUniversity, updateUniversity, deleteUniversity,
     majors, addMajor, updateMajor, deleteMajor, addFaculty, deleteFaculty,
-    logout, user, languages, themes, applyTheme, refreshData
+    logout, user, refreshData
   } = useCMS();
   
   const [activeView, setActiveView] = useState<AdminView>('overview');
@@ -38,6 +37,7 @@ const AdminDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
+  // Filtrage des universités pour la vue principale
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -48,8 +48,17 @@ const AdminDashboard: React.FC = () => {
 
   const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
-  const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
-  const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
+  // Établissement actuellement sélectionné dans le Wizard
+  const currentUni = useMemo(() => 
+    universities.find(u => String(u.id) === String(currentInstId)), 
+    [universities, currentInstId]
+  );
+  
+  // FILTRAGE CRITIQUE : Liste des filières de l'établissement en cours
+  const currentInstMajors = useMemo(() => {
+    if (!currentInstId) return [];
+    return majors.filter(m => String(m.universityId) === String(currentInstId));
+  }, [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
@@ -89,7 +98,6 @@ const AdminDashboard: React.FC = () => {
            throw new Error("L'ID de l'établissement n'a pas pu être récupéré.");
         }
       }
-      
       setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
     } catch (err: any) {
       alert("Erreur : " + err.message);
@@ -340,6 +348,7 @@ const AdminDashboard: React.FC = () => {
                                type: 'Faculté'
                              });
                              formRef.reset(); 
+                             await refreshData();
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
@@ -404,7 +413,7 @@ const AdminDashboard: React.FC = () => {
 
                              await addMajor(majorPayload);
                              formRef.reset();
-                             // Rafraîchissement forcé pour garantir l'update UI locale
+                             // Le addMajor appelle déjà refreshData, mais on ré-attend pour la sécurité locale
                              await refreshData();
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout de la filière : " + err.message);
@@ -472,16 +481,21 @@ const AdminDashboard: React.FC = () => {
                         <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Filières déjà ajoutées</label>
                            {currentInstMajors.map(m => (
-                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
+                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 hover:bg-white/10 transition-colors">
                                  <div className="text-left">
                                     <p className="font-black text-xs text-white uppercase tracking-wider leading-none">{m.name}</p>
-                                    <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase">{m.level} • {m.facultyName || 'Tronc commun'}</p>
+                                    <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase">
+                                      {m.level} • {m.domain} • {m.facultyName || 'Tronc commun'}
+                                    </p>
                                  </div>
                                  <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button>
                               </div>
                            ))}
                            {currentInstMajors.length === 0 && (
-                              <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-8 bg-white/2 rounded-2xl border border-dashed border-white/5">Aucune filière configurée</p>
+                              <div className="text-center py-8 bg-white/2 rounded-2xl border border-dashed border-white/5">
+                                 <span className="material-symbols-outlined text-gray-700 text-3xl mb-2">inventory_2</span>
+                                 <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Aucune filière configurée</p>
+                              </div>
                            )}
                         </div>
 
