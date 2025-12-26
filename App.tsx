@@ -36,9 +36,6 @@ const Navbar = () => {
   };
 
   if (user) {
-    // Calcul de l'ID à afficher pour éviter les longs IDs UUID s'ils existent
-    const displayId = user.id.includes('-') ? user.id.split('-')[1] : user.id;
-
     return (
       <header className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-white/5 bg-white/90 dark:bg-background-dark/90 backdrop-blur-xl">
         <div className="px-6 md:px-12 py-4 flex items-center justify-between max-w-[1500px] mx-auto w-full">
@@ -49,7 +46,7 @@ const Navbar = () => {
             >
               <span className="material-symbols-outlined font-black text-2xl">grid_view</span>
             </Link>
-            <div className="flex flex-col text-left">
+            <div className="flex flex-col">
               <h2 className="text-lg font-black dark:text-white leading-none tracking-tight">Bonjour, {user.firstName}</h2>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
                 Session 2024 • {user.role === 'super_admin' ? 'Super Admin' : user.role === 'admin' ? 'Administrateur' : 'Candidat'}
@@ -61,7 +58,7 @@ const Navbar = () => {
             <div className="hidden sm:flex items-center gap-3">
                <div className="flex flex-col items-end text-right">
                   <p className="text-[11px] font-black dark:text-white uppercase tracking-wider leading-none">{user.firstName} {user.lastName}</p>
-                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1.5">ID #{displayId}</p>
+                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1.5">ID #{user.id.split('-')[1] || '6329'}</p>
                </div>
                <span className="material-symbols-outlined text-gray-300 text-3xl">account_circle</span>
             </div>
@@ -165,11 +162,11 @@ const Footer = () => {
               <div className="size-8 bg-primary rounded-xl flex items-center justify-center text-black"><span className="material-symbols-outlined text-sm font-bold">school</span></div>
               <span className="font-black text-xl tracking-tight dark:text-white">Etudier au Bénin</span>
             </Link>
-            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium text-left">
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed font-medium">
               {translate('footer_desc')}
             </p>
           </div>
-          <div className="space-y-8 text-left">
+          <div className="space-y-8">
             <h3 className="font-black text-xs uppercase tracking-[0.3em] text-gray-400">Navigation</h3>
             <div className="flex flex-col gap-4">
               <Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Accueil</Link>
@@ -178,7 +175,7 @@ const Footer = () => {
               <Link to="/majors" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Formations</Link>
             </div>
           </div>
-          <div className="space-y-8 text-left">
+          <div className="space-y-8">
             <h3 className="font-black text-xs uppercase tracking-[0.3em] text-gray-400">Aide</h3>
             <div className="flex flex-col gap-4">
               <Link to="/pricing" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">Tarifs</Link>
@@ -186,7 +183,7 @@ const Footer = () => {
               <Link to="/faq" className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-bold transition-colors">FAQ</Link>
             </div>
           </div>
-          <div className="space-y-8 text-left">
+          <div className="space-y-8">
             <h3 className="font-black text-xs uppercase tracking-[0.3em] text-gray-400">Restez informé</h3>
             <p className="text-xs text-gray-500 font-bold leading-relaxed">Soyez averti des dates de concours et des nouvelles offres de formation.</p>
             <div className="flex gap-2 p-1.5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
@@ -209,6 +206,7 @@ const Footer = () => {
   );
 };
 
+// Fixed: Made children optional in the type definition to prevent TS errors when content is provided via JSX nesting
 const ProtectedRoute = ({ children, allowedRoles }: { children?: React.ReactNode, allowedRoles: string[] }) => {
   const { user } = useCMS();
   if (!user) return <Navigate to="/login" replace />;
