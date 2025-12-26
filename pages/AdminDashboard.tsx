@@ -475,9 +475,7 @@ const AdminDashboard: React.FC = () => {
                           <thead className="border-b border-white/5">
                              <tr>
                                 <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Formation</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Établissement</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Domaine</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Frais</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em] text-right">Actions</th>
                              </tr>
                           </thead>
@@ -491,13 +489,7 @@ const AdminDashboard: React.FC = () => {
                                      </div>
                                   </td>
                                   <td className="px-8 py-5">
-                                     <p className="text-sm font-black text-gray-300">{major.universityName}</p>
-                                  </td>
-                                  <td className="px-8 py-5">
                                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">{major.domain}</p>
-                                  </td>
-                                  <td className="px-8 py-5">
-                                     <p className="text-sm font-black text-gray-400">{major.fees}</p>
                                   </td>
                                   <td className="px-8 py-5 text-right">
                                      <div className="flex justify-end gap-3">
