@@ -121,53 +121,66 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
+    
+    // Charger les universités (toujours public)
     try {
       const uniRes = await fetch(`${API_BASE_URL}/universities`);
       if (uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        const mappedUnis: University[] = rawUnis.map((u: any) => ({
+        setUniversities(rawUnis.map((u: any) => ({
           ...u,
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
           stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: u.faculties || []
-        }));
-        setUniversities(mappedUnis);
+          faculties: (u.faculties || []).map((f: any) => ({ ...f, id: f.id.toString() }))
+        })));
       }
-
-      if (token) {
-        // Correction de la route : pour les admins, on utilise /admin/applications
-        const appEndpoint = userRole === 'student' ? '/applications' : '/admin/applications';
-        const appRes = await apiRequest(appEndpoint).catch(() => null);
-        
-        if (appRes && appRes.ok) {
-          const appData = await appRes.json();
-          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-          setApplications(rawApps.map((a: any) => ({
-            ...a,
-            id: a.id.toString(),
-            status: a.status || 'En attente',
-            majorId: a.major_id?.toString()
-          })));
-        }
-
-        if (userRole !== 'student') {
-          const majorRes = await apiRequest('/admin/majors');
-          if (majorRes.ok) {
-            const majorData = await majorRes.json();
-            setMajors(Array.isArray(majorData) ? majorData : (majorData.data || []));
-          }
-        }
-      }
-    } catch (err) {
-      setApiError("Erreur de synchronisation.");
-    } finally {
-      setIsLoading(false);
+    } catch (e) {
+      console.warn("Erreur chargement universités:", e);
     }
+
+    if (token) {
+      // Charger les candidatures (Indépendant)
+      try {
+        const appRes = await apiRequest('/applications');
+        const appData = await appRes.json();
+        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+        setApplications(rawApps.map((a: any) => ({
+          ...a,
+          id: a.id.toString(),
+          status: a.status || 'En attente',
+          majorId: a.major_id?.toString()
+        })));
+      } catch (e) {
+        console.warn("Route candidatures non trouvée ou accès refusé (404/405)");
+      }
+
+      // Charger les filières (Indépendant)
+      if (userRole !== 'student') {
+        try {
+          const majorRes = await apiRequest('/admin/majors');
+          const majorData = await majorRes.json();
+          const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
+          
+          setMajors(rawMajors.map((m: any) => ({
+            ...m,
+            id: m.id.toString(),
+            universityId: m.university_id?.toString(), // Mapping crucial pour le filtrage local
+            facultyId: m.faculty_id?.toString(),
+            universityName: m.university?.acronym || 'N/A',
+            facultyName: m.faculty?.name || 'Tronc commun'
+          })));
+        } catch (e) {
+          console.warn("Route filières admin indisponible");
+        }
+      }
+    }
+    
+    setIsLoading(false);
   };
 
-  useEffect(() => { refreshData(); }, [token]);
+  useEffect(() => { refreshData(); }, [token, userRole]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -280,7 +293,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addMajor = async (major: any) => {
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
-    refreshData();
+    await refreshData();
   };
 
   const updateMajor = async (major: Major) => {
