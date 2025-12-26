@@ -6,7 +6,6 @@ import { User, UserRole, ThemeConfig } from '../types';
 import { processAcademicCSV } from '../utils/ImportService';
 
 const SuperAdminDashboard: React.FC = () => {
-  // Fixed: Removed unused/non-existent toggleLanguage to resolve TS error.
   const { 
     universities, 
     addUniversity, 
@@ -16,7 +15,12 @@ const SuperAdminDashboard: React.FC = () => {
     user,
     staffUsers,
     addStaffUser,
-    deleteStaffUser
+    deleteStaffUser,
+    themes,
+    applyTheme,
+    updateTheme,
+    languages,
+    toggleLanguage
   } = useCMS();
   
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
@@ -32,7 +36,6 @@ const SuperAdminDashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      // Fixed: Passed parameters now match the async signatures in the updated processAcademicCSV.
       const result = await processAcademicCSV(file, universities, addUniversity, updateUniversity, addMajor);
       alert(`IMPORTATION TERMINÉE :\n- ${result.uniCount} Établissements\n- ${result.majorCount} Filières.`);
     } catch (err) {

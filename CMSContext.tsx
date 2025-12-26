@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major, Faculty } from './types';
-import { UNIVERSITIES as MOCK_UNIS, MAJORS as MOCK_MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -65,13 +64,6 @@ const DEFAULT_THEMES: ThemeConfig[] = [
 
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
-const extractDataArray = (response: any): any[] => {
-  if (!response) return [];
-  if (Array.isArray(response)) return response;
-  if (response.data && Array.isArray(response.data)) return response.data;
-  return [];
-};
-
 export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [content] = useState<CMSContent>(DEFAULT_CONTENT);
   const [user, setUser] = useState<User | null>(() => {
@@ -82,8 +74,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('auth_token_v1');
   });
 
-  const [universities, setUniversities] = useState<University[]>(MOCK_UNIS);
-  const [majors, setMajors] = useState<Major[]>(MOCK_MAJORS);
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,7 +89,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
-      'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(!(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...options.headers,
@@ -105,11 +96,22 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-      if (response.status === 401) { handleLogoutLocal(); throw new Error("Session expirée"); }
+      
+      if (response.status === 401) {
+        handleLogoutLocal();
+        throw new Error("Session expirée");
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur serveur : ${response.status}`);
+        let message = errorData.message || `Erreur serveur : ${response.status}`;
+        if (errorData.errors) {
+            const firstErrorKey = Object.keys(errorData.errors)[0];
+            message = errorData.errors[firstErrorKey][0];
+        }
+        throw new Error(message);
       }
+      
       return response;
     } catch (error) {
       console.error(`API Error on ${endpoint}:`, error);
@@ -119,75 +121,63 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
-    console.log("Tentative de synchronisation API...");
     
+    // 1. Universités (Public)
     try {
-      // Pour les routes publiques, on simplifie au maximum pour éviter les préflights CORS
-      const [uniRes, facRes, majRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/universities`).catch(() => null),
-        fetch(`${API_BASE_URL}/faculties`).catch(() => null),
-        fetch(`${API_BASE_URL}/majors`).catch(() => null),
-      ]);
-
-      let fetchedUnis: University[] = [];
-      if (uniRes?.ok) {
+      const uniRes = await fetch(`${API_BASE_URL}/universities`);
+      if (uniRes.ok) {
         const uniData = await uniRes.json();
-        fetchedUnis = extractDataArray(uniData).map((u: any) => ({
+        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
+        setUniversities(rawUnis.map((u: any) => ({
           ...u,
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
           stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
           faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        }));
+        })));
       }
+    } catch (e) {
+      console.warn("Échec silencieux chargement universités");
+    }
 
-      let fetchedFacs: Faculty[] = [];
-      if (facRes?.ok) {
-        const facData = await facRes.json();
-        fetchedFacs = extractDataArray(facData);
-      }
-
-      let fetchedMajors: Major[] = [];
-      if (majRes?.ok) {
-        const majData = await majRes.json();
-        fetchedMajors = extractDataArray(majData).map((m: any) => {
-          const uId = m.university_id?.toString();
-          const uni = fetchedUnis.find(u => u.id === uId) || m.university;
-          return {
-            ...m,
-            id: m.id.toString(),
-            universityId: uId,
-            universityName: uni?.acronym || uni?.name || 'Établissement',
-            location: m.location || uni?.location || 'Bénin',
-            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-            careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
-            requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
-          };
-        });
-      }
-
-      // LOGIQUE DE FUSION : Si l'API renvoie des données, on les utilise. 
-      // Sinon on garde les données de test (MOCK)
-      if (fetchedUnis.length > 0) setUniversities(fetchedUnis);
-      if (fetchedMajors.length > 0) setMajors(fetchedMajors);
-
-      console.log("Données chargées :", { unis: fetchedUnis.length, majors: fetchedMajors.length });
-
-      if (token && userRole === 'student') {
+    if (token) {
+      // 2. Candidatures
+      if (userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
           const appData = await appRes.json();
-          setApplications(extractDataArray(appData).map((a: any) => ({
+          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+          setApplications(rawApps.map((a: any) => ({
             ...a,
             id: a.id.toString(),
             status: a.status || 'En attente',
             majorId: a.major_id?.toString()
           })));
-        } catch (e) {}
+        } catch (e) {
+          console.warn("Route candidatures inaccessible");
+        }
       }
 
-    } catch (error) {
-      console.error("Échec de la connexion API. Utilisation du mode hors-ligne.");
+      // 3. Filières (Admin seulement)
+      if (userRole !== 'student') {
+        try {
+          const majorRes = await apiRequest('/admin/majors');
+          const majorData = await majorRes.json();
+          const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
+          
+          setMajors(rawMajors.map((m: any) => ({
+            ...m,
+            id: m.id.toString(),
+            // CRITIQUE : Conversion forcée en String pour universityId
+            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
+            facultyId: m.faculty_id?.toString(),
+            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
+            facultyName: m.faculty?.name || 'Tronc commun'
+          })));
+        } catch (e) {
+          console.warn("Échec silencieux chargement filières admin");
+        }
+      }
     }
     
     setIsLoading(false);
@@ -234,7 +224,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (res.status === 201 || res.status === 200) {
+      if (res.status === 201) {
         const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
         setToken(data.token);
@@ -306,6 +296,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addMajor = async (major: any) => {
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
+    // FORCE LE REFRESH COMPLET
     await refreshData();
   };
 

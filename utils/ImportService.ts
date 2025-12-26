@@ -6,17 +6,16 @@ interface ImportResult {
   majorCount: number;
 }
 
-// Updated processAcademicCSV to match CMSContext signatures and handle FormData
 export const processAcademicCSV = async (
   file: File,
   currentUniversities: University[],
-  addUniversity: (formData: FormData) => Promise<any>,
-  updateUniversity: (id: string, uni: any) => Promise<void>,
-  addMajor: (major: any) => Promise<void>
+  addUniversity: (u: University) => void,
+  updateUniversity: (u: University) => void,
+  addMajor: (m: Major) => void
 ): Promise<ImportResult> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
@@ -62,16 +61,7 @@ export const processAcademicCSV = async (
               stats: { students: 'N/A', majors: 0, founded: '2024', ranking: 'N/A' },
               faculties: []
             };
-            
-            // Construct FormData for the API call
-            const fd = new FormData();
-            fd.append('name', uni.name);
-            fd.append('acronym', uni.acronym);
-            fd.append('city', uni.location);
-            fd.append('type', uni.type.toLowerCase());
-            fd.append('is_standalone', uni.isStandaloneSchool ? '1' : '0');
-            
-            await addUniversity(fd);
+            addUniversity(uni);
             tempUnis.push(uni);
             uniCount++;
           }
@@ -89,8 +79,7 @@ export const processAcademicCSV = async (
               type: uni.isStandaloneSchool ? 'Ecole' : 'Faculté'
             };
             uni.faculties.push(fac);
-            // Updated to match async (id, data) signature
-            await updateUniversity(uni.id, uni);
+            updateUniversity(uni);
           }
 
           // 3. CRÉATION DE LA FILIÈRE (MAJOR)
@@ -110,8 +99,7 @@ export const processAcademicCSV = async (
             requiredDiplomas: row.diplome_requis ? row.diplome_requis.split('|').map((d: string) => ({ name: d.trim(), icon: 'school' })) : []
           };
 
-          // Await major addition
-          await addMajor(major);
+          addMajor(major);
           majorCount++;
         }
 
