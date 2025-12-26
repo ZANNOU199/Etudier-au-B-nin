@@ -30,10 +30,10 @@ interface CMSContextType {
   // Admin methods
   updateApplicationStatus: (id: string, status: Application['status']) => Promise<void>;
   deleteApplication: (id: string) => Promise<void>;
-  addUniversity: (formData: FormData) => Promise<void>;
+  addUniversity: (formData: FormData) => Promise<any>;
   updateUniversity: (id: string, uni: any) => Promise<void>;
   deleteUniversity: (id: string) => Promise<void>;
-  addFaculty: (faculty: any) => Promise<void>;
+  addFaculty: (faculty: any) => Promise<any>;
   deleteFaculty: (id: string) => Promise<void>;
   addMajor: (major: any) => Promise<void>;
   updateMajor: (major: Major) => Promise<void>;
@@ -101,6 +101,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (response.status === 401) {
         handleLogoutLocal();
         throw new Error("Session expirée");
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur serveur : ${response.status}`);
       }
       
       return response;
@@ -260,11 +265,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addUniversity = async (formData: FormData) => {
-    await apiRequest('/admin/universities', {
+    const res = await apiRequest('/admin/universities', {
       method: 'POST',
       body: formData
     });
-    refreshData();
+    const data = await res.json();
+    await refreshData();
+    return data;
   };
 
   const updateUniversity = async (id: string, uni: any) => {
@@ -281,11 +288,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addFaculty = async (faculty: any) => {
-    await apiRequest('/admin/faculties', {
+    const res = await apiRequest('/admin/faculties', {
       method: 'POST',
       body: JSON.stringify(faculty)
     });
-    refreshData();
+    const data = await res.json();
+    await refreshData();
+    return data;
   };
 
   const deleteFaculty = async (id: string) => {

@@ -76,7 +76,6 @@ const AdminDashboard: React.FC = () => {
     setIsProcessing(true);
     const fd = new FormData(e.currentTarget);
     
-    // Pour l'API Laravel, on utilise souvent un FormData réel si on veut envoyer un logo
     const apiPayload = new FormData();
     apiPayload.append('name', fd.get('name') as string);
     apiPayload.append('acronym', fd.get('acronym') as string);
@@ -86,7 +85,6 @@ const AdminDashboard: React.FC = () => {
 
     try {
       if (isEditing && currentInstId) {
-        // En mode édition, on met à jour via l'API
         await updateUniversity(currentInstId, {
           name: fd.get('name'),
           acronym: fd.get('acronym'),
@@ -94,15 +92,15 @@ const AdminDashboard: React.FC = () => {
           type: establishmentStatus.toLowerCase()
         });
       } else {
-        // En création
-        await addUniversity(apiPayload);
-        // Note: l'ID sera généré par le backend, on devra peut-être rafraîchir pour le trouver
+        const result = await addUniversity(apiPayload);
+        // CRUCIAL: On capture l'ID retourné par le serveur (Laravel retourne l'objet créé)
+        const newId = result.id || result.data?.id;
+        if (newId) setCurrentInstId(newId.toString());
       }
       
-      // On passe à l'étape suivante (on suppose que refreshData a mis à jour universities)
       setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
-    } catch (err) {
-      alert("Erreur lors de l'enregistrement de l'institution.");
+    } catch (err: any) {
+      alert("Erreur lors de l'enregistrement : " + err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -341,14 +339,17 @@ const AdminDashboard: React.FC = () => {
                            setIsProcessing(true);
                            const fd = new FormData(e.currentTarget);
                            try {
+                             // S'assurer que university_id est bien passé
+                             if (!currentInstId) throw new Error("ID de l'université manquant.");
+
                              await addFaculty({
-                               university_id: currentInstId,
+                               university_id: parseInt(currentInstId), // Laravel attend un entier
                                name: fd.get('fName') as string,
                                description: 'Formation spécialisée'
                              });
                              e.currentTarget.reset();
-                           } catch (err) {
-                             alert("Erreur lors de l'ajout de la composante.");
+                           } catch (err: any) {
+                             alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
                              setIsProcessing(false);
                            }
