@@ -493,9 +493,7 @@ const AdminDashboard: React.FC = () => {
                                   </td>
                                   <td className="px-8 py-5 text-right">
                                      <div className="flex justify-end gap-3">
-                                        <button onClick={() => { setCurrentInstId(major.universityId || null); setIsEditing(true); setShowWizard(true); setWizardStep('majors'); }} className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-primary transition-all">
-                                           <span className="material-symbols-outlined text-lg">edit</span>
-                                        </button>
+                                        
                                         <button onClick={() => deleteMajor(major.id)} className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-red-500 transition-all">
                                            <span className="material-symbols-outlined text-lg">delete</span>
                                         </button>
