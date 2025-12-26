@@ -141,7 +141,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (token) {
-      // 2. Candidatures - UNIQUEMENT SI ÉTUDIANT (Évite l'erreur 405 pour les admins)
+      // 2. Candidatures
       if (userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
@@ -154,7 +154,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: a.major_id?.toString()
           })));
         } catch (e) {
-          console.warn("Route candidatures inaccessible pour ce profil");
+          console.warn("Route candidatures inaccessible");
         }
       }
 
@@ -168,6 +168,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setMajors(rawMajors.map((m: any) => ({
             ...m,
             id: m.id.toString(),
+            // CRITIQUE : Conversion forcée en String pour universityId
             universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
             facultyId: m.faculty_id?.toString(),
             universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
@@ -255,7 +256,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const res = await apiRequest('/applications', { method: 'POST', body: formData });
       if (res.status === 201) {
-        refreshData();
+        await refreshData();
         return { success: true, message: "Dossier créé" };
       }
       return { success: false, message: "Erreur" };
@@ -273,12 +274,12 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateUniversity = async (id: string, uni: any) => {
     await apiRequest(`/admin/universities/${id}`, { method: 'PUT', body: JSON.stringify(uni) });
-    refreshData();
+    await refreshData();
   };
 
   const deleteUniversity = async (id: string) => {
     await apiRequest(`/admin/universities/${id}`, { method: 'DELETE' });
-    refreshData();
+    await refreshData();
   };
 
   const addFaculty = async (faculty: any) => {
@@ -290,23 +291,24 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteFaculty = async (id: string) => {
     await apiRequest(`/admin/faculties/${id}`, { method: 'DELETE' });
-    refreshData();
+    await refreshData();
   };
 
   const addMajor = async (major: any) => {
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
+    // FORCE LE REFRESH COMPLET
     await refreshData();
   };
 
   const updateMajor = async (major: Major) => {
     const { id, ...data } = major;
     await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-    refreshData();
+    await refreshData();
   };
 
   const deleteMajor = async (id: string) => {
     await apiRequest(`/admin/majors/${id}`, { method: 'DELETE' });
-    refreshData();
+    await refreshData();
   };
 
   const updateApplicationStatus = (id: string, status: any) => apiRequest(`/applications/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }).then(() => refreshData());

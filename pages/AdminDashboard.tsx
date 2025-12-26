@@ -55,9 +55,12 @@ const AdminDashboard: React.FC = () => {
   );
   
   // FILTRAGE CRITIQUE : Liste des filières de l'établissement en cours
+  // Correction : On utilise String() partout pour s'assurer que la comparaison fonctionne
   const currentInstMajors = useMemo(() => {
     if (!currentInstId) return [];
-    return majors.filter(m => String(m.universityId) === String(currentInstId));
+    const filtered = majors.filter(m => String(m.universityId) === String(currentInstId));
+    console.log("Majors filtrées pour l'ID", currentInstId, ":", filtered);
+    return filtered;
   }, [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
@@ -413,7 +416,7 @@ const AdminDashboard: React.FC = () => {
 
                              await addMajor(majorPayload);
                              formRef.reset();
-                             // Le addMajor appelle déjà refreshData, mais on ré-attend pour la sécurité locale
+                             // Le addMajor appelle déjà refreshData, mais on force un petit délai ou un nouvel appel si besoin
                              await refreshData();
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout de la filière : " + err.message);
