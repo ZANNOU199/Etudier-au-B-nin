@@ -23,7 +23,6 @@ const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<AdminView>('overview');
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
   const [uniPage, setUniPage] = useState(1);
@@ -83,14 +82,18 @@ const AdminDashboard: React.FC = () => {
         });
       } else {
         const result = await addUniversity(apiPayload);
-        // On capture l'ID (peut être dans .id ou .data.id selon l'API)
-        const newId = result.id || result.data?.id || result.university?.id;
-        if (newId) setCurrentInstId(newId.toString());
+        // On cherche l'ID partout où Laravel pourrait l'avoir mis
+        const newId = result?.id || result?.data?.id || result?.university?.id;
+        if (newId) {
+          setCurrentInstId(newId.toString());
+        } else {
+           throw new Error("L'ID de l'université n'a pas pu être récupéré.");
+        }
       }
       
       setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
     } catch (err: any) {
-      alert("Erreur lors de l'enregistrement de l'institution : " + err.message);
+      alert("Erreur : " + err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -324,7 +327,8 @@ const AdminDashboard: React.FC = () => {
                         <form onSubmit={async (e) => {
                            e.preventDefault();
                            setIsProcessing(true);
-                           const fd = new FormData(e.currentTarget);
+                           const form = e.currentTarget; // On capture le formulaire avant l'appel asynchrone
+                           const fd = new FormData(form);
                            try {
                              if (!currentInstId) throw new Error("ID de l'institution manquant.");
                              const uniId = parseInt(currentInstId);
@@ -336,9 +340,9 @@ const AdminDashboard: React.FC = () => {
                                description: 'Composante académique spécialisée',
                                type: 'Faculté'
                              });
-                             e.currentTarget.reset();
+                             form.reset(); // On utilise la référence capturée
                            } catch (err: any) {
-                             alert("Erreur lors de l'ajout de la composante : " + err.message);
+                             alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
                              setIsProcessing(false);
                            }
@@ -375,7 +379,6 @@ const AdminDashboard: React.FC = () => {
                            <p className="text-gray-500 font-medium text-sm">Gérez les filières rattachées aux composantes de cet établissement.</p>
                         </div>
 
-                        {/* Formulaire de création simplifié pour le Wizard */}
                         <div className="p-6 bg-white/5 rounded-[32px] border border-white/5">
                            <p className="text-center text-gray-400 text-[10px] font-black uppercase tracking-widest py-10">Interface de configuration des filières prête.</p>
                         </div>
