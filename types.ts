@@ -3,13 +3,13 @@ export interface University {
   id: string;
   name: string;
   acronym: string;
-  location: string;
+  location: string; // Mappé depuis 'city'
+  city?: string;    // Directement depuis l'API
   type: 'Public' | 'Privé';
   logo: string;
   cover: string;
   description: string;
   isStandaloneSchool?: boolean;
-  cities?: string[];
   stats: {
     students: string;
     majors: number;
@@ -19,28 +19,33 @@ export interface University {
   faculties: Faculty[];
 }
 
-export interface Faculty {
-  id: string;
-  name: string;
-  description: string;
-  levels: string[];
-  type?: 'Ecole' | 'Institut' | 'Faculté';
-}
-
+// Added CareerProspect interface to fix missing member error
 export interface CareerProspect {
   title: string;
   icon: string;
 }
 
+// Added RequiredDiploma interface to fix missing member error
 export interface RequiredDiploma {
   name: string;
   icon: string;
 }
 
+export interface Faculty {
+  id: string;
+  university_id?: string;
+  name: string;
+  description: string;
+  levels: string[];
+  // Added type property used in AdminDashboard and ImportService
+  type?: 'Faculté' | 'Ecole' | 'Institut';
+}
+
 export interface Major {
   id: string;
+  faculty_id?: string;
   name: string;
-  universityId: string;
+  universityId?: string;
   universityName: string;
   facultyName: string;
   domain: string;
@@ -49,6 +54,7 @@ export interface Major {
   fees: string;
   location: string;
   image: string;
+  // Added missing careerProspects and requiredDiplomas properties
   careerProspects?: CareerProspect[];
   requiredDiplomas?: RequiredDiploma[];
 }
@@ -57,22 +63,18 @@ export interface Application {
   id: string;
   studentId: string;
   studentName: string;
-  majorId: string;
+  major_id?: string;
   majorName: string;
   universityName: string;
   status: 'En attente' | 'Validé' | 'Rejeté' | 'En cours';
   date: string;
-  progress: number;
-  documents: string[];
+  primary_document_url?: string;
+  documents: any[];
+  // Added majorId for navigation in Dashboard.tsx
+  majorId?: string;
 }
 
 export type UserRole = 'super_admin' | 'admin' | 'student';
-
-export interface UserPermission {
-  id: string;
-  label: string;
-  code: 'manage_catalog' | 'validate_apps' | 'view_logs' | 'edit_cms';
-}
 
 export interface User {
   id: string;
@@ -81,8 +83,11 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  token?: string;
+  // Added permissions property used in SuperAdminDashboard
+  permissions?: string[];
+  // Added ine property used in Dashboard
   ine?: string;
-  permissions?: string[]; // Liste des codes de permissions
 }
 
 export interface Language {
