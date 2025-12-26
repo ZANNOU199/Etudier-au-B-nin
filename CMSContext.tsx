@@ -124,16 +124,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
-    let allUnis: University[] = [...UNIVERSITIES]; // Fallback initial
-    let allMajors: Major[] = [...MAJORS]; // Fallback initial
     
-    // 1. Récupération des Universités
     try {
-      const uniRes = await fetch(`${API_BASE_URL}/universities`, {
-        headers: { 'Accept': 'application/json' },
-        mode: 'cors'
-      });
-      if (uniRes.ok) {
+      // 1. Charger tout en parallèle pour gagner du temps
+      const [uniRes, facRes, majorRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
+        fetch(`${API_BASE_URL}/faculties`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
+        fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null)
+      ]);
+
+      // 2. Traitement des Universités
+      let allUnis: University[] = [...UNIVERSITIES];
+      if (uniRes && uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || uniData.universities || []);
         if (rawUnis.length > 0) {
@@ -146,48 +148,49 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }));
         }
       }
-    } catch (e) {
-      console.warn("API Universités injoignable, utilisation des données locales.");
-    }
-    setUniversities(allUnis);
+      setUniversities(allUnis);
 
-    // 2. Récupération des Filières (Majors)
-    try {
-      const majorRes = await fetch(`${API_BASE_URL}/majors`, {
-        headers: { 'Accept': 'application/json' },
-        mode: 'cors'
-      });
-      if (majorRes.ok) {
+      // 3. Traitement des Facultés pour la liaison
+      let allFacs: Faculty[] = [];
+      if (facRes && facRes.ok) {
+        const facData = await facRes.json();
+        allFacs = Array.isArray(facData) ? facData : (facData.data || []);
+      }
+
+      // 4. Traitement des Filières (Majors)
+      let finalMajors: Major[] = [...MAJORS];
+      if (majorRes && majorRes.ok) {
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || majorData.majors || []);
         
         if (rawMajors.length > 0) {
-          allMajors = rawMajors.map((m: any) => {
-            const uId = (m.university_id || m.institution_id || m.universityId)?.toString();
+          finalMajors = rawMajors.map((m: any) => {
             const fId = m.faculty_id?.toString();
             
-            let parentUni = allUnis.find(u => 
-              (uId && u.id === uId) || 
-              (fId && u.faculties.some(f => f.id === fId))
-            );
+            // Trouver la faculté
+            const fac = allFacs.find(f => f.id.toString() === fId);
+            const uId = fac?.university_id?.toString() || m.university_id?.toString();
+            
+            // Trouver l'université parente
+            const parentUni = allUnis.find(u => u.id === uId);
 
+            // Parsing des champs JSON (carrière, diplômes)
             let careers = m.career_prospects;
-            if (typeof careers === 'string' && careers.startsWith('[')) {
+            if (typeof careers === 'string') {
               try { careers = JSON.parse(careers); } catch(e) { careers = []; }
             }
-            
             let diplomas = m.required_diplomas;
-            if (typeof diplomas === 'string' && diplomas.startsWith('[')) {
+            if (typeof diplomas === 'string') {
               try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
             }
 
             return {
               ...m,
               id: m.id.toString(),
-              universityId: uId || parentUni?.id,
+              universityId: uId || parentUni?.id || '0',
               facultyId: fId,
-              universityName: m.university?.acronym || m.institution?.acronym || parentUni?.acronym || 'Établissement',
-              facultyName: m.faculty?.name || parentUni?.faculties.find(f => f.id === fId)?.name || 'Général',
+              universityName: m.university?.acronym || parentUni?.acronym || 'Établissement',
+              facultyName: fac?.name || m.faculty?.name || 'Général',
               domain: m.domain || 'Formation',
               level: m.level || 'Licence',
               location: m.location || parentUni?.location || 'Bénin',
@@ -198,10 +201,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
       }
+      setMajors(finalMajors);
+
     } catch (e) {
-      console.warn("API Filières injoignable, utilisation des données locales.");
+      console.error("Erreur critique de chargement des données:", e);
+      setUniversities(UNIVERSITIES);
+      setMajors(MAJORS);
     }
-    setMajors(allMajors);
 
     if (token && userRole === 'student') {
       try {
@@ -215,7 +221,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           majorId: a.major_id?.toString()
         })));
       } catch (e) {
-        console.warn("Impossible de récupérer les candidatures.");
+        console.warn("Candidatures inaccessibles");
       }
     }
     
