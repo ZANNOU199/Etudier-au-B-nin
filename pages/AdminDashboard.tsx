@@ -13,11 +13,12 @@ const UNI_PER_PAGE = 4;
 const MAJOR_PER_PAGE = 3;
 
 const AdminDashboard: React.FC = () => {
+  // Added refreshData to fix the missing reference error on line 476
   const { 
     applications, updateApplicationStatus, deleteApplication,
     universities, addUniversity, updateUniversity, deleteUniversity,
     majors, addMajor, updateMajor, deleteMajor, addFaculty, deleteFaculty,
-    logout, user, languages, themes, applyTheme
+    logout, user, languages, themes, applyTheme, refreshData
   } = useCMS();
   
   const [activeView, setActiveView] = useState<AdminView>('overview');
@@ -48,8 +49,11 @@ const AdminDashboard: React.FC = () => {
 
   const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
-  // Institution parente sélectionnée (pour l'étape 2)
+  // Institution parente sélectionnée (pour l'étape 2 et 3)
   const currentUni = useMemo(() => universities.find(u => u.id === currentInstId), [universities, currentInstId]);
+  
+  // Filtre les filières appartenant à l'institution en cours
+  const currentInstMajors = useMemo(() => majors.filter(m => m.universityId === currentInstId), [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
@@ -82,7 +86,6 @@ const AdminDashboard: React.FC = () => {
         });
       } else {
         const result = await addUniversity(apiPayload);
-        // On cherche l'ID partout où Laravel pourrait l'avoir mis
         const newId = result?.id || result?.data?.id || result?.university?.id;
         if (newId) {
           setCurrentInstId(newId.toString());
@@ -327,7 +330,7 @@ const AdminDashboard: React.FC = () => {
                         <form onSubmit={async (e) => {
                            e.preventDefault();
                            setIsProcessing(true);
-                           const form = e.currentTarget; // On capture le formulaire avant l'appel asynchrone
+                           const form = e.currentTarget; 
                            const fd = new FormData(form);
                            try {
                              if (!currentInstId) throw new Error("ID de l'institution manquant.");
@@ -340,7 +343,7 @@ const AdminDashboard: React.FC = () => {
                                description: 'Composante académique spécialisée',
                                type: 'Faculté'
                              });
-                             form.reset(); // On utilise la référence capturée
+                             form.reset(); 
                            } catch (err: any) {
                              alert("Erreur lors de l'ajout : " + err.message);
                            } finally {
@@ -376,16 +379,102 @@ const AdminDashboard: React.FC = () => {
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
                         <div className="text-center space-y-2">
                            <h4 className="text-2xl font-black text-white tracking-tight leading-none">Filières & Formations</h4>
-                           <p className="text-gray-500 font-medium text-sm">Gérez les filières rattachées aux composantes de cet établissement.</p>
+                           <p className="text-gray-500 font-medium text-sm">Ajoutez les filières rattachées à cet établissement.</p>
                         </div>
 
-                        <div className="p-6 bg-white/5 rounded-[32px] border border-white/5">
-                           <p className="text-center text-gray-400 text-[10px] font-black uppercase tracking-widest py-10">Interface de configuration des filières prête.</p>
+                        <form onSubmit={async (e) => {
+                           e.preventDefault();
+                           setIsProcessing(true);
+                           const form = e.currentTarget;
+                           const fd = new FormData(form);
+                           try {
+                             if (!currentInstId) throw new Error("ID de l'institution manquant.");
+                             
+                             const majorPayload = {
+                               university_id: parseInt(currentInstId),
+                               faculty_id: fd.get('faculty_id') ? parseInt(fd.get('faculty_id') as string) : null,
+                               name: fd.get('name') as string,
+                               domain: fd.get('domain') as string,
+                               level: fd.get('level') as string,
+                               duration: fd.get('duration') as string,
+                               fees: fd.get('fees') as string,
+                               location: currentUni?.location || 'Bénin'
+                             };
+
+                             await addMajor(majorPayload);
+                             form.reset();
+                           } catch (err: any) {
+                             alert("Erreur lors de l'ajout de la filière : " + err.message);
+                           } finally {
+                             setIsProcessing(false);
+                           }
+                        }} className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-6">
+                           
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Composante de rattachement</label>
+                              <select name="faculty_id" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
+                                 <option value="">-- Sélectionner une faculté / école --</option>
+                                 {currentUni?.faculties.map(f => (
+                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                 ))}
+                              </select>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la filière</label>
+                              <input name="name" required placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label>
+                                 <input name="domain" required placeholder="ex: Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label>
+                                 <select name="level" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
+                                    <option value="Licence">Licence</option>
+                                    <option value="Master">Master</option>
+                                    <option value="Doctorat">Doctorat</option>
+                                 </select>
+                              </div>
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 3 Ans)</label>
+                                 <input name="duration" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité (ex: 400.000 FCFA)</label>
+                                 <input name="fees" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                           </div>
+
+                           <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">
+                              {isProcessing ? "Enregistrement..." : "+ Ajouter la filière"}
+                           </button>
+                        </form>
+
+                        <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Filières déjà ajoutées</label>
+                           {currentInstMajors.map(m => (
+                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
+                                 <div className="text-left">
+                                    <p className="font-black text-xs text-white uppercase tracking-wider leading-none">{m.name}</p>
+                                    <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase">{m.level} • {m.facultyName || 'Tronc commun'}</p>
+                                 </div>
+                                 <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button>
+                              </div>
+                           ))}
+                           {currentInstMajors.length === 0 && (
+                              <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-8 bg-white/2 rounded-2xl border border-dashed border-white/5">Aucune filière configurée</p>
+                           )}
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
                            <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
-                           <button onClick={() => setShowWizard(false)} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer la configuration</button>
+                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer la configuration</button>
                         </div>
                      </div>
                    )}
