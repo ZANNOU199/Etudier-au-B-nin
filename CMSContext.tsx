@@ -29,7 +29,7 @@ interface CMSContextType {
   addApplication: (formData: FormData) => Promise<{ success: boolean; message: string }>;
   refreshData: () => Promise<void>;
   // Admin methods
-  updateApplicationStatus: (id: string, status: string) => Promise<void>;
+  updateApplicationStatus: (id: string, status: Application['status']) => Promise<void>;
   deleteApplication: (id: string) => Promise<void>;
   addUniversity: (formData: FormData) => Promise<any>;
   updateUniversity: (id: string, uni: any) => Promise<void>;
@@ -89,6 +89,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+    const isGet = !options.method || options.method.toUpperCase() === 'GET';
     const headers: any = {
       'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -108,7 +109,12 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur serveur : ${response.status}`);
+        let message = errorData.message || `Erreur serveur : ${response.status}`;
+        if (errorData.errors) {
+            const firstErrorKey = Object.keys(errorData.errors)[0];
+            message = errorData.errors[firstErrorKey][0];
+        }
+        throw new Error(message);
       }
       
       return response;
@@ -121,13 +127,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     
-    // Universités & Filières
+    // Universités
     try {
-      const [uniRes, majorRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
-        fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' } })
-      ]);
-
+      const uniRes = await fetch(`${API_BASE_URL}/universities`, {
+        headers: { 'Accept': 'application/json' }
+      });
       if (uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
@@ -141,10 +145,17 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           })));
         }
       }
+    } catch (e) {}
 
+    // Filières
+    try {
+      const majorRes = await fetch(`${API_BASE_URL}/majors`, {
+        headers: { 'Accept': 'application/json' }
+      });
       if (majorRes.ok) {
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
+        
         if (rawMajors.length > 0) {
           setMajors(rawMajors.map((m: any) => ({
             ...m,
@@ -154,44 +165,48 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
             facultyName: m.faculty?.name || 'Tronc commun',
             location: m.location || m.university?.city || 'Bénin',
-            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400'
+            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+            careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
+            requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
           })));
         }
       }
     } catch (e) {}
 
-    // Candidatures - Route Admin vs Student
+    // Candidatures
     if (token && user) {
       try {
-        const isAdmin = user.role === 'admin' || user.role === 'super_admin';
-        const endpoint = isAdmin ? '/admin/applications' : '/applications';
-        const appRes = await apiRequest(endpoint);
+        const appRes = await apiRequest('/applications');
         const appData = await appRes.json();
         const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
         
         const statusMap: Record<string, Application['status']> = {
           'pending': 'En attente',
           'validated': 'Validé',
-          'accepted': 'Validé',
           'rejected': 'Rejeté',
           'processing': 'En cours'
         };
 
-        setApplications(rawApps.map((a: any) => ({
-          ...a,
-          id: a.id.toString(),
-          studentId: (a.user_id || user.id).toString(),
-          studentName: a.user ? `${a.user.firstName} ${a.user.lastName}` : "Étudiant",
-          majorId: (a.major?.id || a.major_id)?.toString(),
-          majorName: a.major?.name || 'Filière',
-          universityName: a.major?.university?.acronym || "Établissement",
-          status: statusMap[a.status] || a.status || 'En attente',
-          date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Récemment',
-          documents: a.documents || [],
-          primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
-        })));
+        setApplications(rawApps.map((a: any) => {
+          // Rechercher les détails de l'université via les filières connues
+          const mId = (a.major?.id || a.major_id)?.toString();
+          const knownMajor = majors.find(m => m.id === mId);
+
+          return {
+            ...a,
+            id: a.id.toString(),
+            studentId: (a.user_id || user.id).toString(),
+            majorId: mId,
+            majorName: a.major?.name || knownMajor?.name || 'Filière',
+            universityName: a.major?.university?.acronym || knownMajor?.universityName || 'Établissement',
+            status: statusMap[a.status] || a.status || 'En attente',
+            date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Récemment',
+            documents: a.documents || [],
+            primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
+          };
+        }));
       } catch (e) {
-        console.warn("Échec du chargement des dossiers");
+        console.warn("Échec du chargement des dossiers privés");
       }
     }
     
@@ -280,18 +295,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updateApplicationStatus = async (id: string, status: string) => {
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-    const endpoint = isAdmin ? `/admin/applications/${id}/status` : `/applications/${id}/status`;
-    const method = isAdmin ? 'PATCH' : 'PUT';
-    
-    await apiRequest(endpoint, {
-      method: method,
-      body: JSON.stringify({ status })
-    });
-    await refreshData();
-  };
-
   const addUniversity = async (formData: FormData) => {
     const res = await apiRequest('/admin/universities', { method: 'POST', body: formData });
     const data = await res.json();
@@ -337,6 +340,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await refreshData();
   };
 
+  const updateApplicationStatus = (id: string, status: any) => apiRequest(`/applications/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }).then(() => refreshData());
   const deleteApplication = (id: string) => apiRequest(`/applications/${id}`, { method: 'DELETE' }).then(() => refreshData());
   
   const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
