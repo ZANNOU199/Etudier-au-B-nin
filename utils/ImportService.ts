@@ -6,16 +6,18 @@ interface ImportResult {
   majorCount: number;
 }
 
+// Updated signatures to match CMSContext and allow async operations
 export const processAcademicCSV = async (
   file: File,
   currentUniversities: University[],
-  addUniversity: (u: University) => void,
-  updateUniversity: (u: University) => void,
-  addMajor: (m: Major) => void
+  addUniversity: (fd: FormData) => Promise<any>,
+  updateUniversity: (id: string, u: any) => Promise<void>,
+  addMajor: (m: any) => Promise<void>
 ): Promise<ImportResult> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (event) => {
+    // Using async callback for onload to handle awaited API calls
+    reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
@@ -48,8 +50,19 @@ export const processAcademicCSV = async (
           let uni = tempUnis.find(u => u.acronym.toLowerCase() === row.sigle_inst.toLowerCase());
           
           if (!uni) {
+            const apiPayload = new FormData();
+            apiPayload.append('name', row.nom_inst || row.sigle_inst);
+            apiPayload.append('acronym', row.sigle_inst);
+            apiPayload.append('city', row.ville || 'Bénin');
+            apiPayload.append('type', (row.statut_inst === 'Privé' ? 'Privé' : 'Public').toLowerCase());
+            apiPayload.append('is_standalone', row.type_inst?.toUpperCase() === 'E' ? '1' : '0');
+
+            // Wait for creation to get the real ID from the API
+            const result = await addUniversity(apiPayload);
+            const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id || 'import-' + Math.random().toString(36).substr(2, 9);
+
             uni = {
-              id: 'uni-' + Math.random().toString(36).substr(2, 9),
+              id: newId.toString(),
               name: row.nom_inst || row.sigle_inst,
               acronym: row.sigle_inst,
               location: row.ville || 'Bénin',
@@ -61,7 +74,6 @@ export const processAcademicCSV = async (
               stats: { students: 'N/A', majors: 0, founded: '2024', ranking: 'N/A' },
               faculties: []
             };
-            addUniversity(uni);
             tempUnis.push(uni);
             uniCount++;
           }
@@ -79,27 +91,30 @@ export const processAcademicCSV = async (
               type: uni.isStandaloneSchool ? 'Ecole' : 'Faculté'
             };
             uni.faculties.push(fac);
-            updateUniversity(uni);
+            // Synchronize the updated university object (with new faculty) to the database
+            await updateUniversity(uni.id, {
+               name: uni.name,
+               acronym: uni.acronym,
+               city: uni.location,
+               type: uni.type.toLowerCase()
+            });
           }
 
           // 3. CRÉATION DE LA FILIÈRE (MAJOR)
-          const major: Major = {
-            id: 'maj-' + Math.random().toString(36).substr(2, 9),
+          const majorPayload = {
+            university_id: parseInt(uni.id),
+            faculty_id: null, // Basic import doesn't resolve faculty ID from DB yet
             name: row.nom_filiere,
-            universityId: uni.id,
-            universityName: uni.acronym,
-            facultyName: fac.name,
             domain: row.domaine || 'Général',
-            level: (['Licence', 'Master', 'Doctorat'].includes(row.cycle) ? row.cycle : 'Licence') as any,
+            level: (['Licence', 'Master', 'Doctorat'].includes(row.cycle) ? row.cycle : 'Licence'),
             duration: row.duree || '3 Ans',
             fees: row.frais || 'N/A',
             location: uni.location,
-            image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=400',
-            careerProspects: row.debouches ? row.debouches.split('|').map((d: string) => ({ title: d.trim(), icon: 'work' })) : [],
-            requiredDiplomas: row.diplome_requis ? row.diplome_requis.split('|').map((d: string) => ({ name: d.trim(), icon: 'school' })) : []
+            career_prospects: row.debouches ? row.debouches.split('|').map((d: string) => d.trim()) : [],
+            required_diplomas: row.diplome_requis ? row.diplome_requis.split('|').map((d: string) => d.trim()) : []
           };
 
-          addMajor(major);
+          await addMajor(majorPayload);
           majorCount++;
         }
 

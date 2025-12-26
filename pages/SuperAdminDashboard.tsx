@@ -19,8 +19,8 @@ const SuperAdminDashboard: React.FC = () => {
     themes,
     applyTheme,
     updateTheme,
-    languages,
-    toggleLanguage
+    languages
+    // Fix: Removed non-existent toggleLanguage
   } = useCMS();
   
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
@@ -36,6 +36,7 @@ const SuperAdminDashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
+      // Fix: CMS methods are now correctly typed and compatible with the updated processAcademicCSV signature
       const result = await processAcademicCSV(file, universities, addUniversity, updateUniversity, addMajor);
       alert(`IMPORTATION TERMINÉE :\n- ${result.uniCount} Établissements\n- ${result.majorCount} Filières.`);
     } catch (err) {

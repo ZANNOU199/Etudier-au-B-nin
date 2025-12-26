@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major, Faculty } from './types';
+import { UNIVERSITIES, MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -89,13 +90,18 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
+      'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(!(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...options.headers,
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, { 
+        ...options, 
+        headers,
+        mode: 'cors'
+      });
       
       if (response.status === 401) {
         handleLogoutLocal();
@@ -105,10 +111,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         let message = errorData.message || `Erreur serveur : ${response.status}`;
-        if (errorData.errors) {
-            const firstErrorKey = Object.keys(errorData.errors)[0];
-            message = errorData.errors[firstErrorKey][0];
-        }
         throw new Error(message);
       }
       
@@ -122,27 +124,84 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     
-    // 1. Universités (Public)
     try {
-      const uniRes = await fetch(`${API_BASE_URL}/universities`);
-      if (uniRes.ok) {
+      // 1. Appel des données publiques en parallèle
+      const [uniRes, facRes, majRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
+        fetch(`${API_BASE_URL}/faculties`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
+        fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
+      ]);
+
+      // 2. Traitement des Universités
+      let fetchedUnis: University[] = [...UNIVERSITIES];
+      if (uniRes?.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        setUniversities(rawUnis.map((u: any) => ({
-          ...u,
-          id: u.id.toString(),
-          location: u.city || u.location || 'Bénin',
-          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        })));
+        if (rawUnis.length > 0) {
+          fetchedUnis = rawUnis.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            location: u.city || u.location || 'Bénin',
+            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+          }));
+        }
       }
-    } catch (e) {
-      console.warn("Échec silencieux chargement universités");
-    }
+      setUniversities(fetchedUnis);
 
-    if (token) {
-      // 2. Candidatures
-      if (userRole === 'student') {
+      // 3. Traitement des Facultés (pour le mapping Major -> University)
+      let fetchedFacs: Faculty[] = [];
+      if (facRes?.ok) {
+        const facData = await facRes.json();
+        fetchedFacs = Array.isArray(facData) ? facData : (facData.data || []);
+      }
+
+      // 4. Traitement des Filières (Majors) - Désormais PUBLIC
+      let fetchedMajors: Major[] = [...MAJORS];
+      if (majRes?.ok) {
+        const majData = await majRes.json();
+        const rawMajors = Array.isArray(majData) ? majData : (majData.data || []);
+        
+        if (rawMajors.length > 0) {
+          fetchedMajors = rawMajors.map((m: any) => {
+            const fId = m.faculty_id?.toString();
+            
+            // On cherche la faculté pour remonter à l'université
+            const faculty = fetchedFacs.find(f => f.id.toString() === fId);
+            const uId = faculty?.university_id?.toString() || m.university_id?.toString();
+            const uni = fetchedUnis.find(u => u.id === uId);
+
+            // Parsing des colonnes JSON (career_prospects, required_diplomas)
+            let careers = m.career_prospects;
+            if (typeof careers === 'string') {
+              try { careers = JSON.parse(careers); } catch(e) { careers = []; }
+            }
+            let diplomas = m.required_diplomas;
+            if (typeof diplomas === 'string') {
+              try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
+            }
+
+            return {
+              ...m,
+              id: m.id.toString(),
+              universityId: uId,
+              facultyId: fId,
+              universityName: m.university?.acronym || uni?.acronym || 'Établissement',
+              facultyName: m.faculty?.name || faculty?.name || 'Général',
+              domain: m.domain || 'Formation',
+              level: m.level || 'Licence',
+              location: m.location || uni?.location || 'Bénin',
+              image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+              careerProspects: Array.isArray(careers) ? careers.map((c: any) => ({ title: typeof c === 'string' ? c : c.title, icon: 'work' })) : [],
+              requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => ({ name: typeof d === 'string' ? d : d.name, icon: 'school' })) : []
+            };
+          });
+        }
+      }
+      setMajors(fetchedMajors);
+
+      // 5. Données privées (seulement si token présent)
+      if (token && userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
           const appData = await appRes.json();
@@ -154,30 +213,15 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: a.major_id?.toString()
           })));
         } catch (e) {
-          console.warn("Route candidatures inaccessible");
+          console.warn("Candidatures inaccessibles");
         }
       }
 
-      // 3. Filières (Admin seulement)
-      if (userRole !== 'student') {
-        try {
-          const majorRes = await apiRequest('/admin/majors');
-          const majorData = await majorRes.json();
-          const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
-          
-          setMajors(rawMajors.map((m: any) => ({
-            ...m,
-            id: m.id.toString(),
-            // CRITIQUE : Conversion forcée en String pour universityId
-            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-            facultyId: m.faculty_id?.toString(),
-            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-            facultyName: m.faculty?.name || 'Tronc commun'
-          })));
-        } catch (e) {
-          console.warn("Échec silencieux chargement filières admin");
-        }
-      }
+    } catch (error) {
+      console.error("Erreur de rafraîchissement des données:", error);
+      // En cas d'erreur API, on garde au moins les constantes locales pour ne pas avoir un site vide
+      setUniversities(UNIVERSITIES);
+      setMajors(MAJORS);
     }
     
     setIsLoading(false);
@@ -224,7 +268,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (res.status === 201) {
+      if (res.status === 201 || res.status === 200) {
         const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
         setUser(userData);
         setToken(data.token);
@@ -296,7 +340,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addMajor = async (major: any) => {
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
-    // FORCE LE REFRESH COMPLET
     await refreshData();
   };
 
