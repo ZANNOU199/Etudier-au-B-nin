@@ -6,17 +6,17 @@ interface ImportResult {
   majorCount: number;
 }
 
-// Updated signatures to match CMSContext and allow async operations
+// Fix: Updated signature to match API-based functions from CMSContext.
 export const processAcademicCSV = async (
   file: File,
   currentUniversities: University[],
-  addUniversity: (fd: FormData) => Promise<any>,
-  updateUniversity: (id: string, u: any) => Promise<void>,
-  addMajor: (m: any) => Promise<void>
+  addUniversity: (formData: FormData) => Promise<any>,
+  updateUniversity: (id: string, data: any) => Promise<void>,
+  addMajor: (major: any) => Promise<void>
 ): Promise<ImportResult> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    // Using async callback for onload to handle awaited API calls
+    // Fix: Made the onload handler async to handle API calls with await.
     reader.onload = async (event) => {
       try {
         const text = event.target?.result as string;
@@ -34,8 +34,9 @@ export const processAcademicCSV = async (
         // On travaille sur une copie locale pour éviter les collisions pendant l'import
         const tempUnis = [...currentUniversities];
 
-        for (let i = 1; i < lines.length; i++) {
-          const rowData = lines[i].split(delimiter);
+        // Fix: Use for...of loop for proper async/await handling.
+        for (const line of lines.slice(1)) {
+          const rowData = line.split(delimiter);
           if (rowData.length < headers.length) continue;
 
           const row: any = {};
@@ -50,19 +51,22 @@ export const processAcademicCSV = async (
           let uni = tempUnis.find(u => u.acronym.toLowerCase() === row.sigle_inst.toLowerCase());
           
           if (!uni) {
+            // Fix: Create FormData for the API call.
             const apiPayload = new FormData();
             apiPayload.append('name', row.nom_inst || row.sigle_inst);
             apiPayload.append('acronym', row.sigle_inst);
             apiPayload.append('city', row.ville || 'Bénin');
-            apiPayload.append('type', (row.statut_inst === 'Privé' ? 'Privé' : 'Public').toLowerCase());
+            apiPayload.append('type', row.statut_inst === 'Privé' ? 'privé' : 'public');
             apiPayload.append('is_standalone', row.type_inst?.toUpperCase() === 'E' ? '1' : '0');
 
-            // Wait for creation to get the real ID from the API
             const result = await addUniversity(apiPayload);
-            const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id || 'import-' + Math.random().toString(36).substr(2, 9);
+            // Fix: Extract the new ID from the API result.
+            const newId = (result?.id || result?.data?.id || result?.university?.id || result?.institution?.id)?.toString();
+            
+            if (!newId) continue; // Safety check
 
             uni = {
-              id: newId.toString(),
+              id: newId,
               name: row.nom_inst || row.sigle_inst,
               acronym: row.sigle_inst,
               location: row.ville || 'Bénin',
@@ -91,30 +95,25 @@ export const processAcademicCSV = async (
               type: uni.isStandaloneSchool ? 'Ecole' : 'Faculté'
             };
             uni.faculties.push(fac);
-            // Synchronize the updated university object (with new faculty) to the database
-            await updateUniversity(uni.id, {
-               name: uni.name,
-               acronym: uni.acronym,
-               city: uni.location,
-               type: uni.type.toLowerCase()
-            });
+            // Fix: Use the correct API parameters for updateUniversity.
+            await updateUniversity(uni.id, { faculties: uni.faculties });
           }
 
           // 3. CRÉATION DE LA FILIÈRE (MAJOR)
-          const majorPayload = {
+          // Fix: Preparation of the payload for the addMajor API call.
+          await addMajor({
             university_id: parseInt(uni.id),
-            faculty_id: null, // Basic import doesn't resolve faculty ID from DB yet
+            faculty_id: fac.id.startsWith('fac-') ? null : parseInt(fac.id), // Only send real IDs
             name: row.nom_filiere,
             domain: row.domaine || 'Général',
-            level: (['Licence', 'Master', 'Doctorat'].includes(row.cycle) ? row.cycle : 'Licence'),
+            level: (['Licence', 'Master', 'Doctorat'].includes(row.cycle) ? row.cycle : 'Licence') as any,
             duration: row.duree || '3 Ans',
             fees: row.frais || 'N/A',
             location: uni.location,
             career_prospects: row.debouches ? row.debouches.split('|').map((d: string) => d.trim()) : [],
             required_diplomas: row.diplome_requis ? row.diplome_requis.split('|').map((d: string) => d.trim()) : []
-          };
+          });
 
-          await addMajor(majorPayload);
           majorCount++;
         }
 
@@ -123,6 +122,7 @@ export const processAcademicCSV = async (
         reject(err);
       }
     };
+    reader.onerror = () => reject(new Error("Erreur de lecture du fichier."));
     reader.readAsText(file);
   });
 };

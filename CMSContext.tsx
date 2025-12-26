@@ -125,14 +125,14 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoading(true);
     
     try {
-      // 1. Appel des données publiques en parallèle
+      // 1. Appel des données PUBLIQUES en parallèle
       const [uniRes, facRes, majRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
         fetch(`${API_BASE_URL}/faculties`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
         fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
       ]);
 
-      // 2. Traitement des Universités
+      // --- Traitement des Universités ---
       let fetchedUnis: University[] = [...UNIVERSITIES];
       if (uniRes?.ok) {
         const uniData = await uniRes.json();
@@ -149,14 +149,14 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setUniversities(fetchedUnis);
 
-      // 3. Traitement des Facultés (pour le mapping Major -> University)
+      // --- Traitement des Facultés (nécessaire pour mapper Major -> University) ---
       let fetchedFacs: Faculty[] = [];
       if (facRes?.ok) {
         const facData = await facRes.json();
         fetchedFacs = Array.isArray(facData) ? facData : (facData.data || []);
       }
 
-      // 4. Traitement des Filières (Majors) - Désormais PUBLIC
+      // --- Traitement des Filières (Désormais PUBLIC) ---
       let fetchedMajors: Major[] = [...MAJORS];
       if (majRes?.ok) {
         const majData = await majRes.json();
@@ -166,12 +166,12 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fetchedMajors = rawMajors.map((m: any) => {
             const fId = m.faculty_id?.toString();
             
-            // On cherche la faculté pour remonter à l'université
+            // On retrouve l'université parente via la faculté
             const faculty = fetchedFacs.find(f => f.id.toString() === fId);
             const uId = faculty?.university_id?.toString() || m.university_id?.toString();
             const uni = fetchedUnis.find(u => u.id === uId);
 
-            // Parsing des colonnes JSON (career_prospects, required_diplomas)
+            // Parsing des données JSON si présentes (phpMyAdmin stores them as JSON strings)
             let careers = m.career_prospects;
             if (typeof careers === 'string') {
               try { careers = JSON.parse(careers); } catch(e) { careers = []; }
@@ -187,8 +187,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               universityId: uId,
               facultyId: fId,
               universityName: m.university?.acronym || uni?.acronym || 'Établissement',
-              facultyName: m.faculty?.name || faculty?.name || 'Général',
-              domain: m.domain || 'Formation',
+              facultyName: m.faculty?.name || faculty?.name || 'Tronc commun',
+              domain: m.domain || 'Général',
               level: m.level || 'Licence',
               location: m.location || uni?.location || 'Bénin',
               image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
@@ -200,7 +200,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setMajors(fetchedMajors);
 
-      // 5. Données privées (seulement si token présent)
+      // --- Traitement des données PRIVÉES (seulement si authentifié) ---
       if (token && userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
@@ -213,13 +213,13 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             majorId: a.major_id?.toString()
           })));
         } catch (e) {
-          console.warn("Candidatures inaccessibles");
+          console.warn("Dossiers de candidature inaccessibles");
         }
       }
 
     } catch (error) {
-      console.error("Erreur de rafraîchissement des données:", error);
-      // En cas d'erreur API, on garde au moins les constantes locales pour ne pas avoir un site vide
+      console.error("Erreur critique lors du rafraîchissement des données:", error);
+      // Fallback sur les constantes locales en cas de panne API totale
       setUniversities(UNIVERSITIES);
       setMajors(MAJORS);
     }
