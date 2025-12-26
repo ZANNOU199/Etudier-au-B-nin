@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
-import { User, UserRole, ThemeConfig } from '../types';
+import { User, UserRole, ThemeConfig, University } from '../types';
 import { processAcademicCSV } from '../utils/ImportService';
 
 const SuperAdminDashboard: React.FC = () => {
@@ -19,8 +19,8 @@ const SuperAdminDashboard: React.FC = () => {
     themes,
     applyTheme,
     updateTheme,
-    languages,
-    toggleLanguage
+    languages
+    // toggleLanguage was removed as it does not exist in CMSContextType
   } = useCMS();
   
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
@@ -32,11 +32,33 @@ const SuperAdminDashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  // Fix: Wrapped handleImportCSV to fix type mismatch with CMSContext methods
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await processAcademicCSV(file, universities, addUniversity, updateUniversity, addMajor);
+      // Fix: Create wrappers that match the expected signature in processAcademicCSV
+      const apiAddUniversity = (u: University) => {
+        const fd = new FormData();
+        fd.append('name', u.name);
+        fd.append('acronym', u.acronym);
+        fd.append('city', u.location);
+        fd.append('type', u.type.toLowerCase());
+        fd.append('is_standalone', u.isStandaloneSchool ? '1' : '0');
+        addUniversity(fd);
+      };
+
+      const apiUpdateUniversity = (u: University) => {
+        updateUniversity(u.id, u);
+      };
+
+      const result = await processAcademicCSV(
+        file, 
+        universities, 
+        apiAddUniversity as any, 
+        apiUpdateUniversity as any, 
+        addMajor as any
+      );
       alert(`IMPORTATION TERMINÉE :\n- ${result.uniCount} Établissements\n- ${result.majorCount} Filières.`);
     } catch (err) {
       alert("Erreur : " + (err as Error).message);
