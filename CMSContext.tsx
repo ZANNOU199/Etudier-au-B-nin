@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major, Faculty } from './types';
-import { UNIVERSITIES, MAJORS } from './constants';
+import { UNIVERSITIES as MOCK_UNIS, MAJORS as MOCK_MAJORS } from './constants';
 
 interface CMSContextType {
   content: CMSContent;
@@ -65,6 +65,13 @@ const DEFAULT_THEMES: ThemeConfig[] = [
 
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
+const extractDataArray = (response: any): any[] => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+  if (response.data && Array.isArray(response.data)) return response.data;
+  return [];
+};
+
 export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [content] = useState<CMSContent>(DEFAULT_CONTENT);
   const [user, setUser] = useState<User | null>(() => {
@@ -75,8 +82,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('auth_token_v1');
   });
 
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [majors, setMajors] = useState<Major[]>([]);
+  const [universities, setUniversities] = useState<University[]>(MOCK_UNIS);
+  const [majors, setMajors] = useState<Major[]>(MOCK_MAJORS);
   const [applications, setApplications] = useState<Application[]>([]);
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,23 +104,12 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, { 
-        ...options, 
-        headers,
-        mode: 'cors'
-      });
-      
-      if (response.status === 401) {
-        handleLogoutLocal();
-        throw new Error("Session expirée");
-      }
-
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+      if (response.status === 401) { handleLogoutLocal(); throw new Error("Session expirée"); }
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        let message = errorData.message || `Erreur serveur : ${response.status}`;
-        throw new Error(message);
+        throw new Error(errorData.message || `Erreur serveur : ${response.status}`);
       }
-      
       return response;
     } catch (error) {
       console.error(`API Error on ${endpoint}:`, error);
@@ -123,21 +119,20 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
+    console.log("Tentative de synchronisation API...");
     
     try {
-      // 1. Appel des données PUBLIQUES en parallèle
+      // Pour les routes publiques, on simplifie au maximum pour éviter les préflights CORS
       const [uniRes, facRes, majRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
-        fetch(`${API_BASE_URL}/faculties`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
-        fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' }, mode: 'cors' }).catch(() => null),
+        fetch(`${API_BASE_URL}/universities`).catch(() => null),
+        fetch(`${API_BASE_URL}/faculties`).catch(() => null),
+        fetch(`${API_BASE_URL}/majors`).catch(() => null),
       ]);
 
-      // --- Traitement des Universités (On part de vide []) ---
       let fetchedUnis: University[] = [];
       if (uniRes?.ok) {
         const uniData = await uniRes.json();
-        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        fetchedUnis = rawUnis.map((u: any) => ({
+        fetchedUnis = extractDataArray(uniData).map((u: any) => ({
           ...u,
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
@@ -145,76 +140,54 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
         }));
       }
-      setUniversities(fetchedUnis);
 
-      // --- Traitement des Facultés ---
       let fetchedFacs: Faculty[] = [];
       if (facRes?.ok) {
         const facData = await facRes.json();
-        fetchedFacs = Array.isArray(facData) ? facData : (facData.data || []);
+        fetchedFacs = extractDataArray(facData);
       }
 
-      // --- Traitement des Filières (On part de vide []) ---
       let fetchedMajors: Major[] = [];
       if (majRes?.ok) {
         const majData = await majRes.json();
-        const rawMajors = Array.isArray(majData) ? majData : (majData.data || []);
-        
-        fetchedMajors = rawMajors.map((m: any) => {
-          const fId = m.faculty_id?.toString();
-          const faculty = fetchedFacs.find(f => f.id.toString() === fId);
-          const uId = faculty?.university_id?.toString() || m.university_id?.toString();
-          const uni = fetchedUnis.find(u => u.id === uId);
-
-          let careers = m.career_prospects;
-          if (typeof careers === 'string') {
-            try { careers = JSON.parse(careers); } catch(e) { careers = []; }
-          }
-          let diplomas = m.required_diplomas;
-          if (typeof diplomas === 'string') {
-            try { diplomas = JSON.parse(diplomas); } catch(e) { diplomas = []; }
-          }
-
+        fetchedMajors = extractDataArray(majData).map((m: any) => {
+          const uId = m.university_id?.toString();
+          const uni = fetchedUnis.find(u => u.id === uId) || m.university;
           return {
             ...m,
             id: m.id.toString(),
             universityId: uId,
-            facultyId: fId,
-            universityName: m.university?.acronym || uni?.acronym || 'Établissement',
-            facultyName: m.faculty?.name || faculty?.name || 'Tronc commun',
-            domain: m.domain || 'Général',
-            level: m.level || 'Licence',
+            universityName: uni?.acronym || uni?.name || 'Établissement',
             location: m.location || uni?.location || 'Bénin',
             image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-            careerProspects: Array.isArray(careers) ? careers.map((c: any) => ({ title: typeof c === 'string' ? c : c.title, icon: 'work' })) : [],
-            requiredDiplomas: Array.isArray(diplomas) ? diplomas.map((d: any) => ({ name: typeof d === 'string' ? d : d.name, icon: 'school' })) : []
+            careerProspects: typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : (m.career_prospects || []),
+            requiredDiplomas: typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : (m.required_diplomas || [])
           };
         });
       }
-      setMajors(fetchedMajors);
 
-      // --- Traitement des données PRIVÉES ---
+      // LOGIQUE DE FUSION : Si l'API renvoie des données, on les utilise. 
+      // Sinon on garde les données de test (MOCK)
+      if (fetchedUnis.length > 0) setUniversities(fetchedUnis);
+      if (fetchedMajors.length > 0) setMajors(fetchedMajors);
+
+      console.log("Données chargées :", { unis: fetchedUnis.length, majors: fetchedMajors.length });
+
       if (token && userRole === 'student') {
         try {
           const appRes = await apiRequest('/applications');
           const appData = await appRes.json();
-          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-          setApplications(rawApps.map((a: any) => ({
+          setApplications(extractDataArray(appData).map((a: any) => ({
             ...a,
             id: a.id.toString(),
             status: a.status || 'En attente',
             majorId: a.major_id?.toString()
           })));
-        } catch (e) {
-          console.warn("Dossiers de candidature inaccessibles");
-        }
+        } catch (e) {}
       }
 
     } catch (error) {
-      console.error("Erreur critique lors du rafraîchissement des données:", error);
-      // Fallback vide si erreur API
-      setUniversities([]);
-      setMajors([]);
+      console.error("Échec de la connexion API. Utilisation du mode hors-ligne.");
     }
     
     setIsLoading(false);
