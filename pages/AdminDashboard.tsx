@@ -9,7 +9,7 @@ type CatalogSection = 'universities' | 'majors';
 type EstablishmentFilter = 'all' | 'university' | 'school';
 type CreationStep = 'institution' | 'faculties' | 'majors';
 
-const ITEMS_PER_PAGE = 4;
+const UNI_PER_PAGE = 4;
 
 const AdminDashboard: React.FC = () => {
   const { 
@@ -24,38 +24,20 @@ const AdminDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const [establishmentFilter, setEstablishmentFilter] = useState<EstablishmentFilter>('all');
-  const [searchMajor, setSearchMajor] = useState('');
   const [uniPage, setUniPage] = useState(1);
-  const [majorPage, setMajorPage] = useState(1);
   
-  // Assistant Établissement (Wizard)
+  // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Modale Filière (Standalone)
-  const [showMajorModal, setShowMajorModal] = useState(false);
-  const [editingMajor, setEditingMajor] = useState<Major | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const navigate = useNavigate();
 
-  // Établissement sélectionné dans l'assistant
-  const currentUni = useMemo(() => 
-    universities.find(u => String(u.id) === String(currentInstId)), 
-    [universities, currentInstId]
-  );
-  
-  // Filières de l'établissement en cours (pour l'étape 3 de l'assistant)
-  const currentInstMajors = useMemo(() => {
-    if (!currentInstId) return [];
-    return majors.filter(m => String(m.universityId) === String(currentInstId));
-  }, [majors, currentInstId]);
-
-  // Filtrage des universités (Tab 1)
+  // Filtrage des universités pour la vue principale
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -64,19 +46,22 @@ const AdminDashboard: React.FC = () => {
     });
   }, [universities, establishmentFilter]);
 
-  const pagedUnis = filteredUnis.slice((uniPage - 1) * ITEMS_PER_PAGE, uniPage * ITEMS_PER_PAGE);
+  const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
-  // Filtrage des filières globales (Tab 2)
-  const filteredMajors = useMemo(() => {
-    const query = searchMajor.toLowerCase().trim();
-    return majors.filter(m => 
-      m.name.toLowerCase().includes(query) || 
-      m.universityName.toLowerCase().includes(query) || 
-      m.domain.toLowerCase().includes(query)
-    );
-  }, [majors, searchMajor]);
-
-  const pagedMajors = filteredMajors.slice((majorPage - 1) * ITEMS_PER_PAGE, majorPage * ITEMS_PER_PAGE);
+  // Établissement actuellement sélectionné dans le Wizard
+  const currentUni = useMemo(() => 
+    universities.find(u => String(u.id) === String(currentInstId)), 
+    [universities, currentInstId]
+  );
+  
+  // FILTRAGE CRITIQUE : Liste des filières de l'établissement en cours
+  // Correction : On utilise String() partout pour s'assurer que la comparaison fonctionne
+  const currentInstMajors = useMemo(() => {
+    if (!currentInstId) return [];
+    const filtered = majors.filter(m => String(m.universityId) === String(currentInstId));
+    console.log("Majors filtrées pour l'ID", currentInstId, ":", filtered);
+    return filtered;
+  }, [majors, currentInstId]);
 
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id);
@@ -110,55 +95,13 @@ const AdminDashboard: React.FC = () => {
       } else {
         const result = await addUniversity(apiPayload);
         const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id;
-        if (newId) setCurrentInstId(newId.toString());
+        if (newId) {
+          setCurrentInstId(newId.toString());
+        } else {
+           throw new Error("L'ID de l'établissement n'a pas pu être récupéré.");
+        }
       }
       setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
-    } catch (err: any) {
-      alert("Erreur : " + err.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleMajorFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    const fd = new FormData(e.currentTarget);
-    
-    const universityId = fd.get('university_id') as string;
-    const selectedUni = universities.find(u => String(u.id) === String(universityId));
-
-    const payload = {
-      university_id: parseInt(universityId),
-      faculty_id: fd.get('faculty_id') ? parseInt(fd.get('faculty_id') as string) : null,
-      name: fd.get('name') as string,
-      domain: fd.get('domain') as string,
-      level: fd.get('level') as string,
-      duration: fd.get('duration') as string,
-      fees: fd.get('fees') as string,
-      location: selectedUni?.location || 'Bénin',
-      career_prospects: (fd.get('career') as string)?.split(',').map(s => s.trim()).filter(Boolean) || [],
-      required_diplomas: (fd.get('diplomas') as string)?.split(',').map(s => s.trim()).filter(Boolean) || []
-    };
-
-    try {
-      if (editingMajor) {
-        await updateMajor({
-          ...editingMajor,
-          name: payload.name,
-          domain: payload.domain,
-          level: payload.level as any,
-          duration: payload.duration,
-          fees: payload.fees,
-          universityId: universityId,
-          faculty_id: payload.faculty_id?.toString()
-        });
-      } else {
-        await addMajor(payload);
-      }
-      setShowMajorModal(false);
-      setEditingMajor(null);
-      await refreshData();
     } catch (err: any) {
       alert("Erreur : " + err.message);
     } finally {
@@ -197,6 +140,11 @@ const AdminDashboard: React.FC = () => {
               <span className="material-symbols-outlined text-xl">{item.icon}</span>
               {item.label}
             </div>
+            {item.badge && item.badge !== '0' && (
+              <span className={`px-2 py-0.5 rounded-lg text-[9px] ${activeView === item.id ? 'bg-black text-white' : 'bg-white/10 text-gray-400'}`}>
+                {item.badge}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -239,146 +187,6 @@ const AdminDashboard: React.FC = () => {
         </header>
 
         <div className="p-4 lg:p-12 space-y-10">
-          {activeView === 'catalog' && (
-            <div className="space-y-8 animate-fade-in">
-               <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
-                  <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
-                    <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
-                    <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
-                  </div>
-
-                  {activeCatalogSection === 'universities' ? (
-                    <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
-                       {['all', 'university', 'school'].map(f => (
-                         <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
-                           {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
-                         </button>
-                       ))}
-                    </div>
-                  ) : (
-                    <div className="flex-1 max-w-md w-full relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400 text-sm">search</span>
-                      <input 
-                        type="text" 
-                        placeholder="Rechercher une filière..." 
-                        value={searchMajor}
-                        onChange={(e) => { setSearchMajor(e.target.value); setMajorPage(1); }}
-                        className="w-full bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 pl-10 pr-4 py-3 rounded-xl font-bold text-xs outline-none focus:ring-2 focus:ring-primary/20"
-                      />
-                    </div>
-                  )}
-               </div>
-
-               {activeCatalogSection === 'universities' && (
-                  <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {pagedUnis.map(uni => (
-                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all">
-                           <div className="flex items-center gap-6 flex-1 w-full text-left">
-                              <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
-                                 <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
-                                 <span className={`absolute -top-3 -right-3 size-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
-                                    {uni.isStandaloneSchool ? 'E' : 'U'}
-                                 </span>
-                              </div>
-                              <div className="space-y-1 flex-1">
-                                 <h3 className="text-2xl font-black text-white tracking-tighter leading-none">{uni.acronym}</h3>
-                                 <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
-                                 <p className="text-sm font-black text-gray-300 line-clamp-1">{uni.name}</p>
-                              </div>
-                           </div>
-                           <div className="flex gap-3">
-                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center border border-white/5 transition-colors">
-                                 <span className="material-symbols-outlined">edit</span>
-                              </button>
-                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center border border-white/5 transition-colors">
-                                 <span className="material-symbols-outlined">delete</span>
-                              </button>
-                           </div>
-                        </div>
-                      ))}
-                      
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 group transition-all">
-                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                           <span className="material-symbols-outlined text-3xl font-bold">add</span>
-                        </div>
-                        <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
-                      </button>
-                    </div>
-
-                    {/* Pagination Universités */}
-                    {Math.ceil(filteredUnis.length / ITEMS_PER_PAGE) > 1 && (
-                      <div className="flex justify-center gap-2">
-                        {Array.from({ length: Math.ceil(filteredUnis.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                          <button 
-                            key={i} 
-                            onClick={() => setUniPage(i + 1)}
-                            className={`size-10 rounded-xl font-black text-xs transition-all ${uniPage === i + 1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-                          >
-                            {i + 1}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-               )}
-
-               {activeCatalogSection === 'majors' && (
-                  <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {pagedMajors.map(major => (
-                        <div key={major.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all">
-                           <div className="flex items-center gap-6 flex-1 w-full text-left">
-                              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner shrink-0">
-                                 <span className="material-symbols-outlined text-3xl font-bold">school</span>
-                              </div>
-                              <div className="space-y-1 flex-1">
-                                 <div className="flex items-center gap-2">
-                                   <h3 className="text-xl font-black text-white tracking-tighter leading-none">{major.name}</h3>
-                                   <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[8px] font-black uppercase tracking-widest">{major.level}</span>
-                                 </div>
-                                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{major.universityName}</p>
-                                 <p className="text-[9px] font-black text-gray-400 mt-1 uppercase tracking-wider">{major.domain}</p>
-                              </div>
-                           </div>
-                           <div className="flex gap-3">
-                              <button onClick={() => { setEditingMajor(major); setShowMajorModal(true); }} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center border border-white/5 transition-colors">
-                                 <span className="material-symbols-outlined">edit</span>
-                              </button>
-                              <button onClick={() => deleteMajor(major.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center border border-white/5 transition-colors">
-                                 <span className="material-symbols-outlined">delete</span>
-                              </button>
-                           </div>
-                        </div>
-                      ))}
-                      
-                      <button onClick={() => { setEditingMajor(null); setShowMajorModal(true); }} className="min-h-[120px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 group transition-all">
-                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                           <span className="material-symbols-outlined text-3xl font-bold">add_task</span>
-                        </div>
-                        <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvelle filière</span>
-                      </button>
-                    </div>
-
-                    {/* Pagination Filières */}
-                    {Math.ceil(filteredMajors.length / ITEMS_PER_PAGE) > 1 && (
-                      <div className="flex justify-center gap-2">
-                        {Array.from({ length: Math.ceil(filteredMajors.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                          <button 
-                            key={i} 
-                            onClick={() => setMajorPage(i + 1)}
-                            className={`size-10 rounded-xl font-black text-xs transition-all ${majorPage === i + 1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500 hover:text-white'}`}
-                          >
-                            {i + 1}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-               )}
-            </div>
-          )}
-
           {activeView === 'overview' && (
             <div className="space-y-10 animate-fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -399,194 +207,308 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
           )}
+
+          {activeView === 'catalog' && (
+            <div className="space-y-8 animate-fade-in">
+               <div className="flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
+                  <div className="flex gap-2 p-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-white/10">
+                    <button onClick={() => setActiveCatalogSection('universities')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'universities' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Universités & Écoles</button>
+                    <button onClick={() => setActiveCatalogSection('majors')} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeCatalogSection === 'majors' ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}>Filières</button>
+                  </div>
+
+                  {activeCatalogSection === 'universities' && (
+                    <div className="flex gap-2 bg-white dark:bg-surface-dark p-1 rounded-xl border border-gray-100 dark:border-white/10">
+                       {['all', 'university', 'school'].map(f => (
+                         <button key={f} onClick={() => { setEstablishmentFilter(f as EstablishmentFilter); setUniPage(1); }} className={`px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${establishmentFilter === f ? 'bg-black dark:bg-white text-white dark:text-black shadow-sm' : 'text-gray-400 hover:text-primary'}`}>
+                           {f === 'all' ? 'Tout' : f === 'university' ? 'Universités' : 'Écoles'}
+                         </button>
+                       ))}
+                    </div>
+                  )}
+               </div>
+
+               {activeCatalogSection === 'universities' && (
+                  <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {pagedUnis.map(uni => (
+                        <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:bg-white/10 transition-all h-full">
+                           <div className="flex items-center gap-6 flex-1 w-full">
+                              <div className="size-20 rounded-2xl bg-white/10 flex items-center justify-center p-3 border border-white/10 relative shadow-inner">
+                                 <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
+                                 <span className={`absolute -top-3 -right-3 size-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
+                                    {uni.isStandaloneSchool ? 'E' : 'U'}
+                                 </span>
+                              </div>
+                              <div className="space-y-1 flex-1">
+                                 <h3 className="text-2xl font-black text-white tracking-tighter leading-none">{uni.acronym}</h3>
+                                 <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{uni.location}</p>
+                                 <p className="text-sm font-black text-gray-300 line-clamp-1">{uni.name}</p>
+                              </div>
+                           </div>
+                           <div className="flex gap-3">
+                              <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5">
+                                 <span className="material-symbols-outlined">edit</span>
+                              </button>
+                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
+                                 <span className="material-symbols-outlined">delete</span>
+                              </button>
+                           </div>
+                        </div>
+                      ))}
+                      
+                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                           <span className="material-symbols-outlined text-3xl font-bold">add</span>
+                        </div>
+                        <span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
+                      </button>
+                    </div>
+                  </div>
+               )}
+            </div>
+          )}
         </div>
 
-        {/* MODAL: ASSISTANT ÉTABLISSEMENT (RESTAURÉ) */}
+        {/* MODAL: INSTITUTION WIZARD */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto border border-white/5 animate-in zoom-in-95">
+             <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
-                   <div className="text-left">
+                   <div>
                       <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-2">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                         <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
+                         <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
+                      </div>
                    </div>
                    <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
 
-                <div className="p-8 md:p-12">
+                <div className="p-8 md:p-12 space-y-10">
                    {wizardStep === 'institution' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4">
-                        <div className="grid grid-cols-2 gap-4">
-                           <button onClick={() => setIsSchoolKind(false)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}>Université</button>
-                           <button onClick={() => setIsSchoolKind(true)} className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black' : 'bg-white/5 text-gray-500'}`}>École / Institut</button>
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
+                        <div className="space-y-6">
+                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Type d'établissement</label>
+                           <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+                              <button type="button" onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500'}`}>Université</button>
+                              <button type="button" onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-500'}`}>École / Institut</button>
+                           </div>
                         </div>
-                        
-                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 gap-6 text-left">
+
+                        <div className="space-y-6">
+                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Statut de l'établissement</label>
+                           <div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+                              <button type="button" onClick={() => setEstablishmentStatus('Public')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Public' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-500'}`}>Public</button>
+                              <button type="button" onClick={() => setEstablishmentStatus('Privé')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Privé' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-gray-500'}`}>Privé</button>
+                           </div>
+                        </div>
+
+                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="md:col-span-2 space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label>
+                              <input name="name" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           </div>
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom Complet</label>
-                              <input name="name" required defaultValue={currentUni?.name} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label>
+                              <input name="acronym" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
-                           <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Sigle</label>
-                                 <input name="acronym" required defaultValue={currentUni?.acronym} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                              </div>
-                              <div className="space-y-2">
-                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Ville</label>
-                                 <input name="location" required defaultValue={currentUni?.location} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                              </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label>
+                              <input name="location" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
-                           <button type="submit" className="w-full py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-primary/20 mt-6 hover:scale-[1.02] transition-transform">Continuer</button>
+                           <div className="md:col-span-2 pt-6">
+                              <button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all disabled:opacity-50">
+                                 {isProcessing ? "Traitement..." : "Continuer"}
+                              </button>
+                           </div>
                         </form>
                      </div>
                    )}
 
                    {wizardStep === 'faculties' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4">
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
                         <div className="text-center space-y-2">
-                           <h4 className="text-xl font-black text-white">Composantes internes</h4>
-                           <p className="text-gray-500 text-sm">Ajoutez les facultés ou écoles de l'établissement.</p>
+                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">Composantes internes</h4>
+                           <p className="text-gray-500 font-medium text-sm">Ajoutez les écoles ou facultés rattachées à cet établissement.</p>
                         </div>
                         
                         <form onSubmit={async (e) => {
                            e.preventDefault();
                            setIsProcessing(true);
-                           const fd = new FormData(e.currentTarget);
-                           await addFaculty({
-                             university_id: parseInt(currentInstId!),
-                             name: fd.get('fName') as string,
-                             type: 'Faculté',
-                             description: 'Composante académique'
-                           });
-                           e.currentTarget.reset();
-                           setIsProcessing(false);
-                           await refreshData();
-                        }} className="flex gap-2">
-                           <input name="fName" required placeholder="Nom (ex: FASEG, EPAC...)" className="flex-1 p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
-                           <button type="submit" className="px-6 bg-primary text-black font-black rounded-xl hover:scale-105 transition-transform">+</button>
+                           const formRef = e.currentTarget; 
+                           const fd = new FormData(formRef);
+                           try {
+                             if (!currentInstId) throw new Error("ID de l'institution manquant.");
+                             const uniId = parseInt(currentInstId);
+                             if (isNaN(uniId)) throw new Error("ID de l'institution invalide.");
+
+                             await addFaculty({
+                               university_id: uniId,
+                               name: fd.get('fName') as string,
+                               description: 'Composante académique spécialisée',
+                               type: 'Faculté'
+                             });
+                             formRef.reset(); 
+                             await refreshData();
+                           } catch (err: any) {
+                             alert("Erreur lors de l'ajout : " + err.message);
+                           } finally {
+                             setIsProcessing(false);
+                           }
+                        }} className="p-6 bg-white/5 rounded-[32px] border border-white/5 space-y-4">
+                           <input name="fName" required placeholder="Nom de la composante (ex: EPAC, FASEG)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           <button type="submit" disabled={isProcessing} className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all disabled:opacity-50">
+                              {isProcessing ? "Enregistrement..." : "+ Ajouter la composante"}
+                           </button>
                         </form>
 
-                        <div className="max-h-40 overflow-y-auto space-y-2 text-left custom-scrollbar pr-2">
-                           {currentUni?.faculties.map(f => (
-                              <div key={f.id} className="p-4 bg-white/5 rounded-xl flex justify-between items-center border border-white/5">
+                        <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                           {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
+                              <div key={f.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
                                  <p className="font-black text-xs text-white uppercase tracking-wider">{f.name}</p>
-                                 <button onClick={() => deleteFaculty(f.id)} className="material-symbols-outlined text-red-500 text-sm hover:scale-110 transition-transform">delete</button>
+                                 <button onClick={() => deleteFaculty(f.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button>
                               </div>
                            ))}
+                           {(!currentUni?.faculties || currentUni.faculties.length === 0) && (
+                              <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-4">Aucune composante ajoutée</p>
+                           )}
                         </div>
 
-                        <div className="flex gap-4 pt-6">
-                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] hover:text-white transition-colors">Retour</button>
-                           <button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] rounded-2xl hover:scale-105 transition-transform">Suivant</button>
+                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
+                           <button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
+                           <button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Suivant : Configurer les filières</button>
                         </div>
                      </div>
                    )}
 
                    {wizardStep === 'majors' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-left">
+                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white">
                         <div className="text-center space-y-2">
-                           <h4 className="text-xl font-black text-white">Gestion des Filières</h4>
-                           <p className="text-gray-500 text-sm">Ajoutez les formations proposées.</p>
+                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">Filières & Formations</h4>
+                           <p className="text-gray-500 font-medium text-sm">Ajoutez les filières rattachées à cet établissement.</p>
                         </div>
 
-                        <button 
-                          onClick={() => { setEditingMajor(null); setShowMajorModal(true); }}
-                          className="w-full py-4 border-2 border-dashed border-primary/20 rounded-2xl text-primary font-black uppercase text-[10px] flex items-center justify-center gap-3 hover:bg-primary/5 transition-colors"
-                        >
-                           <span className="material-symbols-outlined">add</span>
-                           Ajouter une formation
-                        </button>
+                        <form onSubmit={async (e) => {
+                           e.preventDefault();
+                           setIsProcessing(true);
+                           const formRef = e.currentTarget;
+                           const fd = new FormData(formRef);
+                           try {
+                             if (!currentInstId) throw new Error("ID de l'institution manquant.");
+                             
+                             const careerStr = fd.get('career') as string;
+                             const diplomaStr = fd.get('diplomas') as string;
 
-                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest px-2">Filières déjà ajoutées</p>
+                             const majorPayload = {
+                               university_id: parseInt(currentInstId),
+                               faculty_id: fd.get('faculty_id') ? parseInt(fd.get('faculty_id') as string) : null,
+                               name: fd.get('name') as string,
+                               domain: fd.get('domain') as string,
+                               level: fd.get('level') as string,
+                               duration: fd.get('duration') as string,
+                               fees: fd.get('fees') as string,
+                               location: currentUni?.location || 'Bénin',
+                               career_prospects: careerStr ? careerStr.split(',').map(s => s.trim()) : [],
+                               required_diplomas: diplomaStr ? diplomaStr.split(',').map(s => s.trim()) : []
+                             };
+
+                             await addMajor(majorPayload);
+                             formRef.reset();
+                             // Le addMajor appelle déjà refreshData, mais on force un petit délai ou un nouvel appel si besoin
+                             await refreshData();
+                           } catch (err: any) {
+                             alert("Erreur lors de l'ajout de la filière : " + err.message);
+                           } finally {
+                             setIsProcessing(false);
+                           }
+                        }} className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-6">
+                           
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Composante de rattachement</label>
+                              <select name="faculty_id" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
+                                 <option value="">-- Sélectionner une faculté / école --</option>
+                                 {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
+                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                 ))}
+                              </select>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la filière</label>
+                              <input name="name" required placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label>
+                                 <input name="domain" required placeholder="ex: Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label>
+                                 <select name="level" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
+                                    <option value="Licence">Licence</option>
+                                    <option value="Master">Master</option>
+                                    <option value="Doctorat">Doctorat</option>
+                                 </select>
+                              </div>
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 3 Ans)</label>
+                                 <input name="duration" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité (ex: 400.000 FCFA)</label>
+                                 <input name="fees" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              </div>
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Débouchés (séparés par des virgules)</label>
+                              <textarea name="career" placeholder="ex: Développeur, Chef de projet, Consultant" rows={2} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Diplômes requis (séparés par des virgules)</label>
+                              <textarea name="diplomas" placeholder="ex: BAC C, BAC D, BAC E" rows={2} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                           </div>
+
+                           <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">
+                              {isProcessing ? "Enregistrement..." : "+ Ajouter la filière"}
+                           </button>
+                        </form>
+
+                        <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                           <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Filières déjà ajoutées</label>
                            {currentInstMajors.map(m => (
-                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5">
-                                 <div>
-                                    <p className="font-black text-xs text-white uppercase tracking-wider">{m.name}</p>
-                                    <p className="text-[9px] text-gray-500 font-bold uppercase">{m.level} • {m.domain}</p>
+                              <div key={m.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5 hover:bg-white/10 transition-colors">
+                                 <div className="text-left">
+                                    <p className="font-black text-xs text-white uppercase tracking-wider leading-none">{m.name}</p>
+                                    <p className="text-[9px] text-gray-500 font-bold mt-1 uppercase">
+                                      {m.level} • {m.domain} • {m.facultyName || 'Tronc commun'}
+                                    </p>
                                  </div>
-                                 <div className="flex gap-2">
-                                    <button onClick={() => { setEditingMajor(m); setShowMajorModal(true); }} className="material-symbols-outlined text-gray-500 hover:text-primary text-sm transition-colors">edit</button>
-                                    <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-500 text-sm hover:scale-110 transition-transform">delete</button>
-                                 </div>
+                                 <button onClick={() => deleteMajor(m.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button>
                               </div>
                            ))}
                            {currentInstMajors.length === 0 && (
-                              <div className="text-center py-10 opacity-30 border border-dashed border-white/10 rounded-3xl">
-                                 <span className="material-symbols-outlined text-4xl">inventory_2</span>
-                                 <p className="text-[10px] font-black uppercase tracking-widest mt-2">Aucune filière configurée</p>
+                              <div className="text-center py-8 bg-white/2 rounded-2xl border border-dashed border-white/5">
+                                 <span className="material-symbols-outlined text-gray-700 text-3xl mb-2">inventory_2</span>
+                                 <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Aucune filière configurée</p>
                               </div>
                            )}
                         </div>
 
-                        <div className="flex gap-4 pt-6">
-                           <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] hover:text-white transition-colors">Retour</button>
-                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] rounded-2xl hover:scale-105 transition-transform">Terminer</button>
+                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
+                           <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
+                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer la configuration</button>
                         </div>
                      </div>
                    )}
                 </div>
-             </div>
-          </div>
-        )}
-
-        {/* MODAL: ÉDITEUR DE FILIÈRE (STANDALONE) */}
-        {showMajorModal && (
-          <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-             <div className="bg-[#162a1f] w-full max-w-xl rounded-[40px] shadow-2xl border border-white/5 animate-in zoom-in-95 my-auto">
-                <div className="px-8 py-6 border-b border-white/5 flex justify-between items-center text-left">
-                   <h3 className="text-xl font-black text-white">{editingMajor ? 'Modifier' : 'Ajouter'} une filière</h3>
-                   <button onClick={() => { setShowMajorModal(false); setEditingMajor(null); }} className="text-gray-400 hover:text-red-500 transition-colors">
-                      <span className="material-symbols-outlined">close</span>
-                   </button>
-                </div>
-                <form onSubmit={handleMajorFormSubmit} className="p-8 space-y-6 text-left">
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Établissement</label>
-                     <select 
-                       name="university_id" 
-                       required 
-                       defaultValue={editingMajor?.universityId || currentInstId || ''} 
-                       className="w-full p-4 rounded-xl bg-[#0d1b13] text-white border-none font-bold outline-none focus:ring-2 focus:ring-primary/20"
-                     >
-                        <option value="" disabled>-- Choisir l'école --</option>
-                        {universities.map(u => <option key={u.id} value={u.id}>{u.acronym} - {u.name}</option>)}
-                     </select>
-                  </div>
-                  <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la formation</label>
-                     <input name="name" required defaultValue={editingMajor?.name} placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label>
-                        <input name="domain" required defaultValue={editingMajor?.domain} placeholder="ex: Informatique" className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label>
-                        <select name="level" defaultValue={editingMajor?.level} className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold outline-none focus:ring-2 focus:ring-primary/20">
-                           <option value="Licence">Licence</option>
-                           <option value="Master">Master</option>
-                           <option value="Doctorat">Doctorat</option>
-                        </select>
-                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 3 Ans)</label>
-                        <input name="duration" required defaultValue={editingMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Frais (ex: 400.000 FCFA)</label>
-                        <input name="fees" required defaultValue={editingMajor?.fees} className="w-full p-4 rounded-xl bg-white/5 text-white border-none font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                     </div>
-                  </div>
-                  <button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all disabled:opacity-50">
-                    {isProcessing ? 'Traitement...' : editingMajor ? 'Mettre à jour' : 'Enregistrer la filière'}
-                  </button>
-                </form>
              </div>
           </div>
         )}
