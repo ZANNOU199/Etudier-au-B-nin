@@ -122,26 +122,24 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     try {
+      // 1. Universités (Public)
       const uniRes = await fetch(`${API_BASE_URL}/universities`);
       if (uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        const mappedUnis: University[] = rawUnis.map((u: any) => ({
+        setUniversities(rawUnis.map((u: any) => ({
           ...u,
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
           stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
           faculties: u.faculties || []
-        }));
-        setUniversities(mappedUnis);
+        })));
       }
 
       if (token) {
-        // Correction de la route : pour les admins, on utilise /admin/applications
-        const appEndpoint = userRole === 'student' ? '/applications' : '/admin/applications';
-        const appRes = await apiRequest(appEndpoint).catch(() => null);
-        
-        if (appRes && appRes.ok) {
+        // 2. Candidatures (Sécure - Fallback silencieux car facultatif pour le rendu immédiat)
+        try {
+          const appRes = await apiRequest('/applications');
           const appData = await appRes.json();
           const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
           setApplications(rawApps.map((a: any) => ({
@@ -150,18 +148,23 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: a.status || 'En attente',
             majorId: a.major_id?.toString()
           })));
+        } catch (e) {
+          console.warn("Impossible de charger les candidatures (Route indisponible ou accès restreint)");
         }
 
+        // 3. Filières (Admin seulement)
         if (userRole !== 'student') {
-          const majorRes = await apiRequest('/admin/majors');
-          if (majorRes.ok) {
+          try {
+            const majorRes = await apiRequest('/admin/majors');
             const majorData = await majorRes.json();
             setMajors(Array.isArray(majorData) ? majorData : (majorData.data || []));
+          } catch (e) {
+            console.warn("Impossible de charger le catalogue des filières admin");
           }
         }
       }
     } catch (err) {
-      setApiError("Erreur de synchronisation.");
+      console.error("Refresh Data failed:", err);
     } finally {
       setIsLoading(false);
     }
