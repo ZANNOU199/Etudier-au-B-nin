@@ -148,7 +148,7 @@ const AdminDashboard: React.FC = () => {
            throw new Error("L'ID de l'établissement n'a pas pu être récupéré.");
         }
       }
-      // Règle : Tous les établissements passent par l'étape des composantes
+      // Changement majeur : on va toujours à l'étape 'faculties' (appelée Départements pour les écoles)
       setWizardStep('faculties');
     } catch (err: any) {
       alert("Erreur : " + err.message);
@@ -622,14 +622,9 @@ const AdminDashboard: React.FC = () => {
                    {wizardStep === 'faculties' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="text-center space-y-2">
-                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">
-                             {isSchoolKind ? 'Départements / Entités' : 'Composantes internes'}
-                           </h4>
+                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">{isSchoolKind ? 'Départements / Entités' : 'Composantes internes'}</h4>
                            <p className="text-gray-500 font-medium text-sm">
-                             {isSchoolKind 
-                               ? 'Ajoutez les départements ou spécialisations de cette école.' 
-                               : 'Ajoutez les écoles ou facultés rattachées à cet établissement.'
-                             }
+                             {isSchoolKind ? 'Ajoutez les départements rattachés à cette école.' : 'Ajoutez les écoles ou facultés rattachées à cet établissement.'}
                            </p>
                         </div>
                         
@@ -646,7 +641,7 @@ const AdminDashboard: React.FC = () => {
                              await addFaculty({
                                university_id: uniId,
                                name: fd.get('fName') as string,
-                               description: 'Entité académique spécialisée',
+                               description: 'Composante académique spécialisée',
                                type: isSchoolKind ? 'Ecole' : 'Faculté'
                              });
                              formRef.reset(); 
