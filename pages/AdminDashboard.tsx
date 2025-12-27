@@ -36,6 +36,7 @@ const AdminDashboard: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
+  const [selectedMajor, setSelectedMajor] = useState<Major | null>(null); // Stocke la filière en cours d'édition
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
@@ -84,11 +85,6 @@ const AdminDashboard: React.FC = () => {
     [universities, currentInstId]
   );
   
-  const currentInstMajors = useMemo(() => {
-    if (!currentInstId) return [];
-    return majors.filter(m => String(m.universityId) === String(currentInstId));
-  }, [majors, currentInstId]);
-
   const handleStatusUpdate = async (id: string, status: string) => {
     try {
       await updateApplicationStatus(id, status);
@@ -103,6 +99,23 @@ const AdminDashboard: React.FC = () => {
     setEstablishmentStatus(uni.type);
     setIsEditing(true);
     setWizardStep('institution');
+    setShowWizard(true);
+  };
+
+  // Nouvelle fonction pour charger l'édition d'une filière
+  const openWizardForEditMajor = (major: Major) => {
+    setSelectedMajor(major);
+    setCurrentInstId(major.universityId || null);
+    
+    // Déterminer si c'est une école ou une université parente
+    const parent = universities.find(u => u.id === major.universityId);
+    if (parent) {
+      setIsSchoolKind(!!parent.isStandaloneSchool);
+      setEstablishmentStatus(parent.type);
+    }
+
+    setIsEditing(true);
+    setWizardStep('majors');
     setShowWizard(true);
   };
 
@@ -291,7 +304,7 @@ const AdminDashboard: React.FC = () => {
                         {pagedApps.map((app) => (
                           <tr key={app.id} className="hover:bg-gray-50 dark:hover:bg-white/2 transition-colors">
                             <td className="px-8 py-6">
-                              <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-4 text-left">
                                 <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xs uppercase">
                                   {app.studentName.slice(0, 2)}
                                 </div>
@@ -409,7 +422,7 @@ const AdminDashboard: React.FC = () => {
                          placeholder="Chercher une filière..." 
                          value={majorSearch}
                          onChange={(e) => { setMajorSearch(e.target.value); setMajorsPage(1); }}
-                         className="w-full pl-12 pr-4 py-3 bg-white dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-white/10 outline-none text-xs font-bold dark:text-white"
+                         className="w-full pl-12 pr-4 py-3 bg-white dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-white/10 outline-none text-xs font-bold dark:text-white focus:ring-2 focus:ring-primary/20"
                        />
                     </div>
                   )}
@@ -444,7 +457,7 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       ))}
                       
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); setSelectedMajor(null); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                            <span className="material-symbols-outlined text-3xl font-bold">add</span>
                         </div>
@@ -452,7 +465,7 @@ const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
 
-                    {totalAppsPages > 1 && (
+                    {Math.ceil(filteredUnis.length / UNI_PER_PAGE) > 1 && (
                       <div className="flex justify-center gap-2 mt-10">
                          {Array.from({ length: Math.ceil(filteredUnis.length / UNI_PER_PAGE) }).map((_, i) => (
                             <button 
@@ -472,29 +485,52 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-[#0d1b13] p-10 rounded-[48px] border border-white/5 space-y-10 shadow-2xl">
                     <div className="overflow-x-auto rounded-[32px] border border-white/5 bg-white/2">
                        <table className="w-full text-left border-collapse min-w-[1000px]">
-                          <thead className="border-b border-white/5">
+                          <thead className="border-b border-white/5 bg-white/2">
                              <tr>
-                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Formation</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Formation / Niveau</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Établissement</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Domaine</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Scolarité</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-primary uppercase tracking-[0.2em] text-right">Actions</th>
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                              {pagedMajors.map(major => (
                                <tr key={major.id} className="hover:bg-white/2 transition-colors">
-                                  <td className="px-8 py-5">
+                                  <td className="px-8 py-5 text-left">
                                      <div className="space-y-1">
-                                        <p className="text-white font-black">{major.name}</p>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{major.level} • {major.duration}</p>
+                                        <p className="text-white font-black text-sm">{major.name}</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                          <span className="text-amber-400">{major.level}</span> • {major.duration}
+                                        </p>
                                      </div>
                                   </td>
-                                  <td className="px-8 py-5">
-                                     <p className="text-[10px] font-black text-primary uppercase tracking-widest">{major.domain}</p>
+                                  <td className="px-8 py-5 text-left">
+                                     <div className="space-y-1">
+                                       <p className="text-sm font-black text-gray-300 leading-none">{major.universityName}</p>
+                                       <p className="text-[9px] text-gray-500 font-bold italic truncate max-w-[200px]">{major.facultyName}</p>
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-5 text-left">
+                                     <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-[9px] font-black text-primary uppercase tracking-widest">{major.domain}</span>
+                                  </td>
+                                  <td className="px-8 py-5 text-left">
+                                     <p className="text-sm font-black text-gray-400">{major.fees}</p>
                                   </td>
                                   <td className="px-8 py-5 text-right">
                                      <div className="flex justify-end gap-3">
-                                        
-                                        <button onClick={() => deleteMajor(major.id)} className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-red-500 transition-all">
+                                        <button 
+                                          onClick={() => openWizardForEditMajor(major)}
+                                          className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-primary transition-all flex items-center justify-center border border-white/5"
+                                          title="Modifier la filière"
+                                        >
+                                           <span className="material-symbols-outlined text-lg">edit</span>
+                                        </button>
+                                        <button 
+                                          onClick={() => { if(window.confirm('Supprimer cette filière ?')) deleteMajor(major.id); }}
+                                          className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-red-500 transition-all flex items-center justify-center border border-white/5"
+                                          title="Supprimer la filière"
+                                        >
                                            <span className="material-symbols-outlined text-lg">delete</span>
                                         </button>
                                      </div>
@@ -511,7 +547,7 @@ const AdminDashboard: React.FC = () => {
                             <button 
                                key={i} 
                                onClick={() => setMajorsPage(i + 1)}
-                               className={`size-10 rounded-xl font-black text-xs transition-all ${majorsPage === i + 1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}
+                               className={`size-10 rounded-xl font-black text-xs transition-all ${majorsPage === i + 1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500 border border-white/5'}`}
                             >
                                {i + 1}
                             </button>
@@ -524,19 +560,19 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* MODAL: INSTITUTION WIZARD */}
+        {/* MODAL: INSTITUTION & MAJOR WIZARD */}
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
                    <div className="text-left">
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Établissement</h3>
+                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Élément</h3>
                       <div className="flex items-center gap-2 mt-2">
                          <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
                       </div>
                    </div>
-                   <button onClick={() => setShowWizard(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
+                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                       <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
@@ -575,7 +611,7 @@ const AdminDashboard: React.FC = () => {
                            </div>
                            <div className="md:col-span-2 pt-6">
                               <button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all disabled:opacity-50">
-                                 {isProcessing ? "Traitement..." : "Continuer"}
+                                 {isProcessing ? "Traitement..." : "Enregistrer & Continuer"}
                               </button>
                            </div>
                         </form>
@@ -641,8 +677,8 @@ const AdminDashboard: React.FC = () => {
                    {wizardStep === 'majors' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="text-center space-y-2">
-                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">Filières & Formations</h4>
-                           <p className="text-gray-500 font-medium text-sm">Ajoutez les filières rattachées à cet établissement.</p>
+                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing && selectedMajor ? 'Édition Filière' : 'Filières & Formations'}</h4>
+                           <p className="text-gray-500 font-medium text-sm">Établissement : <span className="text-primary font-black">{currentUni?.name}</span></p>
                         </div>
 
                         <form onSubmit={async (e) => {
@@ -653,10 +689,7 @@ const AdminDashboard: React.FC = () => {
                            try {
                              if (!currentInstId) throw new Error("ID de l'institution manquant.");
                              
-                             const careerStr = fd.get('career') as string;
-                             const diplomaStr = fd.get('diplomas') as string;
-
-                             const majorPayload = {
+                             const majorPayload: any = {
                                university_id: parseInt(currentInstId),
                                faculty_id: fd.get('faculty_id') ? parseInt(fd.get('faculty_id') as string) : null,
                                name: fd.get('name') as string,
@@ -665,15 +698,20 @@ const AdminDashboard: React.FC = () => {
                                duration: fd.get('duration') as string,
                                fees: fd.get('fees') as string,
                                location: currentUni?.location || 'Bénin',
-                               career_prospects: careerStr ? careerStr.split(',').map(s => s.trim()) : [],
-                               required_diplomas: diplomaStr ? diplomaStr.split(',').map(s => s.trim()) : []
                              };
 
-                             await addMajor(majorPayload);
+                             if (isEditing && selectedMajor) {
+                               await updateMajor({ ...selectedMajor, ...majorPayload });
+                             } else {
+                               await addMajor(majorPayload);
+                             }
+
                              formRef.reset();
+                             setSelectedMajor(null);
+                             if (isEditing) setShowWizard(false);
                              await refreshData();
                            } catch (err: any) {
-                             alert("Erreur lors de l'ajout de la filière : " + err.message);
+                             alert("Erreur lors de l'enregistrement : " + err.message);
                            } finally {
                              setIsProcessing(false);
                            }
@@ -681,8 +719,18 @@ const AdminDashboard: React.FC = () => {
                            
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Composante de rattachement</label>
-                              <select name="faculty_id" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
-                                 <option value="">-- Sélectionner une faculté / école --</option>
+                              <select 
+                                name="faculty_id" 
+                                defaultValue={selectedMajor?.faculty_id || ""}
+                                className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"
+                              >
+                                 {/* Si c'est une école autonome ou si aucune faculté n'existe, on affiche le nom de l'établissement par défaut */}
+                                 {isSchoolKind || !currentUni?.faculties || currentUni.faculties.length === 0 ? (
+                                    <option value="">{currentUni?.name || 'Établissement direct'}</option>
+                                 ) : (
+                                    <option value="">-- Tronc Commun / Général --</option>
+                                 )}
+                                 
                                  {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
                                     <option key={f.id} value={f.id}>{f.name}</option>
                                  ))}
@@ -691,17 +739,17 @@ const AdminDashboard: React.FC = () => {
 
                            <div className="space-y-2">
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la filière</label>
-                              <input name="name" required placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                              <input name="name" required defaultValue={selectedMajor?.name} placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            </div>
 
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label>
-                                 <input name="domain" required placeholder="ex: Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <input name="domain" required defaultValue={selectedMajor?.domain} placeholder="ex: Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
                               <div className="space-y-2">
                                  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label>
-                                 <select name="level" className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
+                                 <select name="level" defaultValue={selectedMajor?.level || "Licence"} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20">
                                     <option value="Licence">Licence</option>
                                     <option value="Master">Master</option>
                                     <option value="Doctorat">Doctorat</option>
@@ -712,22 +760,26 @@ const AdminDashboard: React.FC = () => {
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée (ex: 3 Ans)</label>
-                                 <input name="duration" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <input name="duration" required defaultValue={selectedMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
                               <div className="space-y-2">
                                  <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité (ex: 400.000 FCFA)</label>
-                                 <input name="fees" required className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                                 <input name="fees" required defaultValue={selectedMajor?.fees} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                               </div>
                            </div>
 
                            <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">
-                              {isProcessing ? "Enregistrement..." : "+ Ajouter la filière"}
+                              {isProcessing ? "Enregistrement..." : isEditing ? "Mettre à jour la filière" : "+ Ajouter la filière"}
                            </button>
                         </form>
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
-                           <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
-                           <button onClick={() => { setShowWizard(false); refreshData(); }} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Terminer</button>
+                           {!isEditing && (
+                              <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
+                           )}
+                           <button onClick={() => { setShowWizard(false); setSelectedMajor(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">
+                             {isEditing ? "Annuler" : "Terminer"}
+                           </button>
                         </div>
                      </div>
                    )}
