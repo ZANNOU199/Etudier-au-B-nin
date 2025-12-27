@@ -148,7 +148,8 @@ const AdminDashboard: React.FC = () => {
            throw new Error("L'ID de l'établissement n'a pas pu être récupéré.");
         }
       }
-      setWizardStep(!isSchoolKind ? 'faculties' : 'majors');
+      // Règle : Tous les établissements passent par l'étape des composantes
+      setWizardStep('faculties');
     } catch (err: any) {
       alert("Erreur : " + err.message);
     } finally {
@@ -621,8 +622,15 @@ const AdminDashboard: React.FC = () => {
                    {wizardStep === 'faculties' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="text-center space-y-2">
-                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">Composantes internes</h4>
-                           <p className="text-gray-500 font-medium text-sm">Ajoutez les écoles ou facultés rattachées à cet établissement.</p>
+                           <h4 className="text-2xl font-black text-white tracking-tight leading-none">
+                             {isSchoolKind ? 'Départements / Entités' : 'Composantes internes'}
+                           </h4>
+                           <p className="text-gray-500 font-medium text-sm">
+                             {isSchoolKind 
+                               ? 'Ajoutez les départements ou spécialisations de cette école.' 
+                               : 'Ajoutez les écoles ou facultés rattachées à cet établissement.'
+                             }
+                           </p>
                         </div>
                         
                         <form onSubmit={async (e) => {
@@ -638,8 +646,8 @@ const AdminDashboard: React.FC = () => {
                              await addFaculty({
                                university_id: uniId,
                                name: fd.get('fName') as string,
-                               description: 'Composante académique spécialisée',
-                               type: 'Faculté'
+                               description: 'Entité académique spécialisée',
+                               type: isSchoolKind ? 'Ecole' : 'Faculté'
                              });
                              formRef.reset(); 
                              await refreshData();
@@ -649,9 +657,9 @@ const AdminDashboard: React.FC = () => {
                              setIsProcessing(false);
                            }
                         }} className="p-6 bg-white/5 rounded-[32px] border border-white/5 space-y-4">
-                           <input name="fName" required placeholder="Nom de la composante (ex: EPAC, FASEG)" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                           <input name="fName" required placeholder={isSchoolKind ? "Nom du département (ex: Génie Civil)" : "Nom de la composante (ex: EPAC, FASEG)"} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                            <button type="submit" disabled={isProcessing} className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all disabled:opacity-50">
-                              {isProcessing ? "Enregistrement..." : "+ Ajouter la composante"}
+                              {isProcessing ? "Enregistrement..." : isSchoolKind ? "+ Ajouter le département" : "+ Ajouter la composante"}
                            </button>
                         </form>
 
@@ -663,7 +671,7 @@ const AdminDashboard: React.FC = () => {
                               </div>
                            ))}
                            {(!currentUni?.faculties || currentUni.faculties.length === 0) && (
-                              <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-4">Aucune composante ajoutée</p>
+                              <p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-4">Aucun élément ajouté</p>
                            )}
                         </div>
 
@@ -718,18 +726,13 @@ const AdminDashboard: React.FC = () => {
                         }} className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-6">
                            
                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Composante de rattachement</label>
+                              <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">{isSchoolKind ? 'Département de rattachement' : 'Composante de rattachement'}</label>
                               <select 
                                 name="faculty_id" 
                                 defaultValue={selectedMajor?.faculty_id || ""}
                                 className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"
                               >
-                                 {/* Si c'est une école autonome ou si aucune faculté n'existe, on affiche le nom de l'établissement par défaut */}
-                                 {isSchoolKind || !currentUni?.faculties || currentUni.faculties.length === 0 ? (
-                                    <option value="">{currentUni?.name || 'Établissement direct'}</option>
-                                 ) : (
-                                    <option value="">-- Tronc Commun / Général --</option>
-                                 )}
+                                 <option value="">{currentUni?.name || 'Établissement direct'}</option>
                                  
                                  {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
                                     <option key={f.id} value={f.id}>{f.name}</option>
@@ -775,7 +778,7 @@ const AdminDashboard: React.FC = () => {
 
                         <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">
                            {!isEditing && (
-                              <button onClick={() => setWizardStep(!isSchoolKind ? 'faculties' : 'institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
+                              <button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>
                            )}
                            <button onClick={() => { setShowWizard(false); setSelectedMajor(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">
                              {isEditing ? "Annuler" : "Terminer"}
