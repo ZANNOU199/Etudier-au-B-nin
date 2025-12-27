@@ -33,7 +33,7 @@ const Home: React.FC = () => {
       const matchesMajor = institutionMajors.some(m => m.name.toLowerCase().includes(query));
       
       return matchesMajor;
-    }).slice(0, 4); 
+    }).slice(0, 6); 
   }, [searchQuery, cityFilter, universities, majors]);
 
   const handleSearchClick = () => {
