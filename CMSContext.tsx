@@ -138,6 +138,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             location: u.city || u.location || 'Bénin',
             // NORMALISATION DU TYPE POUR LES FILTRES
             type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
+            // LECTURE DU CHAMP is_standalone DEPUIS L'API
+            isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
             stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
             faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
           })));
