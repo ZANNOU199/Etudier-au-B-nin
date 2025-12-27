@@ -36,7 +36,7 @@ const AdminDashboard: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
-  const [selectedMajor, setSelectedMajor] = useState<Major | null>(null); // Stocke la filière en cours d'édition
+  const [selectedMajor, setSelectedMajor] = useState<Major | null>(null);
   const [isSchoolKind, setIsSchoolKind] = useState(false);
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
@@ -44,7 +44,6 @@ const AdminDashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // Filtrage des candidatures
   const filteredApps = useMemo(() => {
     return applications.filter(a => 
       a.majorName.toLowerCase().includes(appSearch.toLowerCase()) ||
@@ -56,7 +55,6 @@ const AdminDashboard: React.FC = () => {
   const pagedApps = filteredApps.slice((appsPage - 1) * APPS_PER_PAGE, appsPage * APPS_PER_PAGE);
   const totalAppsPages = Math.ceil(filteredApps.length / APPS_PER_PAGE);
 
-  // Filtrage des filières (Majors)
   const filteredMajorsList = useMemo(() => {
     return majors.filter(m => 
       m.name.toLowerCase().includes(majorSearch.toLowerCase()) ||
@@ -68,7 +66,6 @@ const AdminDashboard: React.FC = () => {
   const pagedMajors = filteredMajorsList.slice((majorsPage - 1) * MAJORS_PER_PAGE, majorsPage * MAJORS_PER_PAGE);
   const totalMajorsPages = Math.ceil(filteredMajorsList.length / MAJORS_PER_PAGE);
 
-  // Filtrage des universités pour la vue principale
   const filteredUnis = useMemo(() => {
     return universities.filter(u => {
       if (establishmentFilter === 'university') return !u.isStandaloneSchool;
@@ -79,7 +76,6 @@ const AdminDashboard: React.FC = () => {
 
   const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
-  // Établissement actuellement sélectionné dans le Wizard
   const currentUni = useMemo(() => 
     universities.find(u => String(u.id) === String(currentInstId)), 
     [universities, currentInstId]
@@ -102,12 +98,10 @@ const AdminDashboard: React.FC = () => {
     setShowWizard(true);
   };
 
-  // Nouvelle fonction pour charger l'édition d'une filière
   const openWizardForEditMajor = (major: Major) => {
     setSelectedMajor(major);
     setCurrentInstId(major.universityId || null);
     
-    // Déterminer si c'est une école ou une université parente
     const parent = universities.find(u => u.id === major.universityId);
     if (parent) {
       setIsSchoolKind(!!parent.isStandaloneSchool);
@@ -148,7 +142,6 @@ const AdminDashboard: React.FC = () => {
            throw new Error("L'ID de l'établissement n'a pas pu être récupéré.");
         }
       }
-      // Changement majeur : on va toujours à l'étape 'faculties' (appelée Départements pour les écoles)
       setWizardStep('faculties');
     } catch (err: any) {
       alert("Erreur : " + err.message);
@@ -724,10 +717,11 @@ const AdminDashboard: React.FC = () => {
                               <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">{isSchoolKind ? 'Département de rattachement' : 'Composante de rattachement'}</label>
                               <select 
                                 name="faculty_id" 
+                                required
                                 defaultValue={selectedMajor?.faculty_id || ""}
                                 className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"
                               >
-                                 <option value="">{currentUni?.name || 'Établissement direct'}</option>
+                                 <option value="" disabled>Sélectionnez une composante...</option>
                                  
                                  {Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (
                                     <option key={f.id} value={f.id}>{f.name}</option>
