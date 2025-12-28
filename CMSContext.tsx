@@ -64,11 +64,6 @@ const DEFAULT_THEMES: ThemeConfig[] = [
   { id: 'default', name: 'Nature', primary: '#13ec6d', background: '#0d1b13', surface: '#162a1f', radius: '2rem', isActive: true },
 ];
 
-const INITIAL_STAFF: User[] = [
-  { id: 'staff-1', firstName: 'Admin', lastName: 'Support', email: 'admin@benin.bj', role: 'admin', permissions: ['manage_catalog', 'validate_apps'] },
-  { id: 'staff-2', firstName: 'Eden', lastName: 'Super', email: 'master@eden.com', role: 'super_admin', permissions: ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] }
-];
-
 const CMSContext = createContext<CMSContextType | undefined>(undefined);
 
 export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -84,10 +79,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [universities, setUniversities] = useState<University[]>(MOCK_UNIS);
   const [majors, setMajors] = useState<Major[]>(MOCK_MAJORS);
   const [applications, setApplications] = useState<Application[]>([]);
-  const [staffUsers, setStaffUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('staff_users_v1');
-    return saved ? JSON.parse(saved) : INITIAL_STAFF;
-  });
+  const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -96,10 +88,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userRole, setUserRole] = useState<UserRole>(user?.role || 'student');
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
-
-  useEffect(() => {
-    localStorage.setItem('staff_users_v1', JSON.stringify(staffUsers));
-  }, [staffUsers]);
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
@@ -134,6 +122,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     
+    // Universités & Filières
     try {
       const [uniRes, majorRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
@@ -148,7 +137,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...u,
             id: u.id.toString(),
             location: u.city || u.location || 'Bénin',
+            // NORMALISATION DU TYPE POUR LES FILTRES
             type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
+            // LECTURE DU CHAMP is_standalone DEPUIS L'API
             isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
             stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
             faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
@@ -174,6 +165,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (e) {}
 
+    // Candidatures - Route Admin vs Student
     if (token && user) {
       try {
         const isAdmin = user.role === 'admin' || user.role === 'super_admin';
