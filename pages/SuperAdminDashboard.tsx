@@ -16,7 +16,6 @@ const SuperAdminDashboard: React.FC = () => {
     staffUsers,
     addStaffUser,
     deleteStaffUser,
-    // Fix: Removed toggleLanguage as it does not exist in CMSContextType
     languages
   } = useCMS();
   
@@ -33,8 +32,6 @@ const SuperAdminDashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      // Fix: Wrapped addUniversity and updateUniversity to match the signatures expected by processAcademicCSV
-      // and the data requirements (FormData for addition, (id, obj) for update).
       const result = await processAcademicCSV(
         file, 
         universities, 
@@ -70,27 +67,26 @@ const SuperAdminDashboard: React.FC = () => {
     const role = fd.get('role') as UserRole;
 
     try {
-      // Appel direct à l'API de register pour créer le nouveau compte
+      // Correction : Inclusion du champ 'role' dans le body pour éviter le rôle 'student' par défaut
       const response = await fetch('https://api.cipaph.com/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, password })
+        body: JSON.stringify({ firstName, lastName, email, password, role })
       });
       
       const result = await response.json();
 
-      if (result.status === "success") {
-        // Attribution automatique des permissions selon le rôle sélectionné
+      if (result.status === "success" || response.status === 201) {
         const defaultPermissions = role === 'super_admin' 
           ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
           : ['manage_catalog', 'validate_apps'];
 
         const newUser: User = {
-          id: result.user.id.toString(),
-          firstName: result.user.firstName,
-          lastName: result.user.lastName,
-          email: result.user.email,
-          role: role, // On force le rôle admin/super_admin choisi dans le formulaire
+          id: result.user?.id?.toString() || Math.random().toString(),
+          firstName: result.user?.firstName || firstName,
+          lastName: result.user?.lastName || lastName,
+          email: result.user?.email || email,
+          role: role,
           permissions: defaultPermissions
         };
         
@@ -307,9 +303,9 @@ const SuperAdminDashboard: React.FC = () => {
 
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle</label>
-                      <select name="role" className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
-                         <option value="admin" className="bg-[#162a1f]">Administrateur (Dashboard Admin)</option>
-                         <option value="super_admin" className="bg-[#162a1f]">Super Admin (Super Console)</option>
+                      <select name="role" className="w-full p-4 rounded-2xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
+                         <option value="admin">Administrateur (Dashboard Admin)</option>
+                         <option value="super_admin">Super Admin (Super Console)</option>
                       </select>
                    </div>
                    
