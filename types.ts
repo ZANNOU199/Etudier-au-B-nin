@@ -3,8 +3,8 @@ export interface University {
   id: string;
   name: string;
   acronym: string;
-  location: string;
-  city?: string;
+  location: string; // Mappé depuis 'city'
+  city?: string;    // Directement depuis l'API
   type: 'Public' | 'Privé';
   logo: string;
   cover: string;
@@ -19,11 +19,13 @@ export interface University {
   faculties: Faculty[];
 }
 
+// Added CareerProspect interface to fix missing member error
 export interface CareerProspect {
   title: string;
   icon: string;
 }
 
+// Added RequiredDiploma interface to fix missing member error
 export interface RequiredDiploma {
   name: string;
   icon: string;
@@ -35,6 +37,7 @@ export interface Faculty {
   name: string;
   description: string;
   levels: string[];
+  // Added type property used in AdminDashboard and ImportService
   type?: 'Faculté' | 'Ecole' | 'Institut';
 }
 
@@ -51,15 +54,9 @@ export interface Major {
   fees: string;
   location: string;
   image: string;
+  // Added missing careerProspects and requiredDiplomas properties
   careerProspects?: CareerProspect[];
   requiredDiplomas?: RequiredDiploma[];
-}
-
-export interface Document {
-  id?: string;
-  name?: string;
-  url: string;
-  type?: string;
 }
 
 export interface Application {
@@ -72,7 +69,8 @@ export interface Application {
   status: 'En attente' | 'Validé' | 'Rejeté' | 'En cours';
   date: string;
   primary_document_url?: string;
-  documents: Document[];
+  documents: any[];
+  // Added majorId for navigation in Dashboard.tsx
   majorId?: string;
 }
 
@@ -86,7 +84,9 @@ export interface User {
   role: UserRole;
   avatar?: string;
   token?: string;
+  // Added permissions property used in SuperAdminDashboard
   permissions?: string[];
+  // Added ine property used in Dashboard
   ine?: string;
 }
 
