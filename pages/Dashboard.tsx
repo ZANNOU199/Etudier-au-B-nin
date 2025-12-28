@@ -248,14 +248,14 @@ const Dashboard: React.FC = () => {
                                href={app.primary_document_url} 
                                target="_blank" 
                                rel="noreferrer" 
-                               className="flex items-center gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 group/doc"
+                               className="flex items-center gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 group/doc hover:bg-primary/10 transition-all"
                              >
                                 <div className="size-10 rounded-xl bg-primary text-black flex items-center justify-center shrink-0">
                                   <span className="material-symbols-outlined text-xl">description</span>
                                 </div>
                                 <div className="overflow-hidden">
                                   <p className="text-[10px] font-black text-primary uppercase tracking-widest truncate">Document Principal</p>
-                                  <p className="text-[8px] font-bold text-gray-400 italic">Preuve académique</p>
+                                  <p className="text-[8px] font-bold text-gray-400 italic">Accès direct</p>
                                 </div>
                              </a>
                            )}

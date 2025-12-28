@@ -93,13 +93,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!path) return '';
     if (path.startsWith('http')) return path;
     
-    // Si le lien symbolique ne fonctionne pas, il faut parfois forcer le passage par /public
-    // ou vérifier si /storage est déjà dans le path
-    let cleanPath = path.startsWith('/') ? path : `/${path}`;
+    // Normalisation du chemin
+    let cleanPath = path;
+    if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
+
+    // Stratégie adaptative pour cPanel :
+    // Si le chemin ne commence pas par storage/, on l'ajoute.
+    // Mais si le symlink storage:link est cassé, Laravel stocke souvent dans /public/storage
+    // On va tenter de construire l'URL la plus probable
+    if (!cleanPath.startsWith('storage/')) {
+        return `${ASSET_BASE_URL}/storage/${cleanPath}`;
+    }
     
-    // Correction spécifique pour les serveurs Laravel mal configurés
-    // On essaie de garantir que l'URL pointe vers l'asset public
-    return `${ASSET_BASE_URL}${cleanPath}`;
+    return `${ASSET_BASE_URL}/${cleanPath}`;
   };
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
