@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, ThemeConfig, CMSContent, UserRole, User, Application, University, Major, Faculty } from './types';
 import { UNIVERSITIES as MOCK_UNIS, MAJORS as MOCK_MAJORS } from './constants';
@@ -122,7 +121,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     
-    // Universités & Filières
     try {
       const [uniRes, majorRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
@@ -137,9 +135,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...u,
             id: u.id.toString(),
             location: u.city || u.location || 'Bénin',
-            // NORMALISATION DU TYPE POUR LES FILTRES
             type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
-            // LECTURE DU CHAMP is_standalone DEPUIS L'API
             isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
             stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
             faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
@@ -155,7 +151,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...m,
             id: m.id.toString(),
             universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-            facultyId: m.faculty_id?.toString(),
+            // Fix: Changed facultyId to faculty_id to match Major type in types.ts
+            faculty_id: m.faculty_id?.toString(),
             universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
             facultyName: m.faculty?.name || 'Tronc commun',
             location: m.location || m.university?.city || 'Bénin',
@@ -165,7 +162,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (e) {}
 
-    // Candidatures - Route Admin vs Student
     if (token && user) {
       try {
         const isAdmin = user.role === 'admin' || user.role === 'super_admin';
@@ -310,7 +306,15 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteUniversity = async (id: string) => {
+    // 1. Suppression API
     await apiRequest(`/admin/universities/${id}`, { method: 'DELETE' });
+    
+    // 2. FORCER LA SUPPRESSION EN CASCADE LOCALE (UI REACT)
+    // On retire l'université, mais AUSSI toutes les filières qui lui étaient liées
+    setUniversities(prev => prev.filter(u => u.id !== id));
+    setMajors(prev => prev.filter(m => m.universityId !== id));
+    
+    // 3. Rafraîchir pour être sûr
     await refreshData();
   };
 
@@ -323,6 +327,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteFaculty = async (id: string) => {
     await apiRequest(`/admin/faculties/${id}`, { method: 'DELETE' });
+    // CASCADE LOCALE : On retire aussi les majors de cette faculté
+    // Fix: Changed facultyId to faculty_id to match Major type in types.ts
+    setMajors(prev => prev.filter(m => m.faculty_id !== id));
     await refreshData();
   };
 
@@ -339,6 +346,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteMajor = async (id: string) => {
     await apiRequest(`/admin/majors/${id}`, { method: 'DELETE' });
+    setMajors(prev => prev.filter(m => m.id !== id));
     await refreshData();
   };
 
