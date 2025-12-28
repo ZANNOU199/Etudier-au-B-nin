@@ -56,6 +56,7 @@ const DEFAULT_CONTENT: CMSContent = {
   'nav_majors': { fr: "Formations", en: "Programs" },
   'nav_pricing': { fr: "Tarifs", en: "Pricing" },
   'nav_contact': { fr: "Nous Contacter", en: "Contact Us" },
+  'btn_explore': { fr: "Rechercher", en: "Search" },
   'footer_desc': { fr: "La plateforme de référence pour l'orientation, les préinscriptions et l'admission dans le supérieur au Bénin.", en: "The reference platform for orientation, pre-registration and admission to higher education in Benin." },
 };
 

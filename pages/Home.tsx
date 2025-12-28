@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Home: React.FC = () => {
   const { translate, universities, majors } = useCMS();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [cityFilter, setCityFilter] = useState('Toutes les villes');
 
@@ -21,7 +22,7 @@ const Home: React.FC = () => {
       const matchesCity = cityFilter === 'Toutes les villes' || uni.location === cityFilter;
       if (!matchesCity) return false;
       
-      // Si pas de recherche textuelle, on affiche tout (limité à 4 pour la section Recommandés)
+      // Si pas de recherche textuelle, on affiche tout (limité à 6 pour la section Recommandés)
       if (!query) return true;
 
       // Recherche par Nom ou Sigle d'établissement
@@ -89,9 +90,9 @@ const Home: React.FC = () => {
                 </div>
                 <button 
                   onClick={handleSearchClick}
-                  className="bg-primary hover:bg-green-400 text-black font-black rounded-[24px] px-12 py-5 transition-all hover:shadow-hover hover:scale-[1.02] active:scale-100 text-base shadow-xl shadow-primary/20"
+                  className="bg-primary hover:bg-green-400 text-black font-black rounded-[24px] px-12 py-5 transition-all hover:shadow-hover hover:scale-[1.02] active:scale-100 flex items-center justify-center shadow-xl shadow-primary/20"
                 >
-                  {translate('btn_explore')}
+                  <span className="material-symbols-outlined text-2xl font-black">search</span>
                 </button>
               </div>
             </div>
@@ -119,45 +120,77 @@ const Home: React.FC = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
             {filteredUniversities.length > 0 ? (
-              filteredUniversities.map(uni => (
-                <div key={uni.id} className="group bg-white dark:bg-surface-dark rounded-[50px] overflow-hidden border border-gray-100 dark:border-white/5 hover:shadow-premium transition-all duration-700 flex flex-col md:flex-row animate-fade-in">
-                  <div className="md:w-2/5 relative h-64 md:h-auto overflow-hidden">
-                    <img src={uni.cover} alt={uni.name} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-transparent to-transparent"></div>
-                    <span className={`absolute top-6 left-6 size-8 rounded-full flex items-center justify-center text-[11px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
-                      {uni.isStandaloneSchool ? 'E' : 'U'}
-                    </span>
-                  </div>
-                  <div className="p-10 md:p-12 md:w-3/5 flex flex-col justify-between">
-                    <div className="space-y-6">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20">
-                          {uni.type}
-                        </span>
-                        <div className="size-14 bg-gray-50 dark:bg-white/5 rounded-2xl flex items-center justify-center p-2.5 shadow-sm border border-gray-100 dark:border-white/10 group-hover:scale-110 transition-transform">
-                          <img src={uni.logo} alt={uni.acronym} className="max-w-full max-h-full object-contain" />
+              filteredUniversities.map(uni => {
+                // Calcul des filières correspondantes pour cette université spécifique
+                const matchedMajorsForUni = searchQuery.trim() ? majors.filter(m => 
+                  m.universityId === uni.id && 
+                  m.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+                ).slice(0, 3) : [];
+
+                return (
+                  <div key={uni.id} className="group bg-white dark:bg-surface-dark rounded-[50px] overflow-hidden border border-gray-100 dark:border-white/5 hover:shadow-premium transition-all duration-700 flex flex-col md:flex-row animate-fade-in">
+                    <div className="md:w-2/5 relative h-64 md:h-auto overflow-hidden">
+                      <img src={uni.cover} alt={uni.name} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-transparent to-transparent"></div>
+                      <span className={`absolute top-6 left-6 size-8 rounded-full flex items-center justify-center text-[11px] font-black shadow-lg ${uni.isStandaloneSchool ? 'bg-amber-400 text-black' : 'bg-primary text-black'}`}>
+                        {uni.isStandaloneSchool ? 'E' : 'U'}
+                      </span>
+                    </div>
+                    <div className="p-10 md:p-12 md:w-3/5 flex flex-col justify-between">
+                      <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20">
+                            {uni.type}
+                          </span>
+                          <div className="size-14 bg-gray-50 dark:bg-white/5 rounded-2xl flex items-center justify-center p-2.5 shadow-sm border border-gray-100 dark:border-white/10 group-hover:scale-110 transition-transform">
+                            <img src={uni.logo} alt={uni.acronym} className="max-w-full max-h-full object-contain" />
+                          </div>
                         </div>
+                        <div className="space-y-2">
+                          <h3 className="text-2xl font-black text-text-main dark:text-white tracking-tighter leading-none group-hover:text-primary transition-colors">
+                            {uni.name} ({uni.acronym})
+                          </h3>
+                          <p className="text-sm font-bold text-gray-500 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg text-primary">location_on</span>
+                            {uni.location}
+                          </p>
+                        </div>
+
+                        {/* Affichage des filières trouvées si une recherche est active */}
+                        {matchedMajorsForUni.length > 0 && (
+                          <div className="pt-2 animate-fade-in">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs">manage_search</span>
+                              Filière(s) correspondante(s) :
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {matchedMajorsForUni.map(m => (
+                                <Link 
+                                  key={m.id} 
+                                  to={`/major/${m.id}`}
+                                  className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-[10px] font-black uppercase hover:bg-primary hover:text-black transition-all"
+                                >
+                                  {m.name}
+                                </Link>
+                              ))}
+                              {majors.filter(m => m.universityId === uni.id && m.name.toLowerCase().includes(searchQuery.toLowerCase().trim())).length > 3 && (
+                                <span className="text-[10px] font-bold text-gray-400">...</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-2">
-                        <h3 className="text-2xl font-black text-text-main dark:text-white tracking-tighter leading-none group-hover:text-primary transition-colors">
-                          {uni.name} ({uni.acronym})
-                        </h3>
-                        <p className="text-sm font-bold text-gray-500 flex items-center gap-2">
-                          <span className="material-symbols-outlined text-lg text-primary">location_on</span>
-                          {uni.location}
-                        </p>
+                      <div className="pt-8">
+                        <Link to={`/university/${uni.id}`} className="flex items-center justify-center w-full py-5 bg-gray-50 dark:bg-white/10 hover:bg-primary hover:text-black dark:text-white dark:hover:text-black font-black text-xs uppercase tracking-[0.2em] rounded-2xl transition-all border border-transparent hover:shadow-lg shadow-primary/10">
+                          Consulter les filières
+                        </Link>
                       </div>
-                    </div>
-                    <div className="pt-8">
-                      <Link to={`/university/${uni.id}`} className="flex items-center justify-center w-full py-5 bg-gray-50 dark:bg-white/10 hover:bg-primary hover:text-black dark:text-white dark:hover:text-black font-black text-xs uppercase tracking-[0.2em] rounded-2xl transition-all border border-transparent hover:shadow-lg shadow-primary/10">
-                        Consulter les filières
-                      </Link>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="col-span-full text-center py-24 bg-white dark:bg-surface-dark rounded-[50px] border-2 border-dashed border-gray-100 dark:border-white/5 animate-fade-in">
                 <span className="material-symbols-outlined text-7xl text-gray-200 mb-6">search_off</span>
@@ -177,7 +210,7 @@ const Home: React.FC = () => {
 
       {/* CTA Section */}
       <section className="py-24 px-6">
-        <div className="max-w-[1400px] mx-auto rounded-[60px] bg-background-dark p-12 md:p-24 relative overflow-hidden flex flex-col md:flex-row items-center justify-between shadow-5xl border border-white/5">
+        <div className="max-w-[1400px] mx-auto rounded-[60px] bg-background-dark p-12 md:p-24 relative overflow-hidden flex flex-col md:flex-row items-center justify-between shadow-5xl border border-white/5 text-left">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px] translate-x-1/2 -translate-y-1/2"></div>
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] -translate-x-1/2 translate-y-1/2"></div>
           
