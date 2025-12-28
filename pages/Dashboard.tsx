@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Dashboard: React.FC = () => {
-  const { user, applications, logout, refreshData, isLoading } = useCMS();
+  const { user, applications, logout, refreshData, isLoading, resolveFileUrl } = useCMS();
   const [activeTab, setActiveTab] = useState<'home' | 'applications' | 'profile'>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -15,7 +15,6 @@ const Dashboard: React.FC = () => {
     }
   }, [user, navigate]);
 
-  // Filtrage robuste basé sur l'ID de l'étudiant
   const userApplications = useMemo(() => {
     if (!user) return [];
     return applications.filter(a => String(a.studentId) === String(user.id));
@@ -79,7 +78,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-background-dark flex font-display overflow-hidden relative">
-      <aside className="hidden lg:flex w-72 flex-col bg-white dark:bg-surface-dark border-r border-gray-100 dark:border-white/5 shrink-0 h-screen sticky top-0 shadow-sm">
+      <aside className="hidden lg:flex w-72 flex-col bg-white dark:bg-surface-dark border-r border-gray-100 dark:border-white/5 shrink-0 h-screen sticky top-0 shadow-sm text-left">
         <SidebarContent />
       </aside>
 
@@ -158,35 +157,49 @@ const Dashboard: React.FC = () => {
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Suivi de mes dossiers</h3>
                     <button onClick={() => setActiveTab('applications')} className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Voir tout</button>
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {userApplications.map((app) => (
-                      <div key={app.id} className="bg-white dark:bg-surface-dark p-6 md:p-8 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 group hover:border-primary/20 transition-all shadow-sm">
-                        <div className="flex items-center gap-6 flex-1 w-full text-left">
-                           <div className={`size-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0`}>
-                              <span className="material-symbols-outlined text-2xl font-bold">description</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {userApplications.slice(0, 3).map((app) => (
+                      <div key={app.id} className="bg-white dark:bg-surface-dark p-8 rounded-[32px] border border-gray-100 dark:border-white/5 flex flex-col justify-between gap-6 group hover:border-primary/20 transition-all shadow-sm">
+                        <div className="space-y-4">
+                           <div className="flex justify-between items-start">
+                              <div className={`size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0`}>
+                                 <span className="material-symbols-outlined text-xl font-bold">description</span>
+                              </div>
+                              <span className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${
+                                app.status === 'Validé' ? 'text-primary bg-primary/10' : 
+                                app.status === 'Rejeté' ? 'text-red-500 bg-red-500/10' : 'text-amber-500 bg-amber-500/10'
+                              }`}>
+                                {app.status}
+                              </span>
                            </div>
-                           <div className="space-y-1">
-                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dossier #{app.id}</p>
-                              <h4 className="text-lg font-black dark:text-white leading-tight">{app.majorName}</h4>
-                              <p className="text-xs font-bold text-gray-500">{app.universityName}</p>
+                           <div className="space-y-1 text-left">
+                              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Dossier #{app.id}</p>
+                              <h4 className="text-lg font-black dark:text-white leading-tight line-clamp-1">{app.majorName}</h4>
+                              <p className="text-[10px] font-bold text-gray-500">{app.universityName}</p>
                            </div>
                         </div>
-                        <div className="flex items-center gap-4 w-full md:w-auto">
-                           <span className={`px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border border-gray-100 dark:border-white/10 ${
-                             app.status === 'Validé' ? 'text-primary bg-primary/10' : 
-                             app.status === 'Rejeté' ? 'text-red-500 bg-red-500/10' : 'text-amber-500 bg-amber-500/10'
-                           }`}>
-                             {app.status}
-                           </span>
-                           <button onClick={() => navigate(`/major/${app.majorId}`)} className="size-11 rounded-xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all shrink-0">
-                              <span className="material-symbols-outlined">visibility</span>
+                        <div className="flex items-center gap-3 pt-4 border-t border-gray-50 dark:border-white/5">
+                           <button onClick={() => navigate(`/major/${app.majorId}`)} className="flex-1 py-3 rounded-xl bg-gray-50 dark:bg-white/5 text-[9px] font-black uppercase tracking-widest text-gray-500 hover:text-primary transition-all flex items-center justify-center gap-2">
+                              <span className="material-symbols-outlined text-sm">visibility</span>
+                              Détails
                            </button>
+                           {app.primary_document_url && (
+                             <a 
+                               href={app.primary_document_url} 
+                               target="_blank" 
+                               rel="noreferrer" 
+                               className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:scale-105 transition-all"
+                             >
+                               <span className="material-symbols-outlined text-lg">download</span>
+                             </a>
+                           )}
                         </div>
                       </div>
                     ))}
                     {userApplications.length === 0 && (
-                      <div className="text-center py-10 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
-                        <p className="text-gray-400 text-sm">Vous n'avez pas encore de dossier en cours.</p>
+                      <div className="col-span-full text-center py-20 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
+                        <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">inbox</span>
+                        <p className="text-gray-400 text-sm font-bold">Aucun dossier actif pour le moment.</p>
                       </div>
                     )}
                   </div>
@@ -195,62 +208,104 @@ const Dashboard: React.FC = () => {
           )}
 
           {activeTab === 'applications' && (
-            <div className="space-y-6 animate-fade-in text-left">
-              <h2 className="text-3xl font-black dark:text-white tracking-tighter">Mes Candidatures</h2>
-              <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-10 animate-fade-in text-left">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter">Mes Candidatures</h2>
+                  <p className="text-gray-500 font-medium">Visualisez et gérez l'ensemble de vos dossiers académiques.</p>
+                </div>
+                <Link to="/majors" className="flex items-center gap-2 px-8 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+                  <span className="material-symbols-outlined text-lg">add</span>
+                  Nouveau Dossier
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                  {userApplications.map(app => (
-                   <div key={app.id} className="bg-white dark:bg-surface-dark p-8 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-sm">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                        <div className="space-y-4">
-                           <div className="space-y-1">
-                              <span className="text-[10px] font-black text-primary uppercase tracking-widest">Identifiant : {app.id}</span>
-                              <h3 className="text-2xl font-black dark:text-white tracking-tight">{app.majorName}</h3>
-                              <p className="text-gray-500 font-bold">{app.universityName}</p>
-                           </div>
-                           <div className="flex flex-wrap gap-2">
-                              {app.documents && app.documents.length > 0 ? app.documents.map((doc: any, i: number) => (
-                                <a 
-                                  key={i} 
-                                  href={doc.url ? `https://api.cipaph.com${doc.url}` : '#'} 
-                                  target="_blank" 
-                                  rel="noreferrer"
-                                  className="px-3 py-1 bg-gray-50 dark:bg-white/5 rounded-lg text-[10px] font-bold text-gray-400 border border-gray-100 dark:border-gray-800 flex items-center gap-1 hover:text-primary transition-colors"
-                                >
-                                   <span className="material-symbols-outlined text-xs">attach_file</span>
-                                   Pièce jointe #{i+1}
-                                </a>
-                              )) : (
-                                <span className="text-[10px] text-gray-500 italic">Aucun document attaché</span>
-                              )}
-                              {app.primary_document_url && (
-                                <a 
-                                  href={app.primary_document_url} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  className="px-3 py-1 bg-primary/10 rounded-lg text-[10px] font-bold text-primary border border-primary/20 flex items-center gap-1"
-                                >
-                                  <span className="material-symbols-outlined text-xs">description</span>
-                                  Document Principal
-                                </a>
-                              )}
-                           </div>
+                   <div key={app.id} className="bg-white dark:bg-surface-dark p-10 rounded-[40px] border border-gray-100 dark:border-white/5 shadow-premium flex flex-col gap-8 group hover:-translate-y-1 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1 text-left">
+                           <span className="text-[9px] font-black text-primary uppercase tracking-widest">Référence : {app.id}</span>
+                           <h3 className="text-2xl font-black dark:text-white tracking-tight leading-tight">{app.majorName}</h3>
+                           <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">{app.universityName}</p>
                         </div>
-                        <div className="text-left md:text-right space-y-2">
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Soumis le {app.date}</p>
-                           <span className={`inline-block px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                             app.status === 'Validé' ? 'bg-primary text-black' : 
-                             app.status === 'Rejeté' ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'
-                           }`}>
-                             {app.status}
-                           </span>
+                        <span className={`inline-block px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                          app.status === 'Validé' ? 'bg-primary text-black' : 
+                          app.status === 'Rejeté' ? 'bg-red-500 text-white' : 'bg-amber-400 text-black'
+                        }`}>
+                          {app.status}
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                          <span className="material-symbols-outlined text-sm">folder</span>
+                          Documents joints
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                           {app.primary_document_url && (
+                             <a 
+                               href={app.primary_document_url} 
+                               target="_blank" 
+                               rel="noreferrer" 
+                               className="flex items-center gap-3 p-4 bg-primary/5 rounded-2xl border border-primary/20 group/doc"
+                             >
+                                <div className="size-10 rounded-xl bg-primary text-black flex items-center justify-center shrink-0">
+                                  <span className="material-symbols-outlined text-xl">description</span>
+                                </div>
+                                <div className="overflow-hidden">
+                                  <p className="text-[10px] font-black text-primary uppercase tracking-widest truncate">Document Principal</p>
+                                  <p className="text-[8px] font-bold text-gray-400 italic">Preuve académique</p>
+                                </div>
+                             </a>
+                           )}
+                           
+                           {app.documents && app.documents.length > 0 ? app.documents.map((doc: any, i: number) => {
+                             const docUrl = resolveFileUrl(doc.url);
+                             return (
+                               <a 
+                                 key={i} 
+                                 href={docUrl} 
+                                 target="_blank" 
+                                 rel="noreferrer"
+                                 className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 group/doc hover:border-primary/30 transition-all"
+                               >
+                                  <div className="size-10 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-400 flex items-center justify-center shrink-0 group-hover/doc:text-primary transition-colors">
+                                    <span className="material-symbols-outlined text-xl">attach_file</span>
+                                  </div>
+                                  <div className="overflow-hidden">
+                                    <p className="text-[10px] font-black text-gray-500 dark:text-gray-300 uppercase tracking-widest truncate">Pièce #{i+1}</p>
+                                    <p className="text-[8px] font-bold text-gray-400 italic">Document annexe</p>
+                                  </div>
+                               </a>
+                             );
+                           }) : null}
                         </div>
+                        {(!app.primary_document_url && (!app.documents || app.documents.length === 0)) && (
+                          <div className="p-4 bg-red-500/5 rounded-2xl border border-red-500/10 flex items-center gap-3 text-red-500">
+                             <span className="material-symbols-outlined text-xl">warning</span>
+                             <p className="text-[9px] font-bold uppercase tracking-widest leading-none">Attention : Aucun document n'est attaché à ce dossier.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-6 border-t border-gray-50 dark:border-white/5 flex items-center justify-between">
+                         <div className="flex items-center gap-2 text-gray-400">
+                            <span className="material-symbols-outlined text-sm">event</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Soumis le {app.date}</p>
+                         </div>
+                         <button onClick={() => navigate(`/major/${app.majorId}`)} className="text-[9px] font-black text-primary uppercase tracking-widest hover:underline flex items-center gap-2">
+                           Revoir la filière
+                           <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                         </button>
                       </div>
                    </div>
                  ))}
                  {userApplications.length === 0 && (
-                   <div className="text-center py-20 bg-white dark:bg-surface-dark rounded-[40px] border border-dashed border-gray-200">
+                   <div className="col-span-full text-center py-20 bg-white dark:bg-surface-dark rounded-[40px] border border-dashed border-gray-200">
+                     <span className="material-symbols-outlined text-6xl text-gray-200 mb-4">folder_off</span>
                      <p className="text-gray-500 font-bold">Vous n'avez aucune candidature enregistrée.</p>
-                     <Link to="/majors" className="inline-block mt-4 text-primary font-black uppercase text-xs tracking-widest hover:underline">Déposer un dossier</Link>
+                     <Link to="/majors" className="inline-block mt-4 text-primary font-black uppercase text-xs tracking-widest hover:underline">Déposer mon premier dossier</Link>
                    </div>
                  )}
               </div>
@@ -264,48 +319,58 @@ const Dashboard: React.FC = () => {
                 <p className="text-gray-500 font-medium">Gérez vos informations personnelles et académiques.</p>
               </div>
 
-              <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 border border-gray-100 dark:border-white/5 shadow-sm space-y-10">
-                <div className="flex items-center gap-8 border-b border-gray-50 dark:border-white/5 pb-10">
-                   <div className="size-24 rounded-[32px] bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+              <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 border border-gray-100 dark:border-white/5 shadow-sm space-y-10 text-left">
+                <div className="flex flex-col sm:flex-row items-center gap-8 border-b border-gray-50 dark:border-white/5 pb-10 text-left">
+                   <div className="size-24 rounded-[32px] bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shrink-0">
                       <span className="material-symbols-outlined text-5xl font-bold">person</span>
                    </div>
-                   <div className="space-y-1">
+                   <div className="space-y-1 text-center sm:text-left">
                       <h3 className="text-3xl font-black dark:text-white tracking-tight">{user.firstName} {user.lastName}</h3>
-                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Candidat Session 2024</p>
-                      <span className="inline-block px-4 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase mt-2">Compte Vérifié</span>
+                      <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Candidat Session 2024 • ID #{displayId}</p>
+                      <div className="flex flex-wrap justify-center sm:justify-start gap-2 pt-2">
+                        <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase border border-primary/20">Compte Vérifié</span>
+                        <span className="inline-block px-4 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 text-[9px] font-black uppercase">Email: {user.email}</span>
+                      </div>
                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nom complet</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Identité complète</label>
+                      <div className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white flex items-center gap-4">
+                         <span className="material-symbols-outlined text-gray-400">badge</span>
                          {user.firstName} {user.lastName}
                       </div>
                    </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Adresse Email</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Adresse de contact</label>
+                      <div className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white flex items-center gap-4">
+                         <span className="material-symbols-outlined text-gray-400">alternate_email</span>
                          {user.email}
                       </div>
                    </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Identifiant National (INE)</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white">
-                         {user.ine || 'Non renseigné'}
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Identifiant National (INE)</label>
+                      <div className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white flex items-center gap-4">
+                         <span className="material-symbols-outlined text-gray-400">fingerprint</span>
+                         {user.ine || 'Non encore validé'}
                       </div>
                    </div>
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rôle Utilisateur</label>
-                      <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white uppercase tracking-widest text-[10px]">
-                         {user.role}
+                   <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Statut du compte</label>
+                      <div className="p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 font-bold dark:text-white flex items-center gap-4">
+                         <span className="material-symbols-outlined text-gray-400">verified_user</span>
+                         Candidat Actif
                       </div>
                    </div>
                 </div>
 
-                <div className="pt-6 border-t border-gray-50 dark:border-white/5">
-                   <button className="px-10 py-4 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 transition-all">
-                      Modifier mes informations
+                <div className="pt-8 border-t border-gray-50 dark:border-white/5 flex flex-col sm:flex-row gap-4">
+                   <button className="flex-1 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+                      Mettre à jour mon profil
+                   </button>
+                   <button className="px-10 py-5 bg-white/5 text-gray-500 font-black rounded-2xl text-[10px] uppercase tracking-widest border border-gray-100 dark:border-white/10 hover:text-white transition-all">
+                      Changer de mot de passe
                    </button>
                 </div>
               </div>
