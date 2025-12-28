@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Register: React.FC = () => {
-  const { register } = useCMS();
+  const { register, user } = useCMS();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,6 +16,19 @@ const Register: React.FC = () => {
     phone: '',
     password: ''
   });
+
+  // Empêcher l'accès si déjà connecté
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'super_admin') {
+        navigate('/super-admin');
+      } else if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, navigate]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +44,6 @@ const Register: React.FC = () => {
     
     setLoading(false);
     if (result.success && result.user) {
-      // Redirection après inscription
       const role = result.user.role;
       if (role === 'super_admin') {
         navigate('/super-admin');
@@ -125,7 +137,7 @@ const Register: React.FC = () => {
                   required
                   value={formData.firstName}
                   onChange={handleChange}
-                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold" 
                   type="text" 
                   placeholder="Ex: Koffi" 
                 />
@@ -137,7 +149,7 @@ const Register: React.FC = () => {
                   required
                   value={formData.lastName}
                   onChange={handleChange}
-                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold" 
                   type="text" 
                   placeholder="Ex: Mensah" 
                 />
@@ -154,7 +166,7 @@ const Register: React.FC = () => {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold" 
                     type="email" 
                     placeholder="etudiant@exemple.bj" 
                    />
@@ -169,7 +181,7 @@ const Register: React.FC = () => {
                     required
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                    className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold" 
                     type="tel" 
                     placeholder="+229 XX XX XX XX" 
                    />
@@ -185,7 +197,7 @@ const Register: React.FC = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all" 
+                  className="w-full p-4 rounded-xl border-2 border-gray-100 dark:bg-surface-dark dark:border-gray-800 dark:text-white outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold" 
                   type="password" 
                   placeholder="8 caractères minimum" 
                  />
@@ -203,7 +215,7 @@ const Register: React.FC = () => {
             <button 
                 disabled={loading}
                 type="submit" 
-                className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-sm disabled:opacity-50"
+                className="w-full text-center py-5 bg-primary hover:bg-green-400 text-black font-black rounded-xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.01] active:scale-[0.98] uppercase tracking-widest text-xs disabled:opacity-50"
             >
               {loading ? "Création du compte..." : "S'inscrire gratuitement"}
             </button>
