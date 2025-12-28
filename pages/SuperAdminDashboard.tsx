@@ -30,9 +30,12 @@ const SuperAdminDashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // FILTRAGE : Afficher uniquement les Admin et Super Admin
+  // FILTRAGE : On s'assure que le filtrage est robuste (insensible à la casse)
   const filteredStaff = useMemo(() => {
-    return staffUsers.filter(u => u.role === 'admin' || u.role === 'super_admin');
+    return staffUsers.filter(u => {
+      const role = (u.role || '').toLowerCase();
+      return role === 'admin' || role === 'super_admin';
+    });
   }, [staffUsers]);
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,7 +138,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const Sidebar = () => (
     <div className="flex flex-col h-full p-8 text-white">
-      <div className="flex items-center gap-4 mb-16 px-2">
+      <div className="flex items-center gap-4 mb-16 px-2 text-left">
         <div className="size-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/20">
           <span className="material-symbols-outlined font-black text-2xl">diamond</span>
         </div>
@@ -234,7 +237,7 @@ const SuperAdminDashboard: React.FC = () => {
                               <td className="px-8 py-6">
                                  <div className="flex items-center gap-4 text-left">
                                     <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 font-black text-xs">
-                                       {s.firstName?.[0]}{s.lastName?.[0]}
+                                       {(s.firstName?.[0] || 'U')}{(s.lastName?.[0] || 'A')}
                                     </div>
                                     <div>
                                        <p className="text-white font-black">{s.firstName} {s.lastName}</p>
@@ -244,9 +247,9 @@ const SuperAdminDashboard: React.FC = () => {
                               </td>
                               <td className="px-8 py-6">
                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                    s.role === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                                    (s.role || '').toLowerCase() === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                                  }`}>
-                                    {s.role === 'super_admin' ? 'super admin' : 'admin'}
+                                    {(s.role || '').toLowerCase() === 'super_admin' ? 'super admin' : 'admin'}
                                  </span>
                               </td>
                               <td className="px-8 py-6">
@@ -255,7 +258,7 @@ const SuperAdminDashboard: React.FC = () => {
                                        <div 
                                           key={code} 
                                           className={`size-8 rounded-lg flex items-center justify-center border ${
-                                             s.permissions?.includes(code) 
+                                             (s.permissions || []).includes(code) 
                                                 ? 'bg-primary/10 border-primary/30 text-primary' 
                                                 : 'bg-white/5 border-white/5 text-gray-600 grayscale'
                                           }`}
@@ -297,9 +300,9 @@ const SuperAdminDashboard: React.FC = () => {
              </div>
           )}
 
-          {activeTab === 'cms' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Module CMS Actif</div>}
-          {activeTab === 'settings' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Paramètres Système</div>}
-          {activeTab === 'logs' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Flux Temps Réel</div>}
+          {activeTab === 'cms' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left">Module CMS Actif</div>}
+          {activeTab === 'settings' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left">Paramètres Système</div>}
+          {activeTab === 'logs' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left">Flux Temps Réel</div>}
         </div>
 
         {/* MODAL: ADD/EDIT STAFF */}

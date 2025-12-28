@@ -158,16 +158,27 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // 2. Si Super Admin : Récupérer tous les utilisateurs du staff
-      if (token && user?.role === 'super_admin') {
-        const staffRes = await apiRequest('/admin/users');
-        const staffData = await staffRes.json();
-        const allUsers = Array.isArray(staffData) ? staffData : (staffData.data || []);
-        setStaffUsers(allUsers.map((u: any) => ({
-          ...u,
-          id: u.id.toString(),
-          role: u.role || 'student',
-          permissions: u.permissions ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) : []
-        })));
+      // Correction : Ajout de variantes de formats de réponse API
+      if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
+        try {
+          const staffRes = await apiRequest('/admin/users');
+          const staffData = await staffRes.json();
+          // On cherche les utilisateurs dans data, users, ou directement le tableau
+          const allUsers = Array.isArray(staffData) ? staffData : (staffData.data || staffData.users || []);
+          
+          setStaffUsers(allUsers.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            firstName: u.firstName || u.first_name || 'Admin',
+            lastName: u.lastName || u.last_name || 'User',
+            role: u.role || 'student',
+            permissions: u.permissions 
+              ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
+              : []
+          })));
+        } catch (e) {
+          console.warn("Échec du chargement des utilisateurs staff", e);
+        }
       }
 
       // 3. Candidatures
@@ -349,7 +360,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
   const updateStaffUser = (updatedUser: User) => {
-    // Appel API simulé ou réel vers PUT /admin/users/:id
     apiRequest(`/admin/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) })
       .then(() => refreshData());
   };
