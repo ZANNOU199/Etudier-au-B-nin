@@ -32,6 +32,9 @@ const AdminDashboard: React.FC = () => {
   const [appSearch, setAppSearch] = useState('');
   const [majorSearch, setMajorSearch] = useState('');
   
+  // Modal de confirmation de suppression
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string, type: 'university' | 'major' | 'application', name: string } | null>(null);
+
   // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
@@ -86,6 +89,21 @@ const AdminDashboard: React.FC = () => {
       await updateApplicationStatus(id, status);
     } catch (e) {
       alert("Erreur lors de la mise à jour du statut.");
+    }
+  };
+
+  const executeDeletion = async () => {
+    if (!confirmDelete) return;
+    setIsProcessing(true);
+    try {
+      if (confirmDelete.type === 'university') await deleteUniversity(confirmDelete.id);
+      if (confirmDelete.type === 'major') await deleteMajor(confirmDelete.id);
+      if (confirmDelete.type === 'application') await deleteApplication(confirmDelete.id);
+      setConfirmDelete(null);
+    } catch (e) {
+      alert("Erreur lors de la suppression.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -359,7 +377,7 @@ const AdminDashboard: React.FC = () => {
                                     </>
                                   )}
                                   <button 
-                                    onClick={() => deleteApplication(app.id)}
+                                    onClick={() => setConfirmDelete({ id: app.id, type: 'application', name: `Dossier #${app.id}` })}
                                     className="size-9 rounded-xl bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-red-500 transition-all"
                                     title="Supprimer"
                                   >
@@ -444,7 +462,7 @@ const AdminDashboard: React.FC = () => {
                               <button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5">
                                  <span className="material-symbols-outlined">edit</span>
                               </button>
-                              <button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
+                              <button onClick={() => setConfirmDelete({ id: uni.id, type: 'university', name: uni.name })} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5">
                                  <span className="material-symbols-outlined">delete</span>
                               </button>
                            </div>
@@ -521,7 +539,7 @@ const AdminDashboard: React.FC = () => {
                                            <span className="material-symbols-outlined text-lg">edit</span>
                                         </button>
                                         <button 
-                                          onClick={() => { if(window.confirm('Supprimer cette filière ?')) deleteMajor(major.id); }}
+                                          onClick={() => setConfirmDelete({ id: major.id, type: 'major', name: major.name })}
                                           className="size-9 rounded-xl bg-white/5 text-gray-500 hover:text-red-500 transition-all flex items-center justify-center border border-white/5"
                                           title="Supprimer la filière"
                                         >
@@ -553,6 +571,39 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* MODAL: CONFIRM DELETE */}
+        {confirmDelete && (
+          <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+             <div className="bg-[#162a1f] w-full max-w-md rounded-[40px] shadow-2xl border border-white/10 p-10 space-y-8 animate-in zoom-in-95 text-center">
+                <div className="size-20 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 mx-auto">
+                   <span className="material-symbols-outlined text-4xl font-black">warning</span>
+                </div>
+                <div className="space-y-2">
+                   <h3 className="text-2xl font-black text-white tracking-tight">Suppression Irréversible</h3>
+                   <p className="text-gray-400 text-sm leading-relaxed">
+                      Êtes-vous sûr de vouloir supprimer <span className="text-white font-bold">"{confirmDelete.name}"</span> ? 
+                      {confirmDelete.type === 'university' && " Cette action supprimera également toutes les facultés et filières associées."}
+                   </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                   <button 
+                    onClick={executeDeletion}
+                    disabled={isProcessing}
+                    className="w-full py-4 bg-red-500 text-white font-black rounded-2xl uppercase tracking-widest text-xs hover:bg-red-600 transition-colors disabled:opacity-50"
+                   >
+                      {isProcessing ? "Suppression..." : "Confirmer la suppression"}
+                   </button>
+                   <button 
+                    onClick={() => setConfirmDelete(null)}
+                    className="w-full py-4 bg-white/5 text-gray-400 font-black rounded-2xl uppercase tracking-widest text-xs hover:text-white transition-colors"
+                   >
+                      Annuler
+                   </button>
+                </div>
+             </div>
+          </div>
+        )}
 
         {/* MODAL: INSTITUTION & MAJOR WIZARD */}
         {showWizard && (
