@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 import { User, UserRole, University, Major } from '../types';
@@ -15,18 +15,25 @@ const SuperAdminDashboard: React.FC = () => {
     user,
     staffUsers,
     addStaffUser,
+    updateStaffUser,
     deleteStaffUser,
-    languages
+    isLoading
   } = useCMS();
   
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffError, setStaffError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // FILTRAGE : Afficher uniquement les Admin et Super Admin
+  const filteredStaff = useMemo(() => {
+    return staffUsers.filter(u => u.role === 'admin' || u.role === 'super_admin');
+  }, [staffUsers]);
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,40 +74,63 @@ const SuperAdminDashboard: React.FC = () => {
     const role = fd.get('role') as UserRole;
 
     try {
-      // Correction : Inclusion du champ 'role' dans le body pour éviter le rôle 'student' par défaut
-      const response = await fetch('https://api.cipaph.com/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, password, role })
-      });
-      
-      const result = await response.json();
-
-      if (result.status === "success" || response.status === 201) {
+      if (selectedStaff) {
+        // Mode Edition
         const defaultPermissions = role === 'super_admin' 
           ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
           : ['manage_catalog', 'validate_apps'];
 
-        const newUser: User = {
-          id: result.user?.id?.toString() || Math.random().toString(),
-          firstName: result.user?.firstName || firstName,
-          lastName: result.user?.lastName || lastName,
-          email: result.user?.email || email,
-          role: role,
+        updateStaffUser({
+          ...selectedStaff,
+          firstName,
+          lastName,
+          email,
+          role,
           permissions: defaultPermissions
-        };
-        
-        addStaffUser(newUser);
+        });
         setShowStaffModal(false);
-        alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès.`);
+        setSelectedStaff(null);
       } else {
-        setStaffError(result.message || "Échec de la création du compte.");
+        // Mode Création
+        const response = await fetch('https://api.cipaph.com/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firstName, lastName, email, password, role })
+        });
+        
+        const result = await response.json();
+
+        if (result.status === "success" || response.status === 201 || response.status === 200) {
+          const defaultPermissions = role === 'super_admin' 
+            ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
+            : ['manage_catalog', 'validate_apps'];
+
+          const newUser: User = {
+            id: result.user?.id?.toString() || `staff-${Math.random().toString(36).substr(2, 9)}`,
+            firstName: firstName,
+            lastName: lastName,
+            email: email,
+            role: role,
+            permissions: defaultPermissions
+          };
+          
+          addStaffUser(newUser);
+          setShowStaffModal(false);
+          alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès.`);
+        } else {
+          setStaffError(result.message || "Échec de la création du compte.");
+        }
       }
     } catch (error) {
       setStaffError("Erreur de connexion au serveur d'authentification.");
     } finally {
       setStaffLoading(false);
     }
+  };
+
+  const handleEditClick = (s: User) => {
+    setSelectedStaff(s);
+    setShowStaffModal(true);
   };
 
   const Sidebar = () => (
@@ -159,7 +189,7 @@ const SuperAdminDashboard: React.FC = () => {
            </div>
            <div className="flex items-center gap-6">
               <div className="text-right hidden sm:block">
-                 <p className="text-xs font-black text-white leading-none">{user?.firstName} {user?.lastName}</p>
+                 <p className="text-xs font-black text-white leading-none uppercase">{user?.firstName} {user?.lastName}</p>
                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">Super Privilèges</p>
               </div>
               <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -177,7 +207,7 @@ const SuperAdminDashboard: React.FC = () => {
                     <p className="text-gray-500 font-medium italic">Gérez les comptes administrateurs et leurs droits d'accès.</p>
                   </div>
                   <button 
-                    onClick={() => setShowStaffModal(true)}
+                    onClick={() => { setSelectedStaff(null); setShowStaffModal(true); }}
                     className="flex items-center gap-3 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                   >
                     <span className="material-symbols-outlined text-xl font-bold">person_add</span>
@@ -196,11 +226,16 @@ const SuperAdminDashboard: React.FC = () => {
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
-                        {staffUsers.map((s) => (
+                        {isLoading && (
+                           <tr><td colSpan={4} className="p-10 text-center text-gray-500 animate-pulse font-black uppercase tracking-widest">Synchronisation...</td></tr>
+                        )}
+                        {!isLoading && filteredStaff.map((s) => (
                            <tr key={s.id} className="hover:bg-white/2 transition-colors">
                               <td className="px-8 py-6">
                                  <div className="flex items-center gap-4 text-left">
-                                    <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 font-black text-xs">{s.firstName[0]}{s.lastName[0]}</div>
+                                    <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 font-black text-xs">
+                                       {s.firstName?.[0]}{s.lastName?.[0]}
+                                    </div>
                                     <div>
                                        <p className="text-white font-black">{s.firstName} {s.lastName}</p>
                                        <p className="text-[10px] text-gray-500 font-bold">{s.email}</p>
@@ -236,12 +271,15 @@ const SuperAdminDashboard: React.FC = () => {
                               </td>
                               <td className="px-8 py-6">
                                  <div className="flex gap-4">
-                                    <button className="text-gray-500 hover:text-white transition-colors"><span className="material-symbols-outlined">edit</span></button>
-                                    <button onClick={() => deleteStaffUser(s.id)} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
+                                    <button onClick={() => handleEditClick(s)} className="text-gray-500 hover:text-white transition-colors"><span className="material-symbols-outlined">edit</span></button>
+                                    <button onClick={() => { if(confirm(`Supprimer l'accès de ${s.firstName} ?`)) deleteStaffUser(s.id); }} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
                                  </div>
                               </td>
                            </tr>
                         ))}
+                        {!isLoading && filteredStaff.length === 0 && (
+                           <tr><td colSpan={4} className="p-10 text-center text-gray-500 font-medium italic">Aucun administrateur trouvé dans la base.</td></tr>
+                        )}
                      </tbody>
                   </table>
                </div>
@@ -264,13 +302,17 @@ const SuperAdminDashboard: React.FC = () => {
           {activeTab === 'logs' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40">Flux Temps Réel</div>}
         </div>
 
-        {/* MODAL: ADD STAFF */}
+        {/* MODAL: ADD/EDIT STAFF */}
         {showStaffModal && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
              <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5 animate-in zoom-in-95">
                 <div className="px-10 py-8 bg-white/5 border-b border-white/5 flex justify-between items-center text-left">
-                   <h3 className="text-2xl font-black text-white tracking-tight">Nouvel accès administratif</h3>
-                   <button onClick={() => setShowStaffModal(false)} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400"><span className="material-symbols-outlined">close</span></button>
+                   <h3 className="text-2xl font-black text-white tracking-tight">
+                     {selectedStaff ? 'Modifier l\'accès' : 'Nouvel accès administratif'}
+                   </h3>
+                   <button onClick={() => { setShowStaffModal(false); setSelectedStaff(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+                     <span className="material-symbols-outlined">close</span>
+                   </button>
                 </div>
                 
                 <form onSubmit={handleAddStaffMember} className="p-10 space-y-6 text-left">
@@ -283,27 +325,29 @@ const SuperAdminDashboard: React.FC = () => {
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Prénom</label>
-                        <input name="fn" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input name="fn" required defaultValue={selectedStaff?.firstName} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom</label>
-                        <input name="ln" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input name="ln" required defaultValue={selectedStaff?.lastName} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
                    </div>
                    
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Email Professionnel</label>
-                      <input name="email" type="email" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                      <input name="email" type="email" required defaultValue={selectedStaff?.email} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                    </div>
 
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Mot de passe temporaire</label>
-                      <input name="password" type="password" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" placeholder="••••••••" />
-                   </div>
+                   {!selectedStaff && (
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Mot de passe temporaire</label>
+                        <input name="password" type="password" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" placeholder="••••••••" />
+                     </div>
+                   )}
 
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle</label>
-                      <select name="role" className="w-full p-4 rounded-2xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
+                      <select name="role" defaultValue={selectedStaff?.role || "admin"} className="w-full p-4 rounded-2xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
                          <option value="admin">Administrateur (Dashboard Admin)</option>
                          <option value="super_admin">Super Admin (Super Console)</option>
                       </select>
@@ -314,7 +358,7 @@ const SuperAdminDashboard: React.FC = () => {
                     type="submit" 
                     className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6 disabled:opacity-50"
                    >
-                     {staffLoading ? "Création en cours..." : "Finaliser et créer le compte"}
+                     {staffLoading ? "Traitement..." : selectedStaff ? "Mettre à jour" : "Finaliser et créer le compte"}
                    </button>
                 </form>
              </div>

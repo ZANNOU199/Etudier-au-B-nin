@@ -42,6 +42,7 @@ interface CMSContextType {
   // SuperAdmin methods
   staffUsers: User[];
   addStaffUser: (user: User) => void;
+  updateStaffUser: (user: User) => void;
   deleteStaffUser: (id: string) => void;
 }
 
@@ -82,7 +83,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-
   const [currentLang, setCurrentLang] = useState('fr');
   const [themes, setThemes] = useState<ThemeConfig[]>(DEFAULT_THEMES);
   const [userRole, setUserRole] = useState<UserRole>(user?.role || 'student');
@@ -121,9 +121,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const refreshData = async () => {
     setIsLoading(true);
-    
-    // Universités & Filières
     try {
+      // 1. Universités & Filières
       const [uniRes, majorRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
         fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' } })
@@ -132,42 +131,47 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (uniRes.ok) {
         const uniData = await uniRes.json();
         const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        if (rawUnis.length > 0) {
-          setUniversities(rawUnis.map((u: any) => ({
-            ...u,
-            id: u.id.toString(),
-            location: u.city || u.location || 'Bénin',
-            // NORMALISATION DU TYPE POUR LES FILTRES
-            type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
-            // LECTURE DU CHAMP is_standalone DEPUIS L'API
-            isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
-            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-          })));
-        }
+        setUniversities(rawUnis.map((u: any) => ({
+          ...u,
+          id: u.id.toString(),
+          location: u.city || u.location || 'Bénin',
+          type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
+          isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
+          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+        })));
       }
 
       if (majorRes.ok) {
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
-        if (rawMajors.length > 0) {
-          setMajors(rawMajors.map((m: any) => ({
-            ...m,
-            id: m.id.toString(),
-            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-            facultyId: m.faculty_id?.toString(),
-            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-            facultyName: m.faculty?.name || 'Tronc commun',
-            location: m.location || m.university?.city || 'Bénin',
-            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400'
-          })));
-        }
+        setMajors(rawMajors.map((m: any) => ({
+          ...m,
+          id: m.id.toString(),
+          universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
+          facultyId: m.faculty_id?.toString(),
+          universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
+          facultyName: m.faculty?.name || 'Tronc commun',
+          location: m.location || m.university?.city || 'Bénin',
+          image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400'
+        })));
       }
-    } catch (e) {}
 
-    // Candidatures - Route Admin vs Student
-    if (token && user) {
-      try {
+      // 2. Si Super Admin : Récupérer tous les utilisateurs du staff
+      if (token && user?.role === 'super_admin') {
+        const staffRes = await apiRequest('/admin/users');
+        const staffData = await staffRes.json();
+        const allUsers = Array.isArray(staffData) ? staffData : (staffData.data || []);
+        setStaffUsers(allUsers.map((u: any) => ({
+          ...u,
+          id: u.id.toString(),
+          role: u.role || 'student',
+          permissions: u.permissions ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) : []
+        })));
+      }
+
+      // 3. Candidatures
+      if (token && user) {
         const isAdmin = user.role === 'admin' || user.role === 'super_admin';
         const endpoint = isAdmin ? '/admin/applications' : '/applications';
         const appRes = await apiRequest(endpoint);
@@ -195,11 +199,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           documents: a.documents || [],
           primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
         })));
-      } catch (e) {
-        console.warn("Échec du chargement des candidatures");
       }
+    } catch (e) {
+      console.warn("RefreshData partial failure", e);
     }
-    
     setIsLoading(false);
   };
 
@@ -345,7 +348,15 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteApplication = (id: string) => apiRequest(`/applications/${id}`, { method: 'DELETE' }).then(() => refreshData());
   
   const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
-  const deleteStaffUser = (id: string) => setStaffUsers(prev => prev.filter(u => u.id !== id));
+  const updateStaffUser = (updatedUser: User) => {
+    // Appel API simulé ou réel vers PUT /admin/users/:id
+    apiRequest(`/admin/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) })
+      .then(() => refreshData());
+  };
+  const deleteStaffUser = (id: string) => {
+    apiRequest(`/admin/users/${id}`, { method: 'DELETE' })
+      .then(() => refreshData());
+  };
 
   return (
     <CMSContext.Provider value={{ 
@@ -354,7 +365,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       applyTheme: (id) => setThemes(prev => prev.map(t => ({ ...t, isActive: t.id === id }))),
       updateTheme: () => {}, setUserRole, login, register, logout, addApplication, refreshData, deleteApplication,
       addUniversity, updateUniversity, deleteUniversity, addFaculty, deleteFaculty, addMajor, updateMajor, deleteMajor,
-      updateApplicationStatus, staffUsers, addStaffUser, deleteStaffUser
+      updateApplicationStatus, staffUsers, addStaffUser, updateStaffUser, deleteStaffUser
     }}>
       {children}
     </CMSContext.Provider>
