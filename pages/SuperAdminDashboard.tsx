@@ -67,7 +67,7 @@ const SuperAdminDashboard: React.FC = () => {
     const role = fd.get('role') as UserRole;
 
     try {
-      // Correction: On envoie explicitement le role sélectionné pour éviter le défaut 'student' du serveur
+      // Correction : Inclusion du champ 'role' dans le body pour éviter le rôle 'student' par défaut
       const response = await fetch('https://api.cipaph.com/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,18 +76,17 @@ const SuperAdminDashboard: React.FC = () => {
       
       const result = await response.json();
 
-      if (result.status === "success" || response.status === 201 || response.status === 200) {
+      if (result.status === "success" || response.status === 201) {
         const defaultPermissions = role === 'super_admin' 
           ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
           : ['manage_catalog', 'validate_apps'];
 
-        // On crée l'utilisateur localement avec le rôle sélectionné
         const newUser: User = {
-          id: result.user?.id?.toString() || `staff-${Math.random().toString(36).substr(2, 9)}`,
-          firstName: firstName,
-          lastName: lastName,
-          email: email,
-          role: role, // On s'assure que le rôle n'est pas 'student'
+          id: result.user?.id?.toString() || Math.random().toString(),
+          firstName: result.user?.firstName || firstName,
+          lastName: result.user?.lastName || lastName,
+          email: result.user?.email || email,
+          role: role,
           permissions: defaultPermissions
         };
         
@@ -160,7 +159,7 @@ const SuperAdminDashboard: React.FC = () => {
            </div>
            <div className="flex items-center gap-6">
               <div className="text-right hidden sm:block">
-                 <p className="text-xs font-black text-white leading-none uppercase">{user?.firstName} {user?.lastName}</p>
+                 <p className="text-xs font-black text-white leading-none">{user?.firstName} {user?.lastName}</p>
                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">Super Privilèges</p>
               </div>
               <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -238,7 +237,7 @@ const SuperAdminDashboard: React.FC = () => {
                               <td className="px-8 py-6">
                                  <div className="flex gap-4">
                                     <button className="text-gray-500 hover:text-white transition-colors"><span className="material-symbols-outlined">edit</span></button>
-                                    <button onClick={() => { if(confirm('Supprimer cet accès ?')) deleteStaffUser(s.id); }} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
+                                    <button onClick={() => deleteStaffUser(s.id)} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
                                  </div>
                               </td>
                            </tr>
