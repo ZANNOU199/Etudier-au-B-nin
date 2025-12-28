@@ -122,7 +122,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshData = async () => {
     setIsLoading(true);
     try {
-      // 1. Universités & Filières
+      // 1. Universités & Filières (Toujours charger)
       const [uniRes, majorRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
         fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' } })
@@ -157,62 +157,66 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })));
       }
 
-      // 2. Si Super Admin : Récupérer tous les utilisateurs du staff
-      // Correction : Ajout de variantes de formats de réponse API
-      if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
+      // 2. Si Authentifié (Token présent)
+      if (token) {
+        // CHARGEMENT STAFF (Si Super Admin)
+        if (user?.role === 'super_admin' || userRole === 'super_admin') {
+           try {
+             const staffRes = await apiRequest('/admin/users');
+             const staffData = await staffRes.json();
+             // Support de plusieurs formats de retour Laravel (data, users ou tableau direct)
+             const allUsers = Array.isArray(staffData) ? staffData : (staffData.data || staffData.users || []);
+             
+             setStaffUsers(allUsers.map((u: any) => ({
+               ...u,
+               id: u.id.toString(),
+               firstName: u.firstName || u.first_name || 'Utilisateur',
+               lastName: u.lastName || u.last_name || 'Admin',
+               role: (u.role || 'student').toLowerCase().trim(), // Normalisation du rôle
+               permissions: u.permissions 
+                 ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
+                 : []
+             })));
+           } catch (err) {
+             console.error("Erreur chargement staff:", err);
+           }
+        }
+
+        // CHARGEMENT CANDIDATURES
+        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || userRole === 'admin' || userRole === 'super_admin';
+        const endpoint = isAdmin ? '/admin/applications' : '/applications';
         try {
-          const staffRes = await apiRequest('/admin/users');
-          const staffData = await staffRes.json();
-          // On cherche les utilisateurs dans data, users, ou directement le tableau
-          const allUsers = Array.isArray(staffData) ? staffData : (staffData.data || staffData.users || []);
+          const appRes = await apiRequest(endpoint);
+          const appData = await appRes.json();
+          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
           
-          setStaffUsers(allUsers.map((u: any) => ({
-            ...u,
-            id: u.id.toString(),
-            firstName: u.firstName || u.first_name || 'Admin',
-            lastName: u.lastName || u.last_name || 'User',
-            role: u.role || 'student',
-            permissions: u.permissions 
-              ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
-              : []
+          const statusMap: Record<string, Application['status']> = {
+            'pending': 'En attente',
+            'accepted': 'Validé',
+            'validated': 'Validé',
+            'rejected': 'Rejeté',
+            'processing': 'En cours'
+          };
+
+          setApplications(rawApps.map((a: any) => ({
+            ...a,
+            id: a.id.toString(),
+            studentId: (a.user_id || user?.id)?.toString(),
+            studentName: a.user ? `${a.user.firstName || a.user.first_name} ${a.user.lastName || a.user.last_name}` : "Candidat",
+            majorId: (a.major?.id || a.major_id)?.toString(),
+            majorName: a.major?.name || 'Filière non spécifiée',
+            universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
+            status: statusMap[a.status] || a.status || 'En attente',
+            date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
+            documents: a.documents || [],
+            primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
           })));
-        } catch (e) {
-          console.warn("Échec du chargement des utilisateurs staff", e);
+        } catch (err) {
+          console.warn("Échec partiel: Candidatures");
         }
       }
-
-      // 3. Candidatures
-      if (token && user) {
-        const isAdmin = user.role === 'admin' || user.role === 'super_admin';
-        const endpoint = isAdmin ? '/admin/applications' : '/applications';
-        const appRes = await apiRequest(endpoint);
-        const appData = await appRes.json();
-        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-        
-        const statusMap: Record<string, Application['status']> = {
-          'pending': 'En attente',
-          'accepted': 'Validé',
-          'validated': 'Validé',
-          'rejected': 'Rejeté',
-          'processing': 'En cours'
-        };
-
-        setApplications(rawApps.map((a: any) => ({
-          ...a,
-          id: a.id.toString(),
-          studentId: (a.user_id || user.id).toString(),
-          studentName: a.user ? `${a.user.firstName} ${a.user.lastName}` : "Candidat",
-          majorId: (a.major?.id || a.major_id)?.toString(),
-          majorName: a.major?.name || 'Filière non spécifiée',
-          universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
-          status: statusMap[a.status] || a.status || 'En attente',
-          date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
-          documents: a.documents || [],
-          primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
-        })));
-      }
     } catch (e) {
-      console.warn("RefreshData partial failure", e);
+      console.error("Global refresh failure", e);
     }
     setIsLoading(false);
   };

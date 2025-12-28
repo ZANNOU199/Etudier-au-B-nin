@@ -17,7 +17,8 @@ const SuperAdminDashboard: React.FC = () => {
     addStaffUser,
     updateStaffUser,
     deleteStaffUser,
-    isLoading
+    isLoading,
+    refreshData
   } = useCMS();
   
   const [activeTab, setActiveTab] = useState<'csv' | 'staff' | 'cms' | 'settings' | 'logs'>('staff');
@@ -30,11 +31,12 @@ const SuperAdminDashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // FILTRAGE : On s'assure que le filtrage est robuste (insensible à la casse)
+  // FILTRAGE : Plus flexible pour éviter les problèmes de casse ou d'espaces
   const filteredStaff = useMemo(() => {
+    if (!staffUsers || staffUsers.length === 0) return [];
     return staffUsers.filter(u => {
-      const role = (u.role || '').toLowerCase();
-      return role === 'admin' || role === 'super_admin';
+      const r = (u.role || '').toLowerCase().trim();
+      return r === 'admin' || r === 'super_admin';
     });
   }, [staffUsers]);
 
@@ -104,22 +106,9 @@ const SuperAdminDashboard: React.FC = () => {
         const result = await response.json();
 
         if (result.status === "success" || response.status === 201 || response.status === 200) {
-          const defaultPermissions = role === 'super_admin' 
-            ? ['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'] 
-            : ['manage_catalog', 'validate_apps'];
-
-          const newUser: User = {
-            id: result.user?.id?.toString() || `staff-${Math.random().toString(36).substr(2, 9)}`,
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            role: role,
-            permissions: defaultPermissions
-          };
-          
-          addStaffUser(newUser);
+          refreshData(); // Recharger la liste depuis le serveur
           setShowStaffModal(false);
-          alert(`Compte ${role === 'super_admin' ? 'Super Admin' : 'Admin'} créé avec succès.`);
+          alert(`Compte créé avec succès.`);
         } else {
           setStaffError(result.message || "Échec de la création du compte.");
         }
@@ -209,17 +198,25 @@ const SuperAdminDashboard: React.FC = () => {
                     <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Staff & Permissions</h2>
                     <p className="text-gray-500 font-medium italic">Gérez les comptes administrateurs et leurs droits d'accès.</p>
                   </div>
-                  <button 
-                    onClick={() => { setSelectedStaff(null); setShowStaffModal(true); }}
-                    className="flex items-center gap-3 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-xl font-bold">person_add</span>
-                    Créer un compte
-                  </button>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => refreshData()}
+                      className={`size-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all ${isLoading ? 'animate-spin' : ''}`}
+                    >
+                      <span className="material-symbols-outlined">refresh</span>
+                    </button>
+                    <button 
+                      onClick={() => { setSelectedStaff(null); setShowStaffModal(true); }}
+                      className="flex items-center gap-3 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-xl font-bold">person_add</span>
+                      Créer un compte
+                    </button>
+                  </div>
                </div>
 
                <div className="overflow-x-auto rounded-[40px] border border-white/5 bg-[#0d1b13] shadow-2xl">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse min-w-[900px]">
                      <thead>
                         <tr className="border-b border-white/5 bg-white/2">
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Identité</th>
@@ -230,7 +227,7 @@ const SuperAdminDashboard: React.FC = () => {
                      </thead>
                      <tbody className="divide-y divide-white/5">
                         {isLoading && (
-                           <tr><td colSpan={4} className="p-10 text-center text-gray-500 animate-pulse font-black uppercase tracking-widest">Synchronisation...</td></tr>
+                           <tr><td colSpan={4} className="p-20 text-center text-gray-500 animate-pulse font-black uppercase tracking-widest">Récupération des données...</td></tr>
                         )}
                         {!isLoading && filteredStaff.map((s) => (
                            <tr key={s.id} className="hover:bg-white/2 transition-colors">
@@ -247,9 +244,9 @@ const SuperAdminDashboard: React.FC = () => {
                               </td>
                               <td className="px-8 py-6">
                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                    (s.role || '').toLowerCase() === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                                    (s.role || '').toLowerCase().trim() === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                                  }`}>
-                                    {(s.role || '').toLowerCase() === 'super_admin' ? 'super admin' : 'admin'}
+                                    {(s.role || '').toLowerCase().trim() === 'super_admin' ? 'super admin' : 'admin'}
                                  </span>
                               </td>
                               <td className="px-8 py-6">
@@ -281,7 +278,7 @@ const SuperAdminDashboard: React.FC = () => {
                            </tr>
                         ))}
                         {!isLoading && filteredStaff.length === 0 && (
-                           <tr><td colSpan={4} className="p-10 text-center text-gray-500 font-medium italic">Aucun administrateur trouvé dans la base.</td></tr>
+                           <tr><td colSpan={4} className="p-20 text-center text-gray-500 font-medium italic">Aucun administrateur trouvé dans la base ({staffUsers.length} total).</td></tr>
                         )}
                      </tbody>
                   </table>
