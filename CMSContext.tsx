@@ -131,7 +131,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
       if (uniRes.ok) {
-        const uniData = await uniRes.ok ? await uniRes.json() : null;
+        const uniData = await uniRes.json();
         if (uniData) {
           const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
           setUniversities(rawUnis.map((u: any) => ({
@@ -161,13 +161,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })));
       }
 
-      // 2. Si Super Admin : Récupérer TOUS les utilisateurs via /users (vu dans votre screenshot)
+      // 2. Si Super Admin : Récupérer TOUS les utilisateurs via /users
       if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
         try {
-          // On teste /users car c'est celui qui marche dans votre capture d'écran
           const res = await apiRequest('/users');
           const data = await res.json();
-          // Selon votre capture : { "status": "success", "data": [...] }
           const allUsers = Array.isArray(data) ? data : (data.data || data.users || []);
           
           setStaffUsers(allUsers.map((u: any) => ({
@@ -175,7 +173,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             id: u.id.toString(),
             firstName: u.firstName || u.first_name || 'Admin',
             lastName: u.lastName || u.last_name || 'Utilisateur',
-            // Conversion forcée du rôle en minuscules pour le filtre
             role: (u.role || u.user_role || 'student').toLowerCase().trim(),
             permissions: u.permissions 
               ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
@@ -370,12 +367,16 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteApplication = (id: string) => apiRequest(`/applications/${id}`, { method: 'DELETE' }).then(() => refreshData());
   
   const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
+  
   const updateStaffUser = (updatedUser: User) => {
-    apiRequest(`/admin/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) })
+    // Suppression du préfixe /admin pour correspondre à votre API réelle
+    apiRequest(`/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) })
       .then(() => refreshData());
   };
+  
   const deleteStaffUser = (id: string) => {
-    apiRequest(`/admin/users/${id}`, { method: 'DELETE' })
+    // Suppression du préfixe /admin pour correspondre à votre API réelle
+    apiRequest(`/users/${id}`, { method: 'DELETE' })
       .then(() => refreshData());
   };
 
