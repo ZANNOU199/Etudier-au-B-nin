@@ -150,7 +150,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
         setMajors(rawMajors.map((m: any) => {
-          // Parsing robuste des prospects et diplômes
           let parsedProspects = [];
           if (m.career_prospects) {
             try {
@@ -325,11 +324,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addMajor = async (major: any) => {
-    // Transformer les tableaux en chaînes séparées par | si nécessaire par l'API
+    // On s'assure d'envoyer un véritable tableau si c'en est un
     const payload = {
       ...major,
-      career_prospects: Array.isArray(major.career_prospects) ? major.career_prospects.join(' | ') : major.career_prospects,
-      required_diplomas: Array.isArray(major.required_diplomas) ? major.required_diplomas.join(' | ') : major.required_diplomas
+      career_prospects: Array.isArray(major.career_prospects) ? major.career_prospects : major.career_prospects?.split('|').map((s: string) => s.trim()),
+      required_diplomas: Array.isArray(major.required_diplomas) ? major.required_diplomas : major.required_diplomas?.split('|').map((s: string) => s.trim())
     };
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(payload) });
     await refreshData();
@@ -337,11 +336,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateMajor = async (major: Major) => {
     const { id, careerProspects, requiredDiplomas, ...data } = major;
-    // On re-mappe vers snake_case pour l'API Laravel
+    // On re-mappe vers snake_case pour l'API Laravel en gardant le format tableau
     const payload = {
       ...data,
-      career_prospects: Array.isArray(careerProspects) ? careerProspects.map(p => p.title).join(' | ') : careerProspects,
-      required_diplomas: Array.isArray(requiredDiplomas) ? requiredDiplomas.map(d => d.name).join(' | ') : requiredDiplomas
+      career_prospects: Array.isArray(careerProspects) ? careerProspects.map(p => p.title) : [],
+      required_diplomas: Array.isArray(requiredDiplomas) ? requiredDiplomas.map(d => d.name) : []
     };
     await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     await refreshData();
