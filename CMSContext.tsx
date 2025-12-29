@@ -120,9 +120,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const refreshData = async () => {
+    if (isLoading) return;
     setIsLoading(true);
+    
     try {
-      // 1. Universités & Filières (Toujours charger)
+      // 1. Universités & Filières
       const [uniRes, majorRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
         fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' } })
@@ -135,7 +137,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...u,
           id: u.id.toString(),
           location: u.city || u.location || 'Bénin',
-          type: (u.type || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
+          type: (u.type || u.status_inst || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
           isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
           stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
           faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
@@ -157,66 +159,71 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })));
       }
 
-      // 2. Si Authentifié (Token présent)
-      if (token) {
-        // CHARGEMENT STAFF (Si Super Admin)
-        if (user?.role === 'super_admin' || userRole === 'super_admin') {
-           try {
-             const staffRes = await apiRequest('/admin/users');
-             const staffData = await staffRes.json();
-             // Support de plusieurs formats de retour Laravel (data, users ou tableau direct)
-             const allUsers = Array.isArray(staffData) ? staffData : (staffData.data || staffData.users || []);
-             
-             setStaffUsers(allUsers.map((u: any) => ({
-               ...u,
-               id: u.id.toString(),
-               firstName: u.firstName || u.first_name || 'Utilisateur',
-               lastName: u.lastName || u.last_name || 'Admin',
-               role: (u.role || 'student').toLowerCase().trim(), // Normalisation du rôle
-               permissions: u.permissions 
-                 ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
-                 : []
-             })));
-           } catch (err) {
-             console.error("Erreur chargement staff:", err);
-           }
-        }
-
-        // CHARGEMENT CANDIDATURES
-        const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || userRole === 'admin' || userRole === 'super_admin';
-        const endpoint = isAdmin ? '/admin/applications' : '/applications';
+      // 2. Si Super Admin : Récupérer TOUS les utilisateurs
+      // On teste les deux endpoints possibles car /admin/users peut ne pas exister sur votre backend
+      if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
+        let allUsers: any[] = [];
         try {
-          const appRes = await apiRequest(endpoint);
-          const appData = await appRes.json();
-          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+          // On essaie d'abord /users (vu dans votre screenshot)
+          const res = await apiRequest('/users');
+          const data = await res.json();
+          allUsers = Array.isArray(data) ? data : (data.data || data.users || []);
           
-          const statusMap: Record<string, Application['status']> = {
-            'pending': 'En attente',
-            'accepted': 'Validé',
-            'validated': 'Validé',
-            'rejected': 'Rejeté',
-            'processing': 'En cours'
-          };
+          if (allUsers.length === 0) {
+             // Si vide, on tente /admin/users
+             const resAdmin = await apiRequest('/admin/users');
+             const dataAdmin = await resAdmin.json();
+             allUsers = Array.isArray(dataAdmin) ? dataAdmin : (dataAdmin.data || dataAdmin.users || []);
+          }
 
-          setApplications(rawApps.map((a: any) => ({
-            ...a,
-            id: a.id.toString(),
-            studentId: (a.user_id || user?.id)?.toString(),
-            studentName: a.user ? `${a.user.firstName || a.user.first_name} ${a.user.lastName || a.user.last_name}` : "Candidat",
-            majorId: (a.major?.id || a.major_id)?.toString(),
-            majorName: a.major?.name || 'Filière non spécifiée',
-            universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
-            status: statusMap[a.status] || a.status || 'En attente',
-            date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
-            documents: a.documents || [],
-            primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
+          setStaffUsers(allUsers.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            firstName: u.firstName || u.first_name || 'Utilisateur',
+            lastName: u.lastName || u.last_name || 'Admin',
+            // Si le rôle est manquant dans l'API, on regarde si on peut le déduire ou on met student par défaut
+            role: (u.role || u.user_role || 'student').toLowerCase().trim(),
+            permissions: u.permissions 
+              ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
+              : []
           })));
-        } catch (err) {
-          console.warn("Échec partiel: Candidatures");
+        } catch (e) {
+          console.error("Échec récupération staff:", e);
         }
       }
+
+      // 3. Candidatures
+      if (token && user) {
+        const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+        const endpoint = isAdmin ? '/admin/applications' : '/applications';
+        const appRes = await apiRequest(endpoint);
+        const appData = await appRes.json();
+        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+        
+        const statusMap: Record<string, Application['status']> = {
+          'pending': 'En attente',
+          'accepted': 'Validé',
+          'validated': 'Validé',
+          'rejected': 'Rejeté',
+          'processing': 'En cours'
+        };
+
+        setApplications(rawApps.map((a: any) => ({
+          ...a,
+          id: a.id.toString(),
+          studentId: (a.user_id || user.id).toString(),
+          studentName: a.user ? `${a.user.firstName || a.user.first_name} ${a.user.lastName || a.user.last_name}` : "Candidat",
+          majorId: (a.major?.id || a.major_id)?.toString(),
+          majorName: a.major?.name || 'Filière non spécifiée',
+          universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
+          status: statusMap[a.status] || a.status || 'En attente',
+          date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
+          documents: a.documents || [],
+          primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
+        })));
+      }
     } catch (e) {
-      console.error("Global refresh failure", e);
+      console.warn("RefreshData partial failure", e);
     }
     setIsLoading(false);
   };
@@ -241,10 +248,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json();
       if (res.ok) {
-        const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
+        const userData = { ...data.user, id: data.user.id.toString(), role: (data.user.role || 'student').toLowerCase() };
         setUser(userData);
         setToken(data.token);
-        setUserRole(userData.role);
+        setUserRole(userData.role as UserRole);
         localStorage.setItem('auth_token_v1', data.token);
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
@@ -263,10 +270,10 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json();
       if (res.status === 201 || res.status === 200) {
-        const userData = { ...data.user, id: data.user.id.toString(), role: data.user.role || 'student' };
+        const userData = { ...data.user, id: data.user.id.toString(), role: (data.user.role || 'student').toLowerCase() };
         setUser(userData);
         setToken(data.token);
-        setUserRole(userData.role);
+        setUserRole(userData.role as UserRole);
         localStorage.setItem('auth_token_v1', data.token);
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
@@ -281,6 +288,8 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(null);
     setToken(null);
     setUserRole('student');
+    setStaffUsers([]);
+    setApplications([]);
     localStorage.removeItem('auth_token_v1');
     localStorage.removeItem('auth_user_v1');
   };

@@ -31,12 +31,12 @@ const SuperAdminDashboard: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // FILTRAGE : Plus flexible pour éviter les problèmes de casse ou d'espaces
+  // FILTRAGE : On accepte 'admin', 'super_admin' et leurs variantes
   const filteredStaff = useMemo(() => {
     if (!staffUsers || staffUsers.length === 0) return [];
     return staffUsers.filter(u => {
       const r = (u.role || '').toLowerCase().trim();
-      return r === 'admin' || r === 'super_admin';
+      return r === 'admin' || r === 'super_admin' || r === 'superadmin' || r === 'administrator';
     });
   }, [staffUsers]);
 
@@ -244,9 +244,9 @@ const SuperAdminDashboard: React.FC = () => {
                               </td>
                               <td className="px-8 py-6">
                                  <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                    (s.role || '').toLowerCase().trim() === 'super_admin' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                                    (s.role || '').toLowerCase().trim().includes('super') ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                                  }`}>
-                                    {(s.role || '').toLowerCase().trim() === 'super_admin' ? 'super admin' : 'admin'}
+                                    {s.role}
                                  </span>
                               </td>
                               <td className="px-8 py-6">
