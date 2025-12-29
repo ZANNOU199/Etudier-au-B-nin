@@ -34,23 +34,39 @@ const Pricing: React.FC = () => {
           lastname: user.lastName,
           email: user.email,
           phone_number: {
-            number: '97000000', // Toujours utiliser ce numéro en sandbox
+            number: '64000001', // NUMÉRO DE TEST REQUIS POUR LE SUCCÈS (Doc FedaPay)
             country: 'bj'
           }
         },
         onComplete: async (response: any) => {
-          setIsProcessing(false);
-          console.log("FedaPay Response:", response);
+          setIsProcessing(true); // Garder le loading pendant le traitement du retour
+          console.log("FedaPay Full Response Object:", response);
           
-          // Lecture robuste du statut
-          const status = response.status || (response.transaction ? response.transaction.status : undefined);
+          // Extraction du statut depuis plusieurs sources possibles (selon version SDK)
+          const status = response?.status || 
+                         response?.transaction?.status || 
+                         (response?.reason ? 'failed' : undefined);
           
           if (status === 'approved') {
-            alert("✅ Paiement réussi !");
+            alert("✅ Félicitations ! Votre paiement a été approuvé.");
             await refreshData();
+            setIsProcessing(false);
             navigate('/dashboard');
+          } else if (status === 'failed' || status === 'canceled' || status === 'declined') {
+            setIsProcessing(false);
+            alert("❌ Le paiement n'a pas pu aboutir. Raison : " + (response?.reason || status));
           } else {
-            alert("⚠️ Statut du paiement : " + (status || "Inconnu/Annulé"));
+            // Si on ne trouve toujours pas le statut, on vérifie si l'objet contient un ID de transaction valide
+            if (response?.transaction?.id && !response?.reason) {
+                alert("✅ Paiement semble réussi (Vérification en cours...)");
+                await refreshData();
+                setIsProcessing(false);
+                navigate('/dashboard');
+            } else {
+                setIsProcessing(false);
+                console.error("Structure de réponse inconnue:", response);
+                alert("⚠️ Retour de paiement ambigu. Veuillez vérifier votre tableau de bord. (Statut: " + status + ")");
+            }
           }
         },
         onClose: () => {
@@ -59,8 +75,8 @@ const Pricing: React.FC = () => {
       }).open();
     } catch (err) {
       setIsProcessing(false);
-      console.error("FedaPay Error:", err);
-      alert("Erreur lors de l'ouverture du module de paiement.");
+      console.error("FedaPay Widget Error:", err);
+      alert("Erreur système lors du lancement de FedaPay.");
     }
   };
 

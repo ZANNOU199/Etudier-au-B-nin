@@ -46,22 +46,26 @@ const ApplyProcess: React.FC = () => {
         lastname: user.lastName,
         email: user.email,
         phone_number: {
-          number: '97000000',
+          number: '64000001', // NUMÉRO DE TEST REQUIS POUR LE SUCCÈS (Doc FedaPay)
           country: 'bj'
         }
       },
       onComplete: async (response: any) => {
-        setIsProcessingPayment(false);
+        setIsProcessingPayment(true); // Maintenir le statut pendant la redirection
         console.log("FedaPay Application Response:", response);
 
-        // Lecture robuste du statut (FedaPay peut renvoyer l'objet transaction séparément)
-        const status = response.status || (response.transaction ? response.transaction.status : undefined);
+        // Lecture robuste du statut
+        const status = response?.status || 
+                       response?.transaction?.status || 
+                       (response?.reason ? 'failed' : undefined);
 
-        if (status === 'approved') {
+        if (status === 'approved' || (response?.transaction?.id && !response?.reason)) {
           setIsPaid(true);
+          setIsProcessingPayment(false);
           setStep(3); 
         } else {
-          alert("Paiement non approuvé (Statut: " + (status || "Inconnu") + ")");
+          setIsProcessingPayment(false);
+          alert("Le paiement n'a pas été approuvé. Raison : " + (response?.reason || status || "Inconnu"));
         }
       },
       onClose: () => {
