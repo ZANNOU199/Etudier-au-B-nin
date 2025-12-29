@@ -131,17 +131,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
 
       if (uniRes.ok) {
-        const uniData = await uniRes.json();
-        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        setUniversities(rawUnis.map((u: any) => ({
-          ...u,
-          id: u.id.toString(),
-          location: u.city || u.location || 'Bénin',
-          type: (u.type || u.status_inst || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
-          isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
-          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        })));
+        const uniData = await uniRes.ok ? await uniRes.json() : null;
+        if (uniData) {
+          const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
+          setUniversities(rawUnis.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            location: u.city || u.location || 'Bénin',
+            type: (u.type || u.status_inst || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
+            isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
+            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+          })));
+        }
       }
 
       if (majorRes.ok) {
@@ -159,36 +161,28 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })));
       }
 
-      // 2. Si Super Admin : Récupérer TOUS les utilisateurs
-      // On teste les deux endpoints possibles car /admin/users peut ne pas exister sur votre backend
+      // 2. Si Super Admin : Récupérer TOUS les utilisateurs via /users (vu dans votre screenshot)
       if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
-        let allUsers: any[] = [];
         try {
-          // On essaie d'abord /users (vu dans votre screenshot)
+          // On teste /users car c'est celui qui marche dans votre capture d'écran
           const res = await apiRequest('/users');
           const data = await res.json();
-          allUsers = Array.isArray(data) ? data : (data.data || data.users || []);
+          // Selon votre capture : { "status": "success", "data": [...] }
+          const allUsers = Array.isArray(data) ? data : (data.data || data.users || []);
           
-          if (allUsers.length === 0) {
-             // Si vide, on tente /admin/users
-             const resAdmin = await apiRequest('/admin/users');
-             const dataAdmin = await resAdmin.json();
-             allUsers = Array.isArray(dataAdmin) ? dataAdmin : (dataAdmin.data || dataAdmin.users || []);
-          }
-
           setStaffUsers(allUsers.map((u: any) => ({
             ...u,
             id: u.id.toString(),
-            firstName: u.firstName || u.first_name || 'Utilisateur',
-            lastName: u.lastName || u.last_name || 'Admin',
-            // Si le rôle est manquant dans l'API, on regarde si on peut le déduire ou on met student par défaut
+            firstName: u.firstName || u.first_name || 'Admin',
+            lastName: u.lastName || u.last_name || 'Utilisateur',
+            // Conversion forcée du rôle en minuscules pour le filtre
             role: (u.role || u.user_role || 'student').toLowerCase().trim(),
             permissions: u.permissions 
               ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
               : []
           })));
         } catch (e) {
-          console.error("Échec récupération staff:", e);
+          console.error("Erreur récupération staff via /users:", e);
         }
       }
 
@@ -196,34 +190,38 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (token && user) {
         const isAdmin = user.role === 'admin' || user.role === 'super_admin';
         const endpoint = isAdmin ? '/admin/applications' : '/applications';
-        const appRes = await apiRequest(endpoint);
-        const appData = await appRes.json();
-        const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-        
-        const statusMap: Record<string, Application['status']> = {
-          'pending': 'En attente',
-          'accepted': 'Validé',
-          'validated': 'Validé',
-          'rejected': 'Rejeté',
-          'processing': 'En cours'
-        };
+        try {
+          const appRes = await apiRequest(endpoint);
+          const appData = await appRes.json();
+          const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
+          
+          const statusMap: Record<string, Application['status']> = {
+            'pending': 'En attente',
+            'accepted': 'Validé',
+            'validated': 'Validé',
+            'rejected': 'Rejeté',
+            'processing': 'En cours'
+          };
 
-        setApplications(rawApps.map((a: any) => ({
-          ...a,
-          id: a.id.toString(),
-          studentId: (a.user_id || user.id).toString(),
-          studentName: a.user ? `${a.user.firstName || a.user.first_name} ${a.user.lastName || a.user.last_name}` : "Candidat",
-          majorId: (a.major?.id || a.major_id)?.toString(),
-          majorName: a.major?.name || 'Filière non spécifiée',
-          universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
-          status: statusMap[a.status] || a.status || 'En attente',
-          date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
-          documents: a.documents || [],
-          primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
-        })));
+          setApplications(rawApps.map((a: any) => ({
+            ...a,
+            id: a.id.toString(),
+            studentId: (a.user_id || user.id).toString(),
+            studentName: a.user ? `${a.user.firstName || a.user.first_name} ${a.user.lastName || a.user.last_name}` : "Candidat",
+            majorId: (a.major?.id || a.major_id)?.toString(),
+            majorName: a.major?.name || 'Filière non spécifiée',
+            universityName: a.major?.university?.acronym || a.university?.acronym || "Établissement",
+            status: statusMap[a.status] || a.status || 'En attente',
+            date: a.created_at ? new Date(a.created_at).toLocaleDateString('fr-FR') : 'Date inconnue',
+            documents: a.documents || [],
+            primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
+          })));
+        } catch (err) {
+          console.warn("Échec partiel applications");
+        }
       }
     } catch (e) {
-      console.warn("RefreshData partial failure", e);
+      console.error("Global refresh failure", e);
     }
     setIsLoading(false);
   };

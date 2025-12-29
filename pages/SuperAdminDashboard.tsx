@@ -5,6 +5,8 @@ import { useCMS } from '../CMSContext';
 import { User, UserRole, University, Major } from '../types';
 import { processAcademicCSV } from '../utils/ImportService';
 
+const STAFF_PER_PAGE = 6;
+
 const SuperAdminDashboard: React.FC = () => {
   const { 
     universities, 
@@ -27,11 +29,12 @@ const SuperAdminDashboard: React.FC = () => {
   const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
   const [staffLoading, setStaffLoading] = useState(false);
   const [staffError, setStaffError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  // FILTRAGE : On accepte 'admin', 'super_admin' et leurs variantes
+  // FILTRAGE : On accepte 'admin', 'super_admin' et leurs variantes (minuscules)
   const filteredStaff = useMemo(() => {
     if (!staffUsers || staffUsers.length === 0) return [];
     return staffUsers.filter(u => {
@@ -39,6 +42,13 @@ const SuperAdminDashboard: React.FC = () => {
       return r === 'admin' || r === 'super_admin' || r === 'superadmin' || r === 'administrator';
     });
   }, [staffUsers]);
+
+  // PAGINATION : 6 PAR PAGE
+  const totalPages = Math.ceil(filteredStaff.length / STAFF_PER_PAGE);
+  const pagedStaff = useMemo(() => {
+    const start = (currentPage - 1) * STAFF_PER_PAGE;
+    return filteredStaff.slice(start, start + STAFF_PER_PAGE);
+  }, [filteredStaff, currentPage]);
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -126,12 +136,12 @@ const SuperAdminDashboard: React.FC = () => {
   };
 
   const Sidebar = () => (
-    <div className="flex flex-col h-full p-8 text-white">
-      <div className="flex items-center gap-4 mb-16 px-2 text-left">
+    <div className="flex flex-col h-full p-8 text-white text-left">
+      <div className="flex items-center gap-4 mb-16 px-2">
         <div className="size-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/20">
           <span className="material-symbols-outlined font-black text-2xl">diamond</span>
         </div>
-        <div className="text-left">
+        <div>
           <h2 className="text-xl font-black tracking-tighter leading-none">Super Console</h2>
           <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1.5">Master Access</p>
         </div>
@@ -192,15 +202,15 @@ const SuperAdminDashboard: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-8 lg:p-16 custom-scrollbar">
           {activeTab === 'staff' && (
-            <div className="space-y-10 animate-fade-in">
+            <div className="space-y-10 animate-fade-in text-left">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div className="space-y-2 text-left">
+                  <div className="space-y-2">
                     <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Staff & Permissions</h2>
                     <p className="text-gray-500 font-medium italic">Gérez les comptes administrateurs et leurs droits d'accès.</p>
                   </div>
                   <div className="flex gap-4">
                     <button 
-                      onClick={() => refreshData()}
+                      onClick={() => { refreshData(); setCurrentPage(1); }}
                       className={`size-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all ${isLoading ? 'animate-spin' : ''}`}
                     >
                       <span className="material-symbols-outlined">refresh</span>
@@ -229,7 +239,7 @@ const SuperAdminDashboard: React.FC = () => {
                         {isLoading && (
                            <tr><td colSpan={4} className="p-20 text-center text-gray-500 animate-pulse font-black uppercase tracking-widest">Récupération des données...</td></tr>
                         )}
-                        {!isLoading && filteredStaff.map((s) => (
+                        {!isLoading && pagedStaff.map((s) => (
                            <tr key={s.id} className="hover:bg-white/2 transition-colors">
                               <td className="px-8 py-6">
                                  <div className="flex items-center gap-4 text-left">
@@ -278,11 +288,42 @@ const SuperAdminDashboard: React.FC = () => {
                            </tr>
                         ))}
                         {!isLoading && filteredStaff.length === 0 && (
-                           <tr><td colSpan={4} className="p-20 text-center text-gray-500 font-medium italic">Aucun administrateur trouvé dans la base ({staffUsers.length} total).</td></tr>
+                           <tr><td colSpan={4} className="p-20 text-center text-gray-500 font-medium italic">Aucun administrateur trouvé dans la base.</td></tr>
                         )}
                      </tbody>
                   </table>
                </div>
+
+               {/* PAGINATION STAFF : 6 PAR PAGE */}
+               {totalPages > 1 && (
+                 <div className="flex justify-center items-center gap-3 pt-6 animate-fade-in">
+                    <button 
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      className="size-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 disabled:opacity-20 hover:text-primary transition-all"
+                    >
+                      <span className="material-symbols-outlined">west</span>
+                    </button>
+                    <div className="flex gap-2">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button 
+                          key={i}
+                          onClick={() => setCurrentPage(i + 1)}
+                          className={`size-11 rounded-xl font-black text-xs transition-all border ${currentPage === i + 1 ? 'bg-primary text-black border-primary' : 'bg-white/5 text-gray-500 border-white/10 hover:border-primary'}`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+                    </div>
+                    <button 
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      className="size-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 disabled:opacity-20 hover:text-primary transition-all"
+                    >
+                      <span className="material-symbols-outlined">east</span>
+                    </button>
+                 </div>
+               )}
             </div>
           )}
 
