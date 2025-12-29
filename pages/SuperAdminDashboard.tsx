@@ -231,7 +231,6 @@ const SuperAdminDashboard: React.FC = () => {
                         <tr className="border-b border-white/5 bg-white/2">
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Identité</th>
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Rôle</th>
-                           <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Permissions actives</th>
                            <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Actions</th>
                         </tr>
                      </thead>
@@ -258,26 +257,6 @@ const SuperAdminDashboard: React.FC = () => {
                                  }`}>
                                     {s.role}
                                  </span>
-                              </td>
-                              <td className="px-8 py-6">
-                                 <div className="flex gap-2">
-                                    {['manage_catalog', 'validate_apps', 'view_logs', 'edit_cms'].map(code => (
-                                       <div 
-                                          key={code} 
-                                          className={`size-8 rounded-lg flex items-center justify-center border ${
-                                             (s.permissions || []).includes(code) 
-                                                ? 'bg-primary/10 border-primary/30 text-primary' 
-                                                : 'bg-white/5 border-white/5 text-gray-600 grayscale'
-                                          }`}
-                                       >
-                                          <span className="material-symbols-outlined text-sm font-bold">
-                                             {code === 'manage_catalog' ? 'category' : 
-                                              code === 'validate_apps' ? 'check_circle' : 
-                                              code === 'view_logs' ? 'monitoring' : 'palette'}
-                                          </span>
-                                       </div>
-                                    ))}
-                                 </div>
                               </td>
                               <td className="px-8 py-6">
                                  <div className="flex gap-4">
