@@ -86,10 +86,7 @@ const MajorDetail: React.FC = () => {
                   <div className="size-12 rounded-2xl bg-white/10 flex items-center justify-center text-primary flex-shrink-0">
                     <span className="material-symbols-outlined font-bold">payments</span>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Scolarité annuelle</p>
-                    <p className="text-2xl font-black tracking-tight text-primary">{major.fees}</p>
-                  </div>
+                  
                 </div>
               </div>
             </div>
