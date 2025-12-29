@@ -17,7 +17,7 @@ const Home: React.FC = () => {
   const filteredUniversities = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     
-    return universities.filter(uni => {
+    let filtered = universities.filter(uni => {
       // Filtre par ville
       const matchesCity = cityFilter === 'Toutes les villes' || uni.location === cityFilter;
       if (!matchesCity) return false;
@@ -34,7 +34,10 @@ const Home: React.FC = () => {
       const matchesMajor = institutionMajors.some(m => m.name.toLowerCase().includes(query));
       
       return matchesMajor;
-    }).slice(0, 6); 
+    });
+
+    // TRI PAR RECOMMANDATION : on met les 1 avant les 0
+    return filtered.sort((a, b) => (b.recommended || 0) - (a.recommended || 0)).slice(0, 6);
   }, [searchQuery, cityFilter, universities, majors]);
 
   const handleSearchClick = () => {
@@ -130,7 +133,14 @@ const Home: React.FC = () => {
                 ).slice(0, 3) : [];
 
                 return (
-                  <div key={uni.id} className="group bg-white dark:bg-surface-dark rounded-[50px] overflow-hidden border border-gray-100 dark:border-white/5 hover:shadow-premium transition-all duration-700 flex flex-col md:flex-row animate-fade-in">
+                  <div key={uni.id} className="group bg-white dark:bg-surface-dark rounded-[50px] overflow-hidden border border-gray-100 dark:border-white/5 hover:shadow-premium transition-all duration-700 flex flex-col md:flex-row animate-fade-in relative">
+                    {/* Indicateur visuel Recommandé */}
+                    {uni.recommended === 1 && (
+                      <div className="absolute top-6 right-6 z-20 size-10 bg-amber-400 rounded-full flex items-center justify-center text-black shadow-lg animate-pulse">
+                         <span className="material-symbols-outlined font-black">grade</span>
+                      </div>
+                    )}
+                    
                     <div className="md:w-2/5 relative h-64 md:h-auto overflow-hidden">
                       <img src={uni.cover} alt={uni.name} className="h-full w-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                       <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-transparent to-transparent"></div>
