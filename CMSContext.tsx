@@ -332,7 +332,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       domain: majorData.domain,
       level: majorData.level,
       duration: majorData.duration,
-      fees: majorData.fees,
+      fees: majorData.fees || null, // Modification : null si vide
       location: majorData.location,
       career_prospects: Array.isArray(majorData.careerProspects) ? majorData.careerProspects.map((p: any) => typeof p === 'string' ? p : p.title) : [],
       required_diplomas: Array.isArray(majorData.requiredDiplomas) ? majorData.requiredDiplomas.map((d: any) => typeof d === 'string' ? d : d.name) : []
@@ -348,7 +348,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       domain: major.domain,
       level: major.level,
       duration: major.duration,
-      fees: major.fees,
+      fees: major.fees || null, // Modification : null si vide
       location: major.location,
       university_id: major.universityId ? parseInt(major.universityId) : null,
       faculty_id: major.facultyId ? parseInt(major.facultyId) : null,
