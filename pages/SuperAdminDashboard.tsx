@@ -135,10 +135,10 @@ const SuperAdminDashboard: React.FC = () => {
     setShowStaffModal(true);
   };
 
-  const Sidebar = () => (
+  const SidebarContent = () => (
     <div className="flex flex-col h-full p-8 text-white text-left">
-      <div className="flex items-center gap-4 mb-16 px-2">
-        <div className="size-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/20">
+      <div className="flex items-center gap-4 mb-12 lg:mb-16 px-2">
+        <div className="size-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/20 shrink-0">
           <span className="material-symbols-outlined font-black text-2xl">diamond</span>
         </div>
         <div>
@@ -177,103 +177,118 @@ const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-[#090f0b] font-display overflow-hidden relative">
+      {/* Sidebar Desktop */}
       <aside className="hidden lg:flex w-80 bg-[#0d1b13] flex-col shrink-0 z-30 border-r border-white/5 shadow-2xl">
-        <Sidebar />
+        <SidebarContent />
       </aside>
 
+      {/* Sidebar Mobile/Tablette (Drawer) */}
+      {isSidebarOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+          <aside className="fixed left-0 top-0 bottom-0 w-80 bg-[#0d1b13] z-[70] lg:hidden animate-in slide-in-from-left duration-300 shadow-2xl">
+            <SidebarContent />
+          </aside>
+        </>
+      )}
+
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="px-8 py-6 flex items-center justify-between border-b border-white/5 bg-[#0d1b13]/80 backdrop-blur-md">
+        <header className="px-6 lg:px-8 py-4 lg:py-6 flex items-center justify-between border-b border-white/5 bg-[#0d1b13]/80 backdrop-blur-md sticky top-0 z-50">
            <div className="flex items-center gap-4">
-              <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+              <button 
+                onClick={() => setIsSidebarOpen(true)} 
+                className="lg:hidden size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-colors"
+              >
                 <span className="material-symbols-outlined">menu</span>
               </button>
-              <h1 className="text-2xl font-black text-white tracking-tighter uppercase">Super Admin Panel</h1>
+              <h1 className="text-xl lg:text-2xl font-black text-white tracking-tighter uppercase truncate max-w-[150px] sm:max-w-none">Super Panel</h1>
            </div>
-           <div className="flex items-center gap-6">
+           
+           <div className="flex items-center gap-4 lg:gap-6">
               <div className="text-right hidden sm:block">
                  <p className="text-xs font-black text-white leading-none uppercase">{user?.firstName} {user?.lastName}</p>
                  <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">Super Privilèges</p>
               </div>
-              <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+              <div className="size-11 lg:size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
                  <span className="material-symbols-outlined font-black">shield_person</span>
               </div>
            </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 lg:p-16 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-6 lg:p-16 custom-scrollbar bg-gradient-to-b from-[#0d1b13]/20 to-transparent">
           {activeTab === 'staff' && (
-            <div className="space-y-10 animate-fade-in text-left">
+            <div className="space-y-8 lg:space-y-10 animate-fade-in text-left">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div className="space-y-2">
-                    <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Staff & Permissions</h2>
-                    <p className="text-gray-500 font-medium italic">Gérez les comptes administrateurs et leurs droits d'accès.</p>
+                    <h2 className="text-3xl lg:text-4xl font-black text-white tracking-tighter uppercase leading-none">Staff & <span className="text-primary italic">Permissions</span></h2>
+                    <p className="text-gray-500 font-medium italic text-sm">Gérez les comptes administratifs du système.</p>
                   </div>
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 w-full md:w-auto">
                     <button 
                       onClick={() => { refreshData(); setCurrentPage(1); }}
-                      className={`size-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all ${isLoading ? 'animate-spin' : ''}`}
+                      className={`size-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-primary transition-all border border-white/5 ${isLoading ? 'animate-spin' : ''}`}
                     >
                       <span className="material-symbols-outlined">refresh</span>
                     </button>
                     <button 
                       onClick={() => { setSelectedStaff(null); setShowStaffModal(true); }}
-                      className="flex items-center gap-3 px-10 py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-3 px-8 lg:px-10 py-4 lg:py-5 bg-primary text-black font-black rounded-2xl text-[10px] lg:text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all"
                     >
                       <span className="material-symbols-outlined text-xl font-bold">person_add</span>
-                      Créer un compte
+                      Nouveau Compte
                     </button>
                   </div>
                </div>
 
-               <div className="overflow-x-auto rounded-[40px] border border-white/5 bg-[#0d1b13] shadow-2xl">
-                  <table className="w-full text-left border-collapse min-w-[900px]">
+               <div className="overflow-x-auto rounded-[32px] lg:rounded-[40px] border border-white/5 bg-[#0d1b13] shadow-2xl">
+                  <table className="w-full text-left border-collapse min-w-[800px]">
                      <thead>
                         <tr className="border-b border-white/5 bg-white/2">
-                           <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Identité</th>
-                           <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Rôle</th>
-                           <th className="px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Actions</th>
+                           <th className="px-6 lg:px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Administrateur</th>
+                           <th className="px-6 lg:px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em]">Rôle Système</th>
+                           <th className="px-6 lg:px-8 py-6 text-[10px] font-black text-primary uppercase tracking-[0.2em] text-right">Actions</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-white/5">
                         {isLoading && (
-                           <tr><td colSpan={4} className="p-20 text-center text-gray-500 animate-pulse font-black uppercase tracking-widest">Récupération des données...</td></tr>
+                           <tr><td colSpan={3} className="p-20 text-center text-gray-500 animate-pulse font-black uppercase tracking-widest">Nexus Synchronisation...</td></tr>
                         )}
                         {!isLoading && pagedStaff.map((s) => (
                            <tr key={s.id} className="hover:bg-white/2 transition-colors">
-                              <td className="px-8 py-6">
+                              <td className="px-6 lg:px-8 py-6">
                                  <div className="flex items-center gap-4 text-left">
-                                    <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 font-black text-xs">
+                                    <div className="size-10 lg:size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-500 font-black text-xs border border-white/5">
                                        {(s.firstName?.[0] || 'U')}{(s.lastName?.[0] || 'A')}
                                     </div>
-                                    <div>
-                                       <p className="text-white font-black">{s.firstName} {s.lastName}</p>
-                                       <p className="text-[10px] text-gray-500 font-bold">{s.email}</p>
+                                    <div className="min-w-0">
+                                       <p className="text-white font-black truncate">{s.firstName} {s.lastName}</p>
+                                       <p className="text-[10px] text-gray-500 font-bold truncate">{s.email}</p>
                                     </div>
                                  </div>
                               </td>
-                              <td className="px-8 py-6">
-                                 <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                    (s.role || '').toLowerCase().trim().includes('super') ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                              <td className="px-6 lg:px-8 py-6">
+                                 <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border inline-block ${
+                                    (s.role || '').toLowerCase().trim().includes('super') ? 'bg-primary/10 text-primary border-primary/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
                                  }`}>
                                     {s.role}
                                  </span>
                               </td>
-                              <td className="px-8 py-6">
-                                 <div className="flex gap-4">
-                                    <button onClick={() => handleEditClick(s)} className="text-gray-500 hover:text-white transition-colors"><span className="material-symbols-outlined">edit</span></button>
-                                    <button onClick={() => { if(confirm(`Supprimer l'accès de ${s.firstName} ?`)) deleteStaffUser(s.id); }} className="text-gray-500 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">delete</span></button>
+                              <td className="px-6 lg:px-8 py-6 text-right">
+                                 <div className="flex justify-end gap-3 lg:gap-4">
+                                    <button onClick={() => handleEditClick(s)} className="size-10 rounded-xl bg-white/5 text-gray-500 hover:text-white transition-all flex items-center justify-center border border-white/5"><span className="material-symbols-outlined text-lg">edit</span></button>
+                                    <button onClick={() => { if(confirm(`Révoquer l'accès de ${s.firstName} ?`)) deleteStaffUser(s.id); }} className="size-10 rounded-xl bg-white/5 text-gray-500 hover:text-red-500 transition-all flex items-center justify-center border border-white/5"><span className="material-symbols-outlined text-lg">delete</span></button>
                                  </div>
                               </td>
                            </tr>
                         ))}
                         {!isLoading && filteredStaff.length === 0 && (
-                           <tr><td colSpan={4} className="p-20 text-center text-gray-500 font-medium italic">Aucun administrateur trouvé dans la base.</td></tr>
+                           <tr><td colSpan={3} className="p-20 text-center text-gray-500 font-medium italic">Aucun administrateur détecté dans le flux de données.</td></tr>
                         )}
                      </tbody>
                   </table>
                </div>
 
-               {/* PAGINATION STAFF : 6 PAR PAGE */}
+               {/* PAGINATION STAFF */}
                {totalPages > 1 && (
                  <div className="flex justify-center items-center gap-3 pt-6 animate-fade-in">
                     <button 
@@ -307,78 +322,93 @@ const SuperAdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'csv' && (
-             <div className="max-w-4xl space-y-12 animate-fade-in text-left text-white">
-                <h2 className="text-5xl font-black tracking-tighter">Nexus <span className="text-primary italic">Import</span></h2>
-                <div onClick={() => fileInputRef.current?.click()} className="p-16 rounded-[48px] border-2 border-dashed border-white/10 bg-white/5 hover:border-primary/50 cursor-pointer flex flex-col items-center">
+             <div className="max-w-4xl space-y-10 lg:space-y-12 animate-fade-in text-left text-white">
+                <div className="space-y-4">
+                  <h2 className="text-4xl lg:text-5xl font-black tracking-tighter">Nexus <span className="text-primary italic">Import</span></h2>
+                  <p className="text-gray-500 font-medium max-w-2xl">Mettez à jour massivement le catalogue académique via l'importation de fichiers CSV structurés.</p>
+                </div>
+                
+                <div onClick={() => fileInputRef.current?.click()} className="p-12 lg:p-20 rounded-[40px] lg:rounded-[48px] border-2 border-dashed border-white/10 bg-white/5 hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center group">
                    <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleImportCSV} />
-                   <span className="material-symbols-outlined text-6xl text-primary mb-4">upload_file</span>
-                   <p className="font-black uppercase tracking-widest text-sm">Charger le fichier CSV</p>
+                   <div className="size-20 lg:size-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-5xl">upload_file</span>
+                   </div>
+                   <p className="font-black uppercase tracking-[0.2em] text-sm text-white group-hover:text-primary transition-colors">Charger le fichier .csv</p>
+                   <p className="text-[10px] text-gray-500 mt-4 uppercase tracking-widest font-bold">Encodage UTF-8 recommandé</p>
                 </div>
              </div>
           )}
 
-          {activeTab === 'cms' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left">Module CMS Actif</div>}
-          {activeTab === 'settings' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left">Paramètres Système</div>}
-          {activeTab === 'logs' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left">Flux Temps Réel</div>}
+          {activeTab === 'cms' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left bg-white/5 rounded-[32px] border border-white/5">Module CMS en cours de déploiement...</div>}
+          {activeTab === 'settings' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left bg-white/5 rounded-[32px] border border-white/5">Paramètres du noyau système</div>}
+          {activeTab === 'logs' && <div className="text-white p-10 font-black uppercase tracking-widest opacity-40 text-left bg-white/5 rounded-[32px] border border-white/5">Flux des logs en temps réel</div>}
         </div>
 
         {/* MODAL: ADD/EDIT STAFF */}
         {showStaffModal && (
-          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
-             <div className="bg-[#162a1f] w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-white/5 animate-in zoom-in-95">
-                <div className="px-10 py-8 bg-white/5 border-b border-white/5 flex justify-between items-center text-left">
-                   <h3 className="text-2xl font-black text-white tracking-tight">
-                     {selectedStaff ? 'Modifier l\'accès' : 'Nouvel accès administratif'}
-                   </h3>
-                   <button onClick={() => { setShowStaffModal(false); setSelectedStaff(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400">
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 lg:p-8 overflow-y-auto">
+             <div className="bg-[#162a1f] w-full max-w-xl rounded-[40px] lg:rounded-[48px] shadow-2xl overflow-hidden border border-white/5 animate-in zoom-in-95 my-auto">
+                <div className="px-8 lg:px-10 py-6 lg:py-8 bg-white/5 border-b border-white/5 flex justify-between items-center text-left">
+                   <div>
+                      <h3 className="text-xl lg:text-2xl font-black text-white tracking-tight">
+                        {selectedStaff ? 'Mettre à jour le profil' : 'Créer un accès Administrateur'}
+                      </h3>
+                      <p className="text-[9px] font-black text-primary uppercase tracking-widest mt-1">Configuration des privilèges</p>
+                   </div>
+                   <button onClick={() => { setShowStaffModal(false); setSelectedStaff(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                      <span className="material-symbols-outlined">close</span>
                    </button>
                 </div>
                 
-                <form onSubmit={handleAddStaffMember} className="p-10 space-y-6 text-left">
+                <form onSubmit={handleAddStaffMember} className="p-8 lg:p-10 space-y-6 text-left">
                    {staffError && (
-                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] font-black uppercase tracking-widest">
+                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] font-black uppercase tracking-widest animate-shake">
                        {staffError}
                      </div>
                    )}
                    
-                   <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Prénom</label>
-                        <input name="fn" required defaultValue={selectedStaff?.firstName} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                        <input name="fn" required defaultValue={selectedStaff?.firstName} className="w-full p-4 rounded-2xl bg-white/5 border border-white/5 font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom</label>
-                        <input name="ln" required defaultValue={selectedStaff?.lastName} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de famille</label>
+                        <input name="ln" required defaultValue={selectedStaff?.lastName} className="w-full p-4 rounded-2xl bg-white/5 border border-white/5 font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                       </div>
                    </div>
                    
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Email Professionnel</label>
-                      <input name="email" type="email" required defaultValue={selectedStaff?.email} className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
+                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">E-mail professionnel</label>
+                      <input name="email" type="email" required defaultValue={selectedStaff?.email} className="w-full p-4 rounded-2xl bg-white/5 border border-white/5 font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" />
                    </div>
 
                    {!selectedStaff && (
                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Mot de passe temporaire</label>
-                        <input name="password" type="password" required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" placeholder="••••••••" />
+                        <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Clé d'accès (Password)</label>
+                        <input name="password" type="password" required className="w-full p-4 rounded-2xl bg-white/5 border border-white/5 font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" placeholder="••••••••" />
                      </div>
                    )}
 
                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rôle</label>
-                      <select name="role" defaultValue={selectedStaff?.role || "admin"} className="w-full p-4 rounded-2xl bg-[#0d1b13] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
-                         <option value="admin">Administrateur (Dashboard Admin)</option>
-                         <option value="super_admin">Super Admin (Super Console)</option>
+                      <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau d'accréditation</label>
+                      <select name="role" defaultValue={selectedStaff?.role || "admin"} className="w-full p-4 rounded-2xl bg-[#0d1b13] border border-white/5 font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer">
+                         <option value="admin">Administrateur Standard</option>
+                         <option value="super_admin">Super Administrateur Système</option>
                       </select>
                    </div>
                    
                    <button 
                     disabled={staffLoading}
                     type="submit" 
-                    className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-6 disabled:opacity-50"
+                    className="w-full py-5 lg:py-6 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-4 disabled:opacity-50 hover:bg-green-400 transition-all flex items-center justify-center gap-3"
                    >
-                     {staffLoading ? "Traitement..." : selectedStaff ? "Mettre à jour" : "Finaliser et créer le compte"}
+                     {staffLoading ? (
+                       <span className="size-5 border-2 border-black/20 border-t-black rounded-full animate-spin"></span>
+                     ) : (
+                       <span className="material-symbols-outlined text-xl">verified_user</span>
+                     )}
+                     {staffLoading ? "Nexus Traitement..." : selectedStaff ? "Valider les modifications" : "Générer les accès"}
                    </button>
                 </form>
              </div>
