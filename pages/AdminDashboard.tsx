@@ -21,7 +21,6 @@ const AdminDashboard: React.FC = () => {
     logout, user, refreshData, isLoading
   } = useCMS();
   
-  // Initialize navigate hook to fix the error on line 179
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<AdminView>('overview');
   const [activeCatalogSection, setActiveCatalogSection] = useState<CatalogSection>('universities');
@@ -35,7 +34,6 @@ const AdminDashboard: React.FC = () => {
   const [majorSearch, setMajorSearch] = useState('');
   const [recoSearch, setRecoSearch] = useState('');
   
-  // Wizard States
   const [showWizard, setShowWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState<CreationStep>('institution');
   const [currentInstId, setCurrentInstId] = useState<string | null>(null);
@@ -45,7 +43,6 @@ const AdminDashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Dynamic lists for Prospects and Diplomas
   const [prospects, setProspects] = useState<string[]>([]);
   const [diplomas, setDiplomas] = useState<string[]>([]);
   const [newProspect, setNewProspect] = useState('');
@@ -348,24 +345,25 @@ const AdminDashboard: React.FC = () => {
                            e.preventDefault(); setIsProcessing(true); const formRef = e.currentTarget; const fd = new FormData(formRef);
                            try {
                              if (!currentInstId) throw new Error("ID institution manquant.");
+                             // On utilise des clés camelCase pour correspondre à l'interface frontend attendue par CMSContext
                              const majorPayload: any = {
-                               university_id: parseInt(currentInstId),
-                               faculty_id: fd.get('faculty_id') ? parseInt(fd.get('faculty_id') as string) : null,
+                               universityId: currentInstId,
+                               facultyId: fd.get('faculty_id') ? (fd.get('faculty_id') as string) : null,
                                name: fd.get('name') as string,
                                domain: fd.get('domain') as string,
                                level: fd.get('level') as string,
                                duration: fd.get('duration') as string,
                                fees: fd.get('fees') as string,
                                location: currentUni?.location || 'Bénin',
-                               career_prospects: prospects, // Envoi sous forme de tableau
-                               required_diplomas: diplomas,  // Envoi sous forme de tableau
+                               careerProspects: prospects.map(p => ({ title: p, icon: 'work' })),
+                               requiredDiplomas: diplomas.map(d => ({ name: d, icon: 'school' })),
                              };
                              if (isEditing && selectedMajor) { await updateMajor({ ...selectedMajor, ...majorPayload }); } 
                              else { await addMajor(majorPayload); }
                              formRef.reset(); setSelectedMajor(null); setProspects([]); setDiplomas([]); if (isEditing) setShowWizard(false); await refreshData();
                            } catch (err: any) { alert("Erreur : " + err.message); } finally { setIsProcessing(false); }
                         }} className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-6">
-                           <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rattachement</label><select name="faculty_id" required defaultValue={selectedMajor?.faculty_id || ""} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"><option value="" disabled>Sélectionnez...</option>{Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}</select></div>
+                           <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rattachement</label><select name="faculty_id" required defaultValue={selectedMajor?.facultyId || ""} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"><option value="" disabled>Sélectionnez...</option>{Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}</select></div>
                            <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la filière</label><input name="name" required defaultValue={selectedMajor?.name} placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label><input name="domain" required defaultValue={selectedMajor?.domain} placeholder="Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
@@ -376,7 +374,6 @@ const AdminDashboard: React.FC = () => {
                               <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Scolarité</label><input name="fees" required defaultValue={selectedMajor?.fees} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
                            </div>
 
-                           {/* Débouchés Dynamiques */}
                            <div className="space-y-4 pt-4 border-t border-white/5">
                              <label className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2"><span className="material-symbols-outlined text-sm">work</span> Débouchés (Métiers)</label>
                              <div className="flex gap-2">
@@ -392,7 +389,6 @@ const AdminDashboard: React.FC = () => {
                              </div>
                            </div>
 
-                           {/* Diplômes Dynamiques */}
                            <div className="space-y-4 pt-4 border-t border-white/5">
                              <label className="text-[10px] font-black uppercase text-amber-400 tracking-[0.2em] flex items-center gap-2"><span className="material-symbols-outlined text-sm">school</span> Diplômes Requis</label>
                              <div className="flex gap-2">

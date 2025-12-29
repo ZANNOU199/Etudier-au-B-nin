@@ -45,7 +45,8 @@ export interface Faculty {
 
 export interface Major {
   id: string;
-  faculty_id?: string;
+  /* Renamed from faculty_id to facultyId to fix errors in AdminDashboard and CMSContext where camelCase was expected */
+  facultyId?: string;
   name: string;
   universityId?: string;
   universityName: string;

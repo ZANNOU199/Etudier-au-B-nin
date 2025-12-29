@@ -87,6 +87,8 @@ export const processAcademicCSV = async (
             id: 'maj-' + Math.random().toString(36).substr(2, 9),
             name: row.nom_filiere,
             universityId: uni.id,
+            /* Changed from faculty_id to facultyId to match updated interface */
+            facultyId: fac.id,
             universityName: uni.acronym,
             facultyName: fac.name,
             domain: row.domaine || 'Général',

@@ -323,26 +323,39 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await refreshData();
   };
 
-  const addMajor = async (major: any) => {
-    // On s'assure d'envoyer un véritable tableau si c'en est un
+  const addMajor = async (majorData: any) => {
+    // On s'assure d'envoyer exactement les champs attendus en snake_case par Laravel
     const payload = {
-      ...major,
-      career_prospects: Array.isArray(major.career_prospects) ? major.career_prospects : major.career_prospects?.split('|').map((s: string) => s.trim()),
-      required_diplomas: Array.isArray(major.required_diplomas) ? major.required_diplomas : major.required_diplomas?.split('|').map((s: string) => s.trim())
+      university_id: parseInt(majorData.universityId),
+      faculty_id: majorData.facultyId ? parseInt(majorData.facultyId) : null,
+      name: majorData.name,
+      domain: majorData.domain,
+      level: majorData.level,
+      duration: majorData.duration,
+      fees: majorData.fees,
+      location: majorData.location,
+      career_prospects: Array.isArray(majorData.careerProspects) ? majorData.careerProspects.map((p: any) => typeof p === 'string' ? p : p.title) : [],
+      required_diplomas: Array.isArray(majorData.requiredDiplomas) ? majorData.requiredDiplomas.map((d: any) => typeof d === 'string' ? d : d.name) : []
     };
     await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(payload) });
     await refreshData();
   };
 
   const updateMajor = async (major: Major) => {
-    const { id, careerProspects, requiredDiplomas, ...data } = major;
-    // On re-mappe vers snake_case pour l'API Laravel en gardant le format tableau
+    // Mapping strict pour la mise à jour
     const payload = {
-      ...data,
-      career_prospects: Array.isArray(careerProspects) ? careerProspects.map(p => p.title) : [],
-      required_diplomas: Array.isArray(requiredDiplomas) ? requiredDiplomas.map(d => d.name) : []
+      name: major.name,
+      domain: major.domain,
+      level: major.level,
+      duration: major.duration,
+      fees: major.fees,
+      location: major.location,
+      university_id: major.universityId ? parseInt(major.universityId) : null,
+      faculty_id: major.facultyId ? parseInt(major.facultyId) : null,
+      career_prospects: Array.isArray(major.careerProspects) ? major.careerProspects.map(p => p.title) : [],
+      required_diplomas: Array.isArray(major.requiredDiplomas) ? major.requiredDiplomas.map(d => d.name) : []
     };
-    await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    await apiRequest(`/admin/majors/${major.id}`, { method: 'PUT', body: JSON.stringify(payload) });
     await refreshData();
   };
 
