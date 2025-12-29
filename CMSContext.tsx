@@ -124,7 +124,6 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoading(true);
     
     try {
-      // 1. Universités & Filières
       const [uniRes, majorRes] = await Promise.all([
         fetch(`${API_BASE_URL}/universities`, { headers: { 'Accept': 'application/json' } }),
         fetch(`${API_BASE_URL}/majors`, { headers: { 'Accept': 'application/json' } })
@@ -150,41 +149,59 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (majorRes.ok) {
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
-        setMajors(rawMajors.map((m: any) => ({
-          ...m,
-          id: m.id.toString(),
-          universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
-          facultyId: m.faculty_id?.toString(),
-          universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-          facultyName: m.faculty?.name || 'Tronc commun',
-          location: m.location || m.university?.city || 'Bénin',
-          image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400'
-        })));
+        setMajors(rawMajors.map((m: any) => {
+          // Parsing robuste des prospects et diplômes
+          let parsedProspects = [];
+          if (m.career_prospects) {
+            try {
+              const raw = typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : m.career_prospects;
+              parsedProspects = Array.isArray(raw) ? raw.map((p: any) => typeof p === 'string' ? { title: p, icon: 'work' } : p) : [];
+            } catch (e) {
+              parsedProspects = m.career_prospects.split('|').map((p: string) => ({ title: p.trim(), icon: 'work' }));
+            }
+          }
+
+          let parsedDiplomas = [];
+          if (m.required_diplomas) {
+            try {
+              const raw = typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : m.required_diplomas;
+              parsedDiplomas = Array.isArray(raw) ? raw.map((d: any) => typeof d === 'string' ? { name: d, icon: 'school' } : d) : [];
+            } catch (e) {
+              parsedDiplomas = m.required_diplomas.split('|').map((d: string) => ({ name: d.trim(), icon: 'school' }));
+            }
+          }
+
+          return {
+            ...m,
+            id: m.id.toString(),
+            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
+            facultyId: m.faculty_id?.toString(),
+            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
+            facultyName: m.faculty?.name || 'Tronc commun',
+            location: m.location || m.university?.city || 'Bénin',
+            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+            careerProspects: parsedProspects,
+            requiredDiplomas: parsedDiplomas
+          };
+        }));
       }
 
-      // 2. Si Super Admin : Récupérer TOUS les utilisateurs via /users
       if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
         try {
           const res = await apiRequest('/users');
           const data = await res.json();
           const allUsers = Array.isArray(data) ? data : (data.data || data.users || []);
-          
           setStaffUsers(allUsers.map((u: any) => ({
             ...u,
             id: u.id.toString(),
             firstName: u.firstName || u.first_name || 'Admin',
             lastName: u.lastName || u.last_name || 'Utilisateur',
             role: (u.role || u.user_role || 'student').toLowerCase().trim(),
-            permissions: u.permissions 
-              ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) 
-              : []
+            permissions: u.permissions ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) : []
           })));
-        } catch (e) {
-          console.error("Erreur récupération staff via /users:", e);
-        }
+        } catch (e) { console.error("Erreur staff:", e); }
       }
 
-      // 3. Candidatures
       if (token && user) {
         const isAdmin = user.role === 'admin' || user.role === 'super_admin';
         const endpoint = isAdmin ? '/admin/applications' : '/applications';
@@ -192,15 +209,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const appRes = await apiRequest(endpoint);
           const appData = await appRes.json();
           const rawApps = Array.isArray(appData) ? appData : (appData.data || []);
-          
           const statusMap: Record<string, Application['status']> = {
-            'pending': 'En attente',
-            'accepted': 'Validé',
-            'validated': 'Validé',
-            'rejected': 'Rejeté',
-            'processing': 'En cours'
+            'pending': 'En attente', 'accepted': 'Validé', 'validated': 'Validé', 'rejected': 'Rejeté', 'processing': 'En cours'
           };
-
           setApplications(rawApps.map((a: any) => ({
             ...a,
             id: a.id.toString(),
@@ -214,13 +225,9 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             documents: a.documents || [],
             primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
           })));
-        } catch (err) {
-          console.warn("Échec partiel applications");
-        }
+        } catch (err) { console.warn("Échec apps"); }
       }
-    } catch (e) {
-      console.error("Global refresh failure", e);
-    }
+    } catch (e) { console.error("Global refresh failure", e); }
     setIsLoading(false);
   };
 
@@ -238,56 +245,37 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = async (email: string, password: string) => {
     try {
-      const res = await apiRequest('/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
+      const res = await apiRequest('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
       const data = await res.json();
       if (res.ok) {
         const userData = { ...data.user, id: data.user.id.toString(), role: (data.user.role || 'student').toLowerCase() };
-        setUser(userData);
-        setToken(data.token);
-        setUserRole(userData.role as UserRole);
+        setUser(userData); setToken(data.token); setUserRole(userData.role as UserRole);
         localStorage.setItem('auth_token_v1', data.token);
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
       }
       return { success: false, message: "Identifiants invalides" };
-    } catch (e: any) {
-      return { success: false, message: e.message };
-    }
+    } catch (e: any) { return { success: false, message: e.message }; }
   };
 
   const register = async (formData: any) => {
     try {
-      const res = await apiRequest('/register', {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      });
+      const res = await apiRequest('/register', { method: 'POST', body: JSON.stringify(formData) });
       const data = await res.json();
       if (res.status === 201 || res.status === 200) {
         const userData = { ...data.user, id: data.user.id.toString(), role: (data.user.role || 'student').toLowerCase() };
-        setUser(userData);
-        setToken(data.token);
-        setUserRole(userData.role as UserRole);
+        setUser(userData); setToken(data.token); setUserRole(userData.role as UserRole);
         localStorage.setItem('auth_token_v1', data.token);
         localStorage.setItem('auth_user_v1', JSON.stringify(userData));
         return { success: true, message: data.message, user: userData };
       }
       return { success: false, message: "Erreur d'inscription" };
-    } catch (e: any) {
-      return { success: false, message: e.message };
-    }
+    } catch (e: any) { return { success: false, message: e.message }; }
   };
 
   const handleLogoutLocal = () => {
-    setUser(null);
-    setToken(null);
-    setUserRole('student');
-    setStaffUsers([]);
-    setApplications([]);
-    localStorage.removeItem('auth_token_v1');
-    localStorage.removeItem('auth_user_v1');
+    setUser(null); setToken(null); setUserRole('student'); setStaffUsers([]); setApplications([]);
+    localStorage.removeItem('auth_token_v1'); localStorage.removeItem('auth_user_v1');
   };
 
   const logout = async () => {
@@ -298,33 +286,22 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addApplication = async (formData: FormData) => {
     try {
       const res = await apiRequest('/applications', { method: 'POST', body: formData });
-      if (res.status === 201) {
-        await refreshData();
-        return { success: true, message: "Dossier créé" };
-      }
+      if (res.status === 201) { await refreshData(); return { success: true, message: "Dossier créé" }; }
       return { success: false, message: "Erreur" };
-    } catch (e: any) {
-      return { success: false, message: e.message };
-    }
+    } catch (e: any) { return { success: false, message: e.message }; }
   };
 
   const updateApplicationStatus = async (id: string, status: string) => {
     const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
     const endpoint = isAdmin ? `/admin/applications/${id}/status` : `/applications/${id}/status`;
     const method = isAdmin ? 'PATCH' : 'PUT';
-    
-    await apiRequest(endpoint, {
-      method: method,
-      body: JSON.stringify({ status })
-    });
+    await apiRequest(endpoint, { method, body: JSON.stringify({ status }) });
     await refreshData();
   };
 
   const addUniversity = async (formData: FormData) => {
     const res = await apiRequest('/admin/universities', { method: 'POST', body: formData });
-    const data = await res.json();
-    await refreshData();
-    return data.data || data;
+    const data = await res.json(); await refreshData(); return data.data || data;
   };
 
   const updateUniversity = async (id: string, uni: any) => {
@@ -339,9 +316,7 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addFaculty = async (faculty: any) => {
     const res = await apiRequest('/admin/faculties', { method: 'POST', body: JSON.stringify(faculty) });
-    const data = await res.json();
-    await refreshData();
-    return data.data || data;
+    const data = await res.json(); await refreshData(); return data.data || data;
   };
 
   const deleteFaculty = async (id: string) => {
@@ -350,13 +325,25 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addMajor = async (major: any) => {
-    await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(major) });
+    // Transformer les tableaux en chaînes séparées par | si nécessaire par l'API
+    const payload = {
+      ...major,
+      career_prospects: Array.isArray(major.career_prospects) ? major.career_prospects.join(' | ') : major.career_prospects,
+      required_diplomas: Array.isArray(major.required_diplomas) ? major.required_diplomas.join(' | ') : major.required_diplomas
+    };
+    await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(payload) });
     await refreshData();
   };
 
   const updateMajor = async (major: Major) => {
-    const { id, ...data } = major;
-    await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    const { id, careerProspects, requiredDiplomas, ...data } = major;
+    // On re-mappe vers snake_case pour l'API Laravel
+    const payload = {
+      ...data,
+      career_prospects: Array.isArray(careerProspects) ? careerProspects.map(p => p.title).join(' | ') : careerProspects,
+      required_diplomas: Array.isArray(requiredDiplomas) ? requiredDiplomas.map(d => d.name).join(' | ') : requiredDiplomas
+    };
+    await apiRequest(`/admin/majors/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     await refreshData();
   };
 
@@ -366,19 +353,12 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteApplication = (id: string) => apiRequest(`/applications/${id}`, { method: 'DELETE' }).then(() => refreshData());
-  
   const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
-  
   const updateStaffUser = (updatedUser: User) => {
-    // Suppression du préfixe /admin pour correspondre à votre API réelle
-    apiRequest(`/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) })
-      .then(() => refreshData());
+    apiRequest(`/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) }).then(() => refreshData());
   };
-  
   const deleteStaffUser = (id: string) => {
-    // Suppression du préfixe /admin pour correspondre à votre API réelle
-    apiRequest(`/users/${id}`, { method: 'DELETE' })
-      .then(() => refreshData());
+    apiRequest(`/users/${id}`, { method: 'DELETE' }).then(() => refreshData());
   };
 
   return (
