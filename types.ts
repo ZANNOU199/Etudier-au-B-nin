@@ -3,13 +3,14 @@ export interface University {
   id: string;
   name: string;
   acronym: string;
-  location: string;
-  city?: string;
+  location: string; // Mappé depuis 'city'
+  city?: string;    // Directement depuis l'API
   type: 'Public' | 'Privé';
   logo: string;
   cover: string;
   description: string;
   isStandaloneSchool?: boolean;
+  // Added recommended property to fix errors in AdminDashboard
   recommended?: number;
   stats: {
     students: string;
@@ -20,11 +21,13 @@ export interface University {
   faculties: Faculty[];
 }
 
+// Added CareerProspect interface to fix missing member error
 export interface CareerProspect {
   title: string;
   icon: string;
 }
 
+// Added RequiredDiploma interface to fix missing member error
 export interface RequiredDiploma {
   name: string;
   icon: string;
@@ -36,11 +39,13 @@ export interface Faculty {
   name: string;
   description: string;
   levels: string[];
+  // Added type property used in AdminDashboard and ImportService
   type?: 'Faculté' | 'Ecole' | 'Institut';
 }
 
 export interface Major {
   id: string;
+  /* Renamed from faculty_id to facultyId to fix errors in AdminDashboard and CMSContext where camelCase was expected */
   facultyId?: string;
   name: string;
   universityId?: string;
@@ -52,18 +57,9 @@ export interface Major {
   fees: string;
   location: string;
   image: string;
+  // Added missing careerProspects and requiredDiplomas properties
   careerProspects?: CareerProspect[];
   requiredDiplomas?: RequiredDiploma[];
-}
-
-export interface Payment {
-  id: string;
-  fedapay_id: string;
-  amount: number;
-  status: 'pending' | 'approved' | 'failed' | 'canceled';
-  mode: string;
-  description?: string;
-  created_at: string;
 }
 
 export interface Application {
@@ -77,8 +73,8 @@ export interface Application {
   date: string;
   primary_document_url?: string;
   documents: any[];
+  // Added majorId for navigation in Dashboard.tsx
   majorId?: string;
-  payment?: Payment; // Lien vers le paiement si existant
 }
 
 export type UserRole = 'super_admin' | 'admin' | 'student';
@@ -91,7 +87,9 @@ export interface User {
   role: UserRole;
   avatar?: string;
   token?: string;
+  // Added permissions property used in SuperAdminDashboard
   permissions?: string[];
+  // Added ine property used in Dashboard
   ine?: string;
 }
 

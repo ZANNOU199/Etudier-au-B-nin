@@ -27,7 +27,6 @@ interface CMSContextType {
   register: (data: any) => Promise<{ success: boolean; message: string; user?: User }>;
   logout: () => Promise<void>;
   addApplication: (formData: FormData) => Promise<{ success: boolean; message: string }>;
-  recordPayment: (paymentData: { fedapay_id: string, amount: number, status: string, application_id?: string | number | null, description?: string }) => Promise<any>;
   refreshData: () => Promise<void>;
   // Admin methods
   updateApplicationStatus: (id: string, status: string) => Promise<void>;
@@ -81,18 +80,14 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [universities, setUniversities] = useState<University[]>(MOCK_UNIS);
   const [majors, setMajors] = useState<Major[]>(MOCK_MAJORS);
   const [applications, setApplications] = useState<Application[]>([]);
-  const [staffUsers] = useState<User[]>([]);
+  const [staffUsers, setStaffUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [currentLang, setCurrentLang] = useState('fr');
-  const [themes] = useState<ThemeConfig[]>(DEFAULT_THEMES);
-  const [, setUserRole] = useState<UserRole>(user?.role || 'student');
+  const [themes, setThemes] = useState<ThemeConfig[]>(DEFAULT_THEMES);
+  const [userRole, setUserRole] = useState<UserRole>(user?.role || 'student');
 
   const activeTheme = themes.find(t => t.isActive) || themes[0];
-
-  const translate = (key: string) => {
-    return content[key]?.[currentLang] || content[key]?.['fr'] || key;
-  };
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     const headers: any = {
@@ -106,22 +101,15 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
       
       if (response.status === 401) {
-        if (endpoint !== '/majors' && endpoint !== '/universities' && endpoint !== '/login') {
+        if (endpoint !== '/majors' && endpoint !== '/universities') {
           handleLogoutLocal();
+          throw new Error("Session expirée");
         }
       }
 
       if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          errorData = { message: `Erreur serveur (${response.status})` };
-        }
-        const error = new Error(errorData.message || `Erreur ${response.status}`);
-        (error as any).status = response.status;
-        (error as any).data = errorData;
-        throw error;
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur serveur : ${response.status}`);
       }
       
       return response;
@@ -143,34 +131,74 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (uniRes.ok) {
         const uniData = await uniRes.json();
-        const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
-        setUniversities(rawUnis.map((u: any) => ({
-          ...u,
-          id: u.id.toString(),
-          location: u.city || u.location || 'Bénin',
-          type: (u.type || u.status_inst || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
-          isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
-          recommended: parseInt(u.recommended || 0),
-          stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
-          faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
-        })));
+        if (uniData) {
+          const rawUnis = Array.isArray(uniData) ? uniData : (uniData.data || []);
+          setUniversities(rawUnis.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            location: u.city || u.location || 'Bénin',
+            type: (u.type || u.status_inst || '').toLowerCase() === 'public' ? 'Public' : 'Privé',
+            isStandaloneSchool: u.is_standalone === 1 || u.is_standalone === true || u.is_standalone === "1",
+            recommended: parseInt(u.recommended || 0),
+            stats: u.stats || { students: 'N/A', majors: 0, founded: 'N/A', ranking: 'N/A' },
+            faculties: Array.isArray(u.faculties) ? u.faculties.map((f: any) => ({ ...f, id: f.id.toString() })) : []
+          })));
+        }
       }
 
       if (majorRes.ok) {
         const majorData = await majorRes.json();
         const rawMajors = Array.isArray(majorData) ? majorData : (majorData.data || []);
-        setMajors(rawMajors.map((m: any) => ({
-          ...m,
-          id: m.id.toString(),
-          universityId: (m.university_id || m.institution_id)?.toString(),
-          facultyId: m.faculty_id?.toString(),
-          universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
-          facultyName: m.faculty?.name || 'Tronc commun',
-          location: m.location || m.university?.city || 'Bénin',
-          image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
-          careerProspects: m.career_prospects ? (typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : m.career_prospects) : [],
-          requiredDiplomas: m.required_diplomas ? (typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : m.required_diplomas) : []
-        })));
+        setMajors(rawMajors.map((m: any) => {
+          let parsedProspects = [];
+          if (m.career_prospects) {
+            try {
+              const raw = typeof m.career_prospects === 'string' ? JSON.parse(m.career_prospects) : m.career_prospects;
+              parsedProspects = Array.isArray(raw) ? raw.map((p: any) => typeof p === 'string' ? { title: p, icon: 'work' } : p) : [];
+            } catch (e) {
+              parsedProspects = m.career_prospects.split('|').map((p: string) => ({ title: p.trim(), icon: 'work' }));
+            }
+          }
+
+          let parsedDiplomas = [];
+          if (m.required_diplomas) {
+            try {
+              const raw = typeof m.required_diplomas === 'string' ? JSON.parse(m.required_diplomas) : m.required_diplomas;
+              parsedDiplomas = Array.isArray(raw) ? raw.map((d: any) => typeof d === 'string' ? { name: d, icon: 'school' } : d) : [];
+            } catch (e) {
+              parsedDiplomas = m.required_diplomas.split('|').map((d: string) => ({ name: d.trim(), icon: 'school' }));
+            }
+          }
+
+          return {
+            ...m,
+            id: m.id.toString(),
+            universityId: (m.university_id || m.institution_id || m.universityId)?.toString(),
+            facultyId: m.faculty_id?.toString(),
+            universityName: m.university?.acronym || m.institution?.acronym || 'N/A',
+            facultyName: m.faculty?.name || 'Tronc commun',
+            location: m.location || m.university?.city || 'Bénin',
+            image: m.image || 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400',
+            careerProspects: parsedProspects,
+            requiredDiplomas: parsedDiplomas
+          };
+        }));
+      }
+
+      if (token && (user?.role === 'super_admin' || userRole === 'super_admin')) {
+        try {
+          const res = await apiRequest('/users');
+          const data = await res.json();
+          const allUsers = Array.isArray(data) ? data : (data.data || data.users || []);
+          setStaffUsers(allUsers.map((u: any) => ({
+            ...u,
+            id: u.id.toString(),
+            firstName: u.firstName || u.first_name || 'Admin',
+            lastName: u.lastName || u.last_name || 'Utilisateur',
+            role: (u.role || u.user_role || 'student').toLowerCase().trim(),
+            permissions: u.permissions ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) : []
+          })));
+        } catch (e) { console.error("Erreur staff:", e); }
       }
 
       if (token && user) {
@@ -196,13 +224,23 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             documents: a.documents || [],
             primary_document_url: a.primary_document_url ? (a.primary_document_url.startsWith('http') ? a.primary_document_url : `https://api.cipaph.com${a.primary_document_url}`) : ''
           })));
-        } catch (err) {}
+        } catch (err) { console.warn("Échec apps"); }
       }
     } catch (e) { console.error("Global refresh failure", e); }
     setIsLoading(false);
   };
 
-  useEffect(() => { refreshData(); }, [token]);
+  useEffect(() => { refreshData(); }, [token, userRole]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--primary-color', activeTheme.primary);
+    root.style.setProperty('--bg-color', activeTheme.background);
+    root.style.setProperty('--surface-color', activeTheme.surface);
+    root.style.setProperty('--radius-main', activeTheme.radius);
+  }, [activeTheme]);
+
+  const translate = (key: string) => content[key]?.[currentLang] || content[key]?.fr || key;
 
   const login = async (email: string, password: string) => {
     try {
@@ -223,16 +261,19 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const res = await apiRequest('/register', { method: 'POST', body: JSON.stringify(formData) });
       const data = await res.json();
-      const userData = { ...data.user, id: data.user.id.toString(), role: (data.user.role || 'student').toLowerCase() };
-      setUser(userData); setToken(data.token); setUserRole(userData.role as UserRole);
-      localStorage.setItem('auth_token_v1', data.token);
-      localStorage.setItem('auth_user_v1', JSON.stringify(userData));
-      return { success: true, message: data.message, user: userData };
+      if (res.status === 201 || res.status === 200) {
+        const userData = { ...data.user, id: data.user.id.toString(), role: (data.user.role || 'student').toLowerCase() };
+        setUser(userData); setToken(data.token); setUserRole(userData.role as UserRole);
+        localStorage.setItem('auth_token_v1', data.token);
+        localStorage.setItem('auth_user_v1', JSON.stringify(userData));
+        return { success: true, message: data.message, user: userData };
+      }
+      return { success: false, message: "Erreur d'inscription" };
     } catch (e: any) { return { success: false, message: e.message }; }
   };
 
   const handleLogoutLocal = () => {
-    setUser(null); setToken(null); setUserRole('student');
+    setUser(null); setToken(null); setUserRole('student'); setStaffUsers([]); setApplications([]);
     localStorage.removeItem('auth_token_v1'); localStorage.removeItem('auth_user_v1');
   };
 
@@ -241,33 +282,11 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     handleLogoutLocal();
   };
 
-  const recordPayment = async (paymentData: { fedapay_id: string, amount: number, status: string, application_id?: string | number | null, description?: string }) => {
-    console.log("RECORD_PAYMENT: Tentative d'enregistrement...", paymentData);
-    try {
-      const res = await apiRequest('/payments', { 
-        method: 'POST', 
-        body: JSON.stringify({
-          fedapay_id: paymentData.fedapay_id,
-          amount: paymentData.amount,
-          status: paymentData.status,
-          application_id: paymentData.application_id || null,
-          description: paymentData.description || null,
-          mode: 'Mobile Money'
-        }) 
-      });
-      const data = await res.json();
-      return data;
-    } catch (e: any) {
-      console.error("RECORD_PAYMENT Error:", e);
-      throw e;
-    }
-  };
-
   const addApplication = async (formData: FormData) => {
     try {
       const res = await apiRequest('/applications', { method: 'POST', body: formData });
-      await refreshData();
-      return { success: true, message: "Dossier créé" };
+      if (res.status === 201) { await refreshData(); return { success: true, message: "Dossier créé" }; }
+      return { success: false, message: "Erreur" };
     } catch (e: any) { return { success: false, message: e.message }; }
   };
 
@@ -279,23 +298,89 @@ export const CMSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await refreshData();
   };
 
+  const addUniversity = async (formData: FormData) => {
+    const res = await apiRequest('/admin/universities', { method: 'POST', body: formData });
+    const data = await res.json(); await refreshData(); return data.data || data;
+  };
+
+  const updateUniversity = async (id: string, uni: any) => {
+    await apiRequest(`/admin/universities/${id}`, { method: 'PUT', body: JSON.stringify(uni) });
+    await refreshData();
+  };
+
+  const deleteUniversity = async (id: string) => {
+    await apiRequest(`/admin/universities/${id}`, { method: 'DELETE' });
+    await refreshData();
+  };
+
+  const addFaculty = async (faculty: any) => {
+    const res = await apiRequest('/admin/faculties', { method: 'POST', body: JSON.stringify(faculty) });
+    const data = await res.json(); await refreshData(); return data.data || data;
+  };
+
+  const deleteFaculty = async (id: string) => {
+    await apiRequest(`/admin/faculties/${id}`, { method: 'DELETE' });
+    await refreshData();
+  };
+
+  const addMajor = async (majorData: any) => {
+    // On s'assure d'envoyer exactement les champs attendus en snake_case par Laravel
+    const payload = {
+      university_id: parseInt(majorData.universityId),
+      faculty_id: majorData.facultyId ? parseInt(majorData.facultyId) : null,
+      name: majorData.name,
+      domain: majorData.domain,
+      level: majorData.level,
+      duration: majorData.duration,
+      fees: majorData.fees,
+      location: majorData.location,
+      career_prospects: Array.isArray(majorData.careerProspects) ? majorData.careerProspects.map((p: any) => typeof p === 'string' ? p : p.title) : [],
+      required_diplomas: Array.isArray(majorData.requiredDiplomas) ? majorData.requiredDiplomas.map((d: any) => typeof d === 'string' ? d : d.name) : []
+    };
+    await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(payload) });
+    await refreshData();
+  };
+
+  const updateMajor = async (major: Major) => {
+    // Mapping strict pour la mise à jour
+    const payload = {
+      name: major.name,
+      domain: major.domain,
+      level: major.level,
+      duration: major.duration,
+      fees: major.fees,
+      location: major.location,
+      university_id: major.universityId ? parseInt(major.universityId) : null,
+      faculty_id: major.facultyId ? parseInt(major.facultyId) : null,
+      career_prospects: Array.isArray(major.careerProspects) ? major.careerProspects.map(p => p.title) : [],
+      required_diplomas: Array.isArray(major.requiredDiplomas) ? major.requiredDiplomas.map(d => d.name) : []
+    };
+    await apiRequest(`/admin/majors/${major.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    await refreshData();
+  };
+
+  const deleteMajor = async (id: string) => {
+    await apiRequest(`/admin/majors/${id}`, { method: 'DELETE' });
+    await refreshData();
+  };
+
   const deleteApplication = (id: string) => apiRequest(`/applications/${id}`, { method: 'DELETE' }).then(() => refreshData());
-  const addUniversity = async (fd: FormData) => { const res = await apiRequest('/admin/universities', { method: 'POST', body: fd }); await refreshData(); return await res.json(); };
-  const updateUniversity = async (id: string, uni: any) => { await apiRequest(`/admin/universities/${id}`, { method: 'PUT', body: JSON.stringify(uni) }); await refreshData(); };
-  const deleteUniversity = (id: string) => apiRequest(`/admin/universities/${id}`, { method: 'DELETE' }).then(() => refreshData());
-  const addFaculty = async (f: any) => { await apiRequest('/admin/faculties', { method: 'POST', body: JSON.stringify(f) }); await refreshData(); };
-  const deleteFaculty = (id: string) => apiRequest(`/admin/faculties/${id}`, { method: 'DELETE' }).then(() => refreshData());
-  const addMajor = async (m: any) => { await apiRequest('/admin/majors', { method: 'POST', body: JSON.stringify(m) }); await refreshData(); };
-  const updateMajor = async (m: Major) => { await apiRequest(`/admin/majors/${m.id}`, { method: 'PUT', body: JSON.stringify(m) }); await refreshData(); };
-  const deleteMajor = (id: string) => apiRequest(`/admin/majors/${id}`, { method: 'DELETE' }).then(() => refreshData());
+  const addStaffUser = (newUser: User) => setStaffUsers(prev => [...prev, newUser]);
+  const updateStaffUser = (updatedUser: User) => {
+    apiRequest(`/users/${updatedUser.id}`, { method: 'PUT', body: JSON.stringify(updatedUser) }).then(() => refreshData());
+  };
+  const deleteStaffUser = (id: string) => {
+    apiRequest(`/users/${id}`, { method: 'DELETE' }).then(() => refreshData());
+  };
 
   return (
     <CMSContext.Provider value={{ 
-      content, languages: [{ code: 'fr', label: 'Français', isActive: true }], themes, currentLang, activeTheme, userRole: user?.role || 'student', user, token, applications, universities, majors, isLoading, apiError,
+      content, languages: [{ code: 'fr', label: 'Français', isActive: true }], themes, currentLang, activeTheme, userRole, user, token, applications, universities, majors, isLoading, apiError,
       translate, updateContent: () => {}, setLanguage: setCurrentLang,
-      applyTheme: () => {}, updateTheme: () => {}, setUserRole: () => {}, login, register, logout, addApplication, recordPayment, refreshData, deleteApplication,
+      applyTheme: (id) => setThemes(prev => prev.map(t => ({ ...t, isActive: t.id === id }))),
+      updateTheme: () => {}, setUserRole, login, register, logout, addApplication, refreshData, deleteApplication,
       addUniversity, updateUniversity, deleteUniversity, addFaculty, deleteFaculty, addMajor, updateMajor, deleteMajor,
-      updateApplicationStatus, staffUsers: [], addStaffUser: () => {}, updateStaffUser: () => {}, deleteStaffUser: () => {}
+      updateApplicationStatus, staffUsers, addStaffUser, updateStaffUser, deleteStaffUser
     }}>
       {children}
     </CMSContext.Provider>

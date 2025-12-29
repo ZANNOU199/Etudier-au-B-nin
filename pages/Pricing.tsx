@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const Pricing: React.FC = () => {
-  const { user, refreshData, recordPayment } = useCMS();
+  const { user, refreshData } = useCMS();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -34,47 +34,39 @@ const Pricing: React.FC = () => {
           lastname: user.lastName,
           email: user.email,
           phone_number: {
-            number: '64000001', 
+            number: '64000001', // NUMÉRO DE TEST REQUIS POUR LE SUCCÈS (Doc FedaPay)
             country: 'bj'
           }
         },
         onComplete: async (response: any) => {
-          setIsProcessing(true); 
-          console.log("FedaPay Complete Response:", response);
+          setIsProcessing(true); // Garder le loading pendant le traitement du retour
+          console.log("FedaPay Full Response Object:", response);
           
+          // Extraction du statut depuis plusieurs sources possibles (selon version SDK)
           const status = response?.status || 
                          response?.transaction?.status || 
                          (response?.reason ? 'failed' : undefined);
           
-          const fedapayId = response?.transaction?.id?.toString();
-
-          if (status === 'approved' || (fedapayId && !response?.reason)) {
-            try {
-              console.log("Tentative d'enregistrement en DB Laravel...");
-              const dbResponse = await recordPayment({
-                fedapay_id: fedapayId || "TEST-" + Date.now(),
-                amount: amount,
-                status: 'approved',
-                description: description
-              });
-              
-              console.log("Réponse DB Laravel:", dbResponse);
-              alert("✅ Félicitations ! Votre paiement a été approuvé et enregistré en base de données.");
-              await refreshData();
-              setIsProcessing(false);
-              navigate('/dashboard');
-            } catch (error) {
-              console.error("Erreur critique d'enregistrement DB:", error);
-              alert("⚠️ Paiement validé par FedaPay mais erreur d'enregistrement. Vérifiez que votre API accepte les requêtes POST sur /payments.");
-              setIsProcessing(false);
-            }
+          if (status === 'approved') {
+            alert("✅ Félicitations ! Votre paiement a été approuvé.");
+            await refreshData();
+            setIsProcessing(false);
+            navigate('/dashboard');
           } else if (status === 'failed' || status === 'canceled' || status === 'declined') {
             setIsProcessing(false);
             alert("❌ Le paiement n'a pas pu aboutir. Raison : " + (response?.reason || status));
           } else {
-            setIsProcessing(false);
-            console.error("Structure de réponse inconnue:", response);
-            alert("⚠️ Retour de paiement ambigu.");
+            // Si on ne trouve toujours pas le statut, on vérifie si l'objet contient un ID de transaction valide
+            if (response?.transaction?.id && !response?.reason) {
+                alert("✅ Paiement semble réussi (Vérification en cours...)");
+                await refreshData();
+                setIsProcessing(false);
+                navigate('/dashboard');
+            } else {
+                setIsProcessing(false);
+                console.error("Structure de réponse inconnue:", response);
+                alert("⚠️ Retour de paiement ambigu. Veuillez vérifier votre tableau de bord. (Statut: " + status + ")");
+            }
           }
         },
         onClose: () => {
