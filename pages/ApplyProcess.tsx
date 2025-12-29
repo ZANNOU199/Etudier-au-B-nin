@@ -15,7 +15,7 @@ const ApplyProcess: React.FC = () => {
   const [isPaid, setIsPaid] = useState(false);
   const [error, setError] = useState('');
 
-  // === CONFIGURATION FEDAPAY RÉELLE ===
+  // === CONFIGURATION FEDAPAY ===
   const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_MzMxVkj0kYgxGPfQe1UgWi4O';
 
   useEffect(() => {
@@ -35,23 +35,28 @@ const ApplyProcess: React.FC = () => {
     // @ts-ignore
     FedaPay.init({
       public_key: FEDAPAY_PUBLIC_KEY,
-      environment: 'sandbox', // Crucial pour éviter "Account non trouvé"
+      environment: 'sandbox',
       transaction: {
         amount: 5000,
-        description: `Frais de dossier pour : ${selectedMajor.name}`
+        description: `Frais de dossier : ${selectedMajor.name}`,
+        currency: { iso: 'XOF' }
       },
       customer: {
         firstname: user.firstName,
         lastname: user.lastName,
         email: user.email,
+        phone_number: {
+          number: '97000000', // Numéro de test pour la réussite en sandbox
+          country: 'bj'
+        }
       },
       onComplete: async (response: any) => {
         setIsProcessingPayment(false);
         if (response.status === 'approved') {
           setIsPaid(true);
-          setStep(3); // Passage à l'étape finale de soumission
+          setStep(3); 
         } else {
-          alert("Le paiement a échoué ou a été annulé.");
+          alert("Paiement non approuvé. Statut: " + response.status);
         }
       },
       onClose: () => {

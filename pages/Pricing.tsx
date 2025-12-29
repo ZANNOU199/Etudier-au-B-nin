@@ -8,7 +8,7 @@ const Pricing: React.FC = () => {
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // === CONFIGURATION FEDAPAY RÉELLE ===
+  // === CONFIGURATION FEDAPAY ===
   const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_MzMxVkj0kYgxGPfQe1UgWi4O'; 
 
   const handlePayment = (amount: number, description: string) => {
@@ -23,24 +23,29 @@ const Pricing: React.FC = () => {
       // @ts-ignore
       FedaPay.init({
         public_key: FEDAPAY_PUBLIC_KEY,
-        environment: 'sandbox', // Crucial pour éviter "Account non trouvé"
+        environment: 'sandbox',
         transaction: {
           amount: amount,
-          description: description
+          description: description,
+          currency: { iso: 'XOF' } // Précision de la devise
         },
         customer: {
           firstname: user.firstName,
           lastname: user.lastName,
           email: user.email,
+          phone_number: {
+            number: '97000000', // Numéro de test par défaut pour éviter les erreurs
+            country: 'bj'
+          }
         },
         onComplete: async (response: any) => {
           setIsProcessing(false);
           if (response.status === 'approved') {
-            alert("✅ Paiement approuvé ! Votre compte est en cours d'activation.");
+            alert("✅ Paiement réussi ! Votre compte a été mis à jour.");
             await refreshData();
             navigate('/dashboard');
           } else {
-            alert("❌ Le paiement n'a pas pu être complété.");
+            alert("❌ Le paiement n'a pas été approuvé (Statut: " + response.status + ")");
           }
         },
         onClose: () => {
@@ -49,8 +54,8 @@ const Pricing: React.FC = () => {
       }).open();
     } catch (err) {
       setIsProcessing(false);
-      console.error(err);
-      alert("Erreur lors de l'initialisation du paiement. Vérifiez votre connexion.");
+      console.error("FedaPay Init Error:", err);
+      alert("Impossible de lancer le module de paiement.");
     }
   };
 
@@ -65,6 +70,7 @@ const Pricing: React.FC = () => {
       </section>
 
       <section className="max-w-6xl mx-auto px-4 -mt-16 grid grid-cols-1 md:grid-cols-2 gap-8 w-full relative z-20">
+        {/* Local Plan */}
         <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 shadow-2xl border border-gray-100 dark:border-white/5 space-y-8 flex flex-col h-full group hover:border-primary/30 transition-all duration-500">
            <div className="flex justify-between items-start">
              <div className="space-y-3 text-left">
@@ -107,6 +113,7 @@ const Pricing: React.FC = () => {
            </button>
         </div>
 
+        {/* Premium Plan */}
         <div className="bg-white dark:bg-surface-dark rounded-[40px] p-10 shadow-2xl border-2 border-primary space-y-8 flex flex-col h-full relative transform md:scale-105 transition-all duration-500 group">
            <div className="absolute top-0 right-0 p-6">
               <span className="px-4 py-1.5 bg-primary text-black rounded-full text-[10px] font-black uppercase animate-bounce tracking-widest shadow-lg shadow-primary/30">Premium</span>
