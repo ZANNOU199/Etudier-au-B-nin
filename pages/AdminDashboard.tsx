@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 import { University, Major, Application, Faculty } from '../types';
 
-type AdminView = 'overview' | 'applications' | 'catalog' | 'cms' | 'settings';
+type AdminView = 'overview' | 'applications' | 'catalog' | 'recommandations' | 'cms' | 'settings';
 type CatalogSection = 'universities' | 'majors';
 type EstablishmentFilter = 'all' | 'university' | 'school';
 type CreationStep = 'institution' | 'faculties' | 'majors';
@@ -31,6 +31,7 @@ const AdminDashboard: React.FC = () => {
   const [majorsPage, setMajorsPage] = useState(1);
   const [appSearch, setAppSearch] = useState('');
   const [majorSearch, setMajorSearch] = useState('');
+  const [recoSearch, setRecoSearch] = useState('');
   
   // States for Creation/Edit Wizard
   const [showWizard, setShowWizard] = useState(false);
@@ -76,6 +77,13 @@ const AdminDashboard: React.FC = () => {
 
   const pagedUnis = filteredUnis.slice((uniPage - 1) * UNI_PER_PAGE, uniPage * UNI_PER_PAGE);
 
+  const filteredRecos = useMemo(() => {
+    return universities.filter(u => 
+      u.name.toLowerCase().includes(recoSearch.toLowerCase()) || 
+      u.acronym.toLowerCase().includes(recoSearch.toLowerCase())
+    ).sort((a, b) => (b.recommended || 0) - (a.recommended || 0));
+  }, [universities, recoSearch]);
+
   const currentUni = useMemo(() => 
     universities.find(u => String(u.id) === String(currentInstId)), 
     [universities, currentInstId]
@@ -86,6 +94,16 @@ const AdminDashboard: React.FC = () => {
       await updateApplicationStatus(id, status);
     } catch (e) {
       alert("Erreur lors de la mise à jour du statut.");
+    }
+  };
+
+  const handleToggleRecommended = async (uni: University) => {
+    try {
+      await updateUniversity(uni.id, {
+        recommended: uni.recommended === 1 ? 0 : 1
+      });
+    } catch (e) {
+      alert("Erreur lors de la mise à jour de la recommandation.");
     }
   };
 
@@ -167,6 +185,7 @@ const AdminDashboard: React.FC = () => {
           { id: 'overview', label: 'Dashboard', icon: 'grid_view' },
           { id: 'applications', label: 'Candidatures', icon: 'description', badge: applications.length.toString() },
           { id: 'catalog', label: 'Catalogue Acad.', icon: 'category' },
+          { id: 'recommandations', label: 'Recommandations', icon: 'grade' },
         ].map((item) => (
           <button 
             key={item.id}
@@ -550,6 +569,60 @@ const AdminDashboard: React.FC = () => {
                     )}
                   </div>
                )}
+            </div>
+          )}
+
+          {activeView === 'recommandations' && (
+            <div className="space-y-8 animate-fade-in text-left">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                 <div className="space-y-1">
+                   <h2 className="text-3xl font-black dark:text-white tracking-tighter uppercase">Gestion des Recommandations</h2>
+                   <p className="text-gray-500 font-medium italic">Déterminez quels établissements apparaissent en priorité sur la page d'accueil.</p>
+                 </div>
+                 <div className="w-full md:w-80 relative">
+                   <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-400">search</span>
+                   <input 
+                     type="text" 
+                     placeholder="Filtrer par nom..." 
+                     value={recoSearch}
+                     onChange={(e) => setRecoSearch(e.target.value)}
+                     className="w-full pl-12 pr-4 py-3 bg-white dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-white/10 outline-none text-xs font-bold dark:text-white focus:ring-2 focus:ring-primary/20"
+                   />
+                 </div>
+              </div>
+
+              <div className="bg-[#0d1b13] p-10 rounded-[40px] border border-white/5 shadow-2xl">
+                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredRecos.map(uni => (
+                      <div key={uni.id} className="bg-white/5 p-6 rounded-[32px] border border-white/5 flex items-center justify-between gap-4 group hover:bg-white/10 transition-all">
+                        <div className="flex items-center gap-4 flex-1 overflow-hidden">
+                           <div className="size-12 rounded-xl bg-white/10 flex items-center justify-center p-2 shrink-0">
+                              <img src={uni.logo} className="max-w-full max-h-full object-contain" alt="" />
+                           </div>
+                           <div className="truncate text-left">
+                              <h3 className="text-sm font-black text-white truncate">{uni.acronym}</h3>
+                              <p className="text-[10px] text-gray-500 font-bold uppercase truncate">{uni.location}</p>
+                           </div>
+                        </div>
+                        <button 
+                          onClick={() => handleToggleRecommended(uni)}
+                          className={`size-11 rounded-xl flex items-center justify-center transition-all border shrink-0 ${
+                            uni.recommended === 1 
+                            ? 'bg-amber-400 text-black border-amber-400 shadow-lg shadow-amber-400/20' 
+                            : 'bg-white/5 text-gray-500 border-white/5 hover:text-amber-400'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined font-black">{uni.recommended === 1 ? 'grade' : 'star_outline'}</span>
+                        </button>
+                      </div>
+                    ))}
+                    {filteredRecos.length === 0 && (
+                      <div className="col-span-full py-20 text-center text-gray-500 font-bold uppercase tracking-widest text-xs opacity-40">
+                         Aucun établissement trouvé pour cette recherche.
+                      </div>
+                    )}
+                 </div>
+              </div>
             </div>
           )}
         </div>

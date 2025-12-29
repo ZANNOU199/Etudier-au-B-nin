@@ -10,6 +10,8 @@ export interface University {
   cover: string;
   description: string;
   isStandaloneSchool?: boolean;
+  // Added recommended property to fix errors in AdminDashboard
+  recommended?: number;
   stats: {
     students: string;
     majors: number;
