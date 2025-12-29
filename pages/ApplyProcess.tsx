@@ -46,17 +46,22 @@ const ApplyProcess: React.FC = () => {
         lastname: user.lastName,
         email: user.email,
         phone_number: {
-          number: '97000000', // Numéro de test pour la réussite en sandbox
+          number: '97000000',
           country: 'bj'
         }
       },
       onComplete: async (response: any) => {
         setIsProcessingPayment(false);
-        if (response.status === 'approved') {
+        console.log("FedaPay Application Response:", response);
+
+        // Lecture robuste du statut (FedaPay peut renvoyer l'objet transaction séparément)
+        const status = response.status || (response.transaction ? response.transaction.status : undefined);
+
+        if (status === 'approved') {
           setIsPaid(true);
           setStep(3); 
         } else {
-          alert("Paiement non approuvé. Statut: " + response.status);
+          alert("Paiement non approuvé (Statut: " + (status || "Inconnu") + ")");
         }
       },
       onClose: () => {
@@ -101,7 +106,6 @@ const ApplyProcess: React.FC = () => {
 
       <div className="flex-grow flex flex-col items-center p-6 md:p-10">
         <div className="max-w-xl w-full">
-          {/* Progress Bar */}
           <div className="flex justify-between mb-8 px-4">
             {[1, 2, 3].map(s => (
               <div key={s} className={`flex items-center ${s < 3 ? 'flex-1' : ''}`}>
@@ -132,7 +136,7 @@ const ApplyProcess: React.FC = () => {
                   />
                   <span className="material-symbols-outlined text-5xl text-gray-300 group-hover:text-primary mb-4 transition-colors">description</span>
                   <p className="font-black text-xs uppercase tracking-widest dark:text-white truncate max-w-full">
-                    {file ? file.name : "Cliquez ou glissez-déposez"}
+                    {file ? file.name : "Cliquez ou glissez-deposez"}
                   </p>
                 </div>
 
