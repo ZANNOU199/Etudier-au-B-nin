@@ -11,6 +11,7 @@ const ApplyProcess: React.FC = () => {
   
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -22,8 +23,34 @@ const ApplyProcess: React.FC = () => {
     return majors.find(m => m.id === majorId) || majors[0];
   }, [majorId, majors]);
 
+  const handlePayment = () => {
+    if (!user) return;
+
+    // @ts-ignore
+    FedaPay.init({
+      public_key: 'pk_sandbox_votre_cle_publique_ici',
+      transaction: {
+        amount: 5000,
+        description: `Frais de dossier : ${selectedMajor.name}`
+      },
+      customer: {
+        firstname: user.firstName,
+        lastname: user.lastName,
+        email: user.email,
+      },
+      onComplete: (response: any) => {
+        if (response.status === 'approved') {
+          setIsPaid(true);
+          setStep(3); // Aller à la soumission finale
+        } else {
+          alert("Le paiement est nécessaire pour traiter votre dossier.");
+        }
+      }
+    }).open();
+  };
+
   const handleFinalSubmit = async () => {
-    if (!file || !selectedMajor) return;
+    if (!file || !selectedMajor || !isPaid) return;
     
     setIsSubmitting(true);
     const formData = new FormData();
@@ -80,12 +107,51 @@ const ApplyProcess: React.FC = () => {
                   </p>
                 </div>
 
-                {error && <p className="text-red-500 text-[10px] font-black uppercase text-center">{error}</p>}
-
                 <button 
-                  disabled={!file || isSubmitting}
-                  onClick={handleFinalSubmit}
+                  disabled={!file}
+                  onClick={() => setStep(2)}
                   className="w-full py-5 bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all uppercase tracking-widest text-xs disabled:opacity-50"
+                >
+                  Continuer
+                </button>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="p-10 space-y-8 animate-fade-in text-center">
+                <div className="size-20 rounded-3xl bg-amber-500/10 flex items-center justify-center text-amber-500 mx-auto">
+                  <span className="material-symbols-outlined text-4xl font-bold">payments</span>
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter">Étape 2 : Frais de dossier</h2>
+                  <p className="text-gray-500 font-medium">Conformément aux conditions, des frais de 5.000 CFA s'appliquent pour l'étude de votre dossier.</p>
+                </div>
+                <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/10">
+                   <p className="text-4xl font-black dark:text-white">5.000 <span className="text-sm text-primary">CFA</span></p>
+                </div>
+                <button 
+                  onClick={handlePayment}
+                  className="w-full py-5 bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all uppercase tracking-widest text-xs"
+                >
+                  Payer par Mobile Money / Carte
+                </button>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="p-10 space-y-8 animate-fade-in text-center">
+                <div className="size-20 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-500 mx-auto">
+                  <span className="material-symbols-outlined text-4xl font-bold">check_circle</span>
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter">Paiement Validé</h2>
+                  <p className="text-gray-500 font-medium">Votre paiement a été confirmé. Vous pouvez maintenant soumettre définitivement votre dossier.</p>
+                </div>
+                {error && <p className="text-red-500 text-[10px] font-black uppercase">{error}</p>}
+                <button 
+                  disabled={isSubmitting}
+                  onClick={handleFinalSubmit}
+                  className="w-full py-5 bg-background-dark text-white font-black rounded-2xl shadow-xl hover:scale-105 transition-all uppercase tracking-widest text-xs"
                 >
                   {isSubmitting ? "Transmission..." : "Soumettre mon dossier"}
                 </button>

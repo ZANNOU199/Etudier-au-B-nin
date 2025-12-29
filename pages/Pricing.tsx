@@ -1,8 +1,41 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useCMS } from '../CMSContext';
 
 const Pricing: React.FC = () => {
+  const { user } = useCMS();
+  const navigate = useNavigate();
+
+  const handlePayment = (amount: number, description: string) => {
+    if (!user) {
+      navigate('/login?redirect=/pricing');
+      return;
+    }
+
+    // @ts-ignore
+    FedaPay.init({
+      public_key: 'pk_sandbox_votre_cle_publique_ici', // Remplacez par votre clé réelle
+      transaction: {
+        amount: amount,
+        description: description
+      },
+      customer: {
+        firstname: user.firstName,
+        lastname: user.lastName,
+        email: user.email,
+      },
+      onComplete: (response: any) => {
+        if (response.status === 'approved') {
+          alert("Paiement réussi ! Votre compte sera activé dans quelques instants.");
+          navigate('/dashboard');
+        } else {
+          alert("Le paiement a été annulé ou a échoué.");
+        }
+      }
+    }).open();
+  };
+
   return (
     <div className="flex flex-col w-full pb-20">
       <section className="bg-background-dark py-20 px-4 text-center">
@@ -55,9 +88,12 @@ const Pricing: React.FC = () => {
               </li>
            </ul>
 
-           <Link to="/register" className="w-full py-5 text-center bg-gray-50 dark:bg-white/5 border-2 border-transparent hover:border-primary dark:text-white font-black rounded-2xl transition-all uppercase text-xs tracking-[0.2em]">
-             S'inscrire (Résident Bénin)
-           </Link>
+           <button 
+             onClick={() => handlePayment(2500, "Activation Compte Local - Etudier au Bénin")}
+             className="w-full py-5 text-center bg-gray-50 dark:bg-white/5 border-2 border-transparent hover:border-primary dark:text-white font-black rounded-2xl transition-all uppercase text-xs tracking-[0.2em]"
+           >
+             {user ? "Activer maintenant" : "S'inscrire (Résident Bénin)"}
+           </button>
         </div>
 
         {/* Foreign Student Plan */}
@@ -109,9 +145,12 @@ const Pricing: React.FC = () => {
               </li>
            </ul>
 
-           <Link to="/register" className="w-full py-5 text-center bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 uppercase text-xs tracking-[0.2em]">
-             S'inscrire (Résident Étranger)
-           </Link>
+           <button 
+             onClick={() => handlePayment(100000, "Activation Compte International - Etudier au Bénin")}
+             className="w-full py-5 text-center bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 uppercase text-xs tracking-[0.2em]"
+           >
+             {user ? "Activer maintenant" : "S'inscrire (Résident Étranger)"}
+           </button>
         </div>
       </section>
 
