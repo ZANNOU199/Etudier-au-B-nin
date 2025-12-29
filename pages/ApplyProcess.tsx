@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCMS } from '../CMSContext';
 
 const ApplyProcess: React.FC = () => {
-  const { user, majors, addApplication, refreshData } = useCMS();
+  const { user, majors, addApplication, refreshData, recordPayment } = useCMS();
   const [step, setStep] = useState(1);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ const ApplyProcess: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
+  const [fedapayId, setFedapayId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   // === CONFIGURATION FEDAPAY ===
@@ -31,6 +32,7 @@ const ApplyProcess: React.FC = () => {
     if (!user) return;
 
     setIsProcessingPayment(true);
+    setError('');
 
     // @ts-ignore
     FedaPay.init({
@@ -38,7 +40,7 @@ const ApplyProcess: React.FC = () => {
       environment: 'sandbox',
       transaction: {
         amount: 5000,
-        description: `Frais de dossier : ${selectedMajor.name}`,
+        description: `Frais d'étude : ${selectedMajor.name}`,
         currency: { iso: 'XOF' }
       },
       customer: {
@@ -46,26 +48,59 @@ const ApplyProcess: React.FC = () => {
         lastname: user.lastName,
         email: user.email,
         phone_number: {
-          number: '64000001', // NUMÉRO DE TEST REQUIS POUR LE SUCCÈS (Doc FedaPay)
+          number: '64000001', 
           country: 'bj'
         }
       },
       onComplete: async (response: any) => {
-        setIsProcessingPayment(true); // Maintenir le statut pendant la redirection
-        console.log("FedaPay Application Response:", response);
+        setIsProcessingPayment(true); 
+        console.log("FedaPay Response:", response);
 
-        // Lecture robuste du statut
         const status = response?.status || 
                        response?.transaction?.status || 
                        (response?.reason ? 'failed' : undefined);
+        
+        const fId = response?.transaction?.id?.toString();
 
-        if (status === 'approved' || (response?.transaction?.id && !response?.reason)) {
-          setIsPaid(true);
-          setIsProcessingPayment(false);
-          setStep(3); 
+        if (status === 'approved' || (fId && !response?.reason)) {
+          try {
+            console.log("Paiement approuvé. Enregistrement Laravel...");
+            
+            // Tentative d'enregistrement dans la table 'payments'
+            await recordPayment({
+              fedapay_id: fId,
+              amount: 5000,
+              status: 'approved',
+              application_id: null,
+              description: `Candidature pour ${selectedMajor.name}`
+            });
+            
+            setFedapayId(fId);
+            setIsPaid(true);
+            setIsProcessingPayment(false);
+            setStep(3); 
+          } catch (dbError: any) {
+            console.error("Erreur critique d'enregistrement base de données:", dbError);
+            setIsProcessingPayment(false);
+            
+            // CAS CRITIQUE : Le client a payé (FedaPay OK) mais Laravel a échoué (Migration ou SQL Error)
+            let userFriendlyMsg = "Votre paiement a été prélevé avec succès, mais une erreur technique a empêché son enregistrement automatique.";
+            
+            if (dbError.status === 500) {
+              userFriendlyMsg = "Paiement réussi mais erreur serveur (500). La table de paiement est peut-être mal configurée.";
+            }
+
+            setError(`${userFriendlyMsg} ID DE TRANSACTION : ${fId}. Contactez le support si besoin.`);
+            
+            // On autorise quand même le passage à l'étape 3 car on a l'ID de transaction (fId)
+            // L'administrateur pourra vérifier manuellement.
+            setFedapayId(fId);
+            setIsPaid(true);
+            setStep(3);
+          }
         } else {
           setIsProcessingPayment(false);
-          alert("Le paiement n'a pas été approuvé. Raison : " + (response?.reason || status || "Inconnu"));
+          alert("Paiement refusé ou annulé par l'opérateur.");
         }
       },
       onClose: () => {
@@ -75,12 +110,15 @@ const ApplyProcess: React.FC = () => {
   };
 
   const handleFinalSubmit = async () => {
-    if (!file || !selectedMajor || !isPaid) return;
+    if (!file || !selectedMajor || !isPaid || !fedapayId) return;
     
     setIsSubmitting(true);
+    setError('');
     const formData = new FormData();
     formData.append('major_id', selectedMajor.id);
     formData.append('file', file);
+    formData.append('fedapay_id', fedapayId); 
+    formData.append('amount', '5000');
 
     const result = await addApplication(formData);
     
@@ -110,6 +148,7 @@ const ApplyProcess: React.FC = () => {
 
       <div className="flex-grow flex flex-col items-center p-6 md:p-10">
         <div className="max-w-xl w-full">
+          {/* Progress Bar */}
           <div className="flex justify-between mb-8 px-4">
             {[1, 2, 3].map(s => (
               <div key={s} className={`flex items-center ${s < 3 ? 'flex-1' : ''}`}>
@@ -161,20 +200,20 @@ const ApplyProcess: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-3xl font-black dark:text-white tracking-tighter">Étape 2 : Frais d'étude</h2>
-                  <p className="text-gray-500 font-medium text-sm px-4">Le traitement de votre dossier requiert des frais de dossier fixes.</p>
+                  <p className="text-gray-500 font-medium text-sm px-4">Frais de traitement fixes de 5.000 FCFA.</p>
                 </div>
                 <div className="p-8 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/10 shadow-inner">
                    <p className="text-5xl font-black dark:text-white tracking-tighter">5.000 <span className="text-base text-primary uppercase font-black ml-1">CFA</span></p>
                 </div>
+                {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-widest text-left leading-relaxed">{error}</div>}
                 <button 
                   disabled={isProcessingPayment}
                   onClick={handlePayment}
                   className="w-full py-5 bg-primary text-black font-black rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all uppercase tracking-widest text-xs disabled:opacity-50 flex items-center justify-center gap-3"
                 >
                   {isProcessingPayment ? <span className="size-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></span> : null}
-                  {isProcessingPayment ? "Initialisation..." : "Payer maintenant"}
+                  {isProcessingPayment ? "Lancement FedaPay..." : "Payer maintenant"}
                 </button>
-                <button onClick={() => setStep(1)} className="text-[10px] font-black uppercase text-gray-400 hover:text-primary transition-colors">Modifier le fichier</button>
               </div>
             )}
 
@@ -184,17 +223,17 @@ const ApplyProcess: React.FC = () => {
                   <span className="material-symbols-outlined text-4xl font-bold">verified</span>
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-black dark:text-white tracking-tighter">Paiement Réussi !</h2>
-                  <p className="text-gray-500 font-medium text-sm">Cliquez sur le bouton ci-dessous pour transmettre officiellement votre dossier.</p>
+                  <h2 className="text-3xl font-black dark:text-white tracking-tighter">Paiement Validé</h2>
+                  <p className="text-gray-500 font-medium text-sm">Votre paiement a été confirmé. Soumettez maintenant votre dossier final.</p>
                 </div>
-                {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-[10px] font-black uppercase tracking-widest">{error}</div>}
+                {error && <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest text-left">{error}</div>}
                 <button 
                   disabled={isSubmitting}
                   onClick={handleFinalSubmit}
                   className="w-full py-5 bg-background-dark text-white font-black rounded-2xl shadow-2xl hover:scale-[1.02] transition-all uppercase tracking-widest text-xs disabled:opacity-50 flex items-center justify-center gap-3"
                 >
                   {isSubmitting ? <span className="size-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : null}
-                  {isSubmitting ? "Soumission..." : "Envoyer ma candidature"}
+                  {isSubmitting ? "Envoi du dossier..." : "Transmettre ma candidature"}
                 </button>
               </div>
             )}
@@ -206,9 +245,9 @@ const ApplyProcess: React.FC = () => {
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-4xl font-black dark:text-white tracking-tighter">Félicitations !</h2>
-                  <p className="text-gray-500 font-medium">Votre dossier est maintenant entre les mains de nos conseillers. Vous recevrez une alerte pour chaque étape de validation.</p>
+                  <p className="text-gray-500 font-medium">Votre dossier a été transmis avec succès. Vous serez informé de l'évolution de votre admission.</p>
                 </div>
-                <button onClick={() => navigate('/dashboard')} className="w-full py-4 bg-background-dark text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-800 transition-all">Aller au Tableau de Bord</button>
+                <button onClick={() => navigate('/dashboard')} className="w-full py-4 bg-background-dark text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-gray-800 transition-all">Retour au Tableau de Bord</button>
               </div>
             )}
           </div>
