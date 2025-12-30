@@ -13,21 +13,6 @@ const UNI_PER_PAGE = 4;
 const APPS_PER_PAGE = 8;
 const MAJORS_PER_PAGE = 8;
 
-/**
- * Normalise une chaîne de caractères pour comparaison :
- * - Passage en minuscules
- * - Suppression des accents (NFD + regex)
- * - Suppression des espaces superflus
- */
-const normalizeString = (str: string) => {
-  if (!str) return '';
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-};
-
 const AdminDashboard: React.FC = () => {
   const { 
     applications, updateApplicationStatus, deleteApplication,
@@ -148,23 +133,10 @@ const AdminDashboard: React.FC = () => {
     const type = establishmentStatus.toLowerCase();
     const is_standalone = isSchoolKind ? '1' : '0';
 
-    // Normalisation pour vérification des doublons (casse et accents)
-    const normalizedNewName = normalizeString(name);
-    const normalizedNewAcronym = normalizeString(acronym);
-
-    // Recherche de doublon
-    const duplicate = universities.find(u => {
-      // Si on est déjà en train d'éditer cet établissement spécifique, ce n'est pas un doublon
-      const isSelf = currentInstId !== null && String(u.id) === String(currentInstId);
-      if (isSelf) return false;
-
-      return normalizeString(u.name) === normalizedNewName || 
-             normalizeString(u.acronym) === normalizedNewAcronym;
-    });
-
     try {
+      // Si on a déjà un ID (soit on édite, soit on vient de le créer au passage précédent)
+      // on appelle UPDATE au lieu de ADD pour éviter les doublons.
       if (currentInstId) {
-        // SCÉNARIO 1 : MISE À JOUR (on a déjà un ID, soit via Edition soit via premier passage wizard)
         await updateUniversity(currentInstId, { 
           name, 
           acronym, 
@@ -172,20 +144,8 @@ const AdminDashboard: React.FC = () => {
           type, 
           is_standalone 
         });
-      } else if (duplicate) {
-        // SCÉNARIO 2 : DOUBLON DÉTECTÉ LORS D'UNE CRÉATION
-        // On notifie et on bascule automatiquement sur l'API UPDATE de l'existant
-        alert(`Information : L'établissement "${duplicate.name}" (${duplicate.acronym}) existe déjà. Le système va mettre à jour cet enregistrement existant au lieu d'en créer un nouveau.`);
-        setCurrentInstId(duplicate.id);
-        await updateUniversity(duplicate.id, { 
-          name, 
-          acronym, 
-          city, 
-          type, 
-          is_standalone 
-        });
       } else {
-        // SCÉNARIO 3 : CRÉATION RÉELLE
+        // Premier passage : création réelle
         const apiPayload = new FormData();
         apiPayload.append('name', name);
         apiPayload.append('acronym', acronym);
@@ -199,12 +159,12 @@ const AdminDashboard: React.FC = () => {
         if (newId) {
           setCurrentInstId(newId.toString());
         } else {
-          throw new Error("Erreur système : l'ID de l'établissement n'a pas pu être généré.");
+          throw new Error("Impossible de récupérer l'identifiant après création.");
         }
       }
       setWizardStep('faculties');
     } catch (err: any) { 
-      alert("Erreur technique lors de l'enregistrement : " + err.message); 
+      alert("Erreur lors de l'enregistrement : " + err.message); 
     } finally { 
       setIsProcessing(false); 
     }
@@ -383,7 +343,7 @@ const AdminDashboard: React.FC = () => {
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
                       </div>
                    </div>
-                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
+                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
                 </div>
 
                 <div className="p-8 md:p-12 space-y-10">
@@ -391,7 +351,7 @@ const AdminDashboard: React.FC = () => {
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="space-y-6"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Type d'établissement</label><div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10"><button type="button" onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500'}`}>Université</button><button type="button" onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-500'}`}>École / Institut</button></div></div>
                         <div className="space-y-6"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Statut</label><div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10"><button type="button" onClick={() => setEstablishmentStatus('Public')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Public' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-500'}`}>Public</button><button type="button" onClick={() => setEstablishmentStatus('Privé')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Privé' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-gray-500'}`}>Privé</button></div></div>
-                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="md:col-span-2 space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label><input name="name" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label><input name="acronym" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label><input name="location" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="md:col-span-2 pt-6"><button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all disabled:opacity-50">{isProcessing ? "Traitement..." : currentInstId ? "Mettre à jour & Continuer" : "Enregistrer & Continuer"}</button></div></form>
+                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="md:col-span-2 space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label><input name="name" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label><input name="acronym" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label><input name="location" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="md:col-span-2 pt-6"><button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all disabled:opacity-50">{isProcessing ? "Traitement..." : "Enregistrer & Continuer"}</button></div></form>
                      </div>
                    )}
 
@@ -411,6 +371,7 @@ const AdminDashboard: React.FC = () => {
                            e.preventDefault(); setIsProcessing(true); const formRef = e.currentTarget; const fd = new FormData(formRef);
                            try {
                              if (!currentInstId) throw new Error("ID institution manquant.");
+                             // On utilise des clés camelCase pour correspondre à l'interface frontend attendue par CMSContext
                              const majorPayload: any = {
                                universityId: currentInstId,
                                facultyId: fd.get('faculty_id') ? (fd.get('faculty_id') as string) : null,
@@ -436,6 +397,7 @@ const AdminDashboard: React.FC = () => {
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée</label><input name="duration" required defaultValue={selectedMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
+                              
                            </div>
 
                            <div className="space-y-4 pt-4 border-t border-white/5">
@@ -470,7 +432,7 @@ const AdminDashboard: React.FC = () => {
 
                            <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">{isProcessing ? "Enregistrement..." : isEditing ? "Mettre à jour la filière" : "+ Créer la filière"}</button>
                         </form>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">{!isEditing && (<button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>)}<button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">{isEditing ? "Annuler" : "Terminer"}</button></div>
+                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">{!isEditing && (<button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>)}<button onClick={() => { setShowWizard(false); setSelectedMajor(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">{isEditing ? "Annuler" : "Terminer"}</button></div>
                      </div>
                    )}
                 </div>
