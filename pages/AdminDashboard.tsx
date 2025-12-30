@@ -415,9 +415,9 @@ const AdminDashboard: React.FC = () => {
         {showWizard && (
           <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
-                <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
+                <div className="bg-white/5 px-6 md:px-10 py-6 md:py-8 flex items-center justify-between border-b border-white/5">
                    <div className="text-left">
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">
+                      <h3 className="text-xl md:text-2xl font-black text-white tracking-tight leading-none">
                         {(currentInstId || isEditing) ? 'Édition' : 'Nouvel'} Élément
                       </h3>
                       <div className="flex items-center gap-2 mt-2">
@@ -425,10 +425,10 @@ const AdminDashboard: React.FC = () => {
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
                       </div>
                    </div>
-                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
+                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); }} className="size-10 md:size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
                 </div>
 
-                <div className="p-8 md:p-12 space-y-10">
+                <div className="p-6 md:p-12 space-y-8 md:space-y-10">
                    {wizardStep === 'institution' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="space-y-6"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Type d'établissement</label><div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10"><button type="button" onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500'}`}>Université</button><button type="button" onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-500'}`}>École / Institut</button></div></div>
@@ -516,16 +516,19 @@ const AdminDashboard: React.FC = () => {
 
                    {wizardStep === 'faculties' && (
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
-                        <div className="text-center space-y-2"><h4 className="text-2xl font-black text-white tracking-tight leading-none">{isSchoolKind ? 'Départements' : 'Composantes'}</h4><p className="text-gray-500 font-medium text-sm">Ajoutez les entités rattachées.</p></div>
-                        <form onSubmit={async (e) => { e.preventDefault(); setIsProcessing(true); const formRef = e.currentTarget; const fd = new FormData(formRef); try { if (!currentInstId) throw new Error("ID manquant."); await addFaculty({ university_id: parseInt(currentInstId), name: fd.get('fName') as string, description: 'Composante académique', type: isSchoolKind ? 'Ecole' : 'Faculté' }); formRef.reset(); await refreshData(); } catch (err: any) { alert("Erreur : " + err.message); } finally { setIsProcessing(false); } }} className="p-6 bg-white/5 rounded-[32px] border border-white/5 space-y-4"><input name="fName" required placeholder={isSchoolKind ? "Nom du département (ex: Génie Civil)" : "Nom de la composante (ex: EPAC, FASEG)"} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /><button type="submit" disabled={isProcessing} className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all disabled:opacity-50">{isProcessing ? "Enregistrement..." : "+ Ajouter"}</button></form>
+                        <div className="text-center space-y-2"><h4 className="text-xl md:text-2xl font-black text-white tracking-tight leading-none">{isSchoolKind ? 'Départements' : 'Composantes'}</h4><p className="text-gray-500 font-medium text-xs md:text-sm">Ajoutez les entités rattachées.</p></div>
+                        <form onSubmit={async (e) => { e.preventDefault(); setIsProcessing(true); const formRef = e.currentTarget; const fd = new FormData(formRef); try { if (!currentInstId) throw new Error("ID manquant."); await addFaculty({ university_id: parseInt(currentInstId), name: fd.get('fName') as string, description: 'Composante académique', type: isSchoolKind ? 'Ecole' : 'Faculté' }); formRef.reset(); await refreshData(); } catch (err: any) { alert("Erreur : " + err.message); } finally { setIsProcessing(false); } }} className="p-5 md:p-6 bg-white/5 rounded-[32px] border border-white/5 space-y-4"><input name="fName" required placeholder={isSchoolKind ? "Nom du département (ex: Génie Civil)" : "Nom de la composante (ex: EPAC, FASEG)"} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /><button type="submit" disabled={isProcessing} className="w-full py-3 border border-primary/20 text-primary font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-primary hover:text-black transition-all disabled:opacity-50">{isProcessing ? "Enregistrement..." : "+ Ajouter"}</button></form>
                         <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">{Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (<div key={f.id} className="p-4 bg-white/5 rounded-2xl flex justify-between items-center border border-white/5"><p className="font-black text-xs text-white uppercase tracking-wider">{f.name}</p><button onClick={() => deleteFaculty(f.id)} className="material-symbols-outlined text-red-400 text-sm hover:scale-110 transition-transform">delete</button></div>))}{(!currentUni?.faculties || currentUni.faculties.length === 0) && (<p className="text-center text-gray-500 text-[10px] font-black uppercase tracking-widest py-4">Aucun élément ajouté</p>)}</div>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5"><button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button><button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Suivant : Filières</button></div>
+                        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 pt-6 border-t border-white/5"><button onClick={() => setWizardStep('institution')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button><button onClick={() => setWizardStep('majors')} className="flex-1 py-4 bg-primary text-black font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">Suivant : Filières</button></div>
                      </div>
                    )}
 
                    {wizardStep === 'majors' && (
-                     <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
-                        <div className="text-center space-y-2"><h4 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing && selectedMajor ? 'Édition Filière' : 'Filières & Formations'}</h4><p className="text-gray-500 font-medium text-sm">Établissement : <span className="text-primary font-black">{currentUni?.name}</span></p></div>
+                     <div className="space-y-6 md:space-y-8 animate-in slide-in-from-right-4 text-white text-left">
+                        <div className="text-center space-y-2">
+                          <h4 className="text-xl md:text-2xl font-black text-white tracking-tight leading-none">{isEditing && selectedMajor ? 'Édition Filière' : 'Filières & Formations'}</h4>
+                          <p className="text-gray-500 font-medium text-xs md:text-sm">Établissement : <span className="text-primary font-black line-clamp-1 md:line-clamp-none">{currentUni?.name}</span></p>
+                        </div>
                         <form onSubmit={async (e) => {
                            e.preventDefault(); setIsProcessing(true); const formRef = e.currentTarget; const fd = new FormData(formRef);
                            try {
@@ -546,26 +549,26 @@ const AdminDashboard: React.FC = () => {
                              else { await addMajor(majorPayload); }
                              formRef.reset(); setSelectedMajor(null); setProspects([]); setDiplomas([]); if (isEditing) setShowWizard(false); await refreshData();
                            } catch (err: any) { alert("Erreur : " + err.message); } finally { setIsProcessing(false); }
-                        }} className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-6">
-                           <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rattachement</label><select name="faculty_id" required defaultValue={selectedMajor?.facultyId || ""} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"><option value="" disabled>Sélectionnez...</option>{Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}</select></div>
-                           <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la filière</label><input name="name" required defaultValue={selectedMajor?.name} placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
+                        }} className="p-5 md:p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-5 md:space-y-6">
+                           <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Rattachement</label><select name="faculty_id" required defaultValue={selectedMajor?.facultyId || ""} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 text-sm"><option value="" disabled>Sélectionnez...</option>{Array.isArray(currentUni?.faculties) && currentUni.faculties.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}</select></div>
+                           <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom de la filière</label><input name="name" required defaultValue={selectedMajor?.name} placeholder="ex: Génie Logiciel" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 text-sm" /></div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label><input name="domain" required defaultValue={selectedMajor?.domain} placeholder="Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
-                              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label><select name="level" defaultValue={selectedMajor?.level || "Licence"} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20"><option value="Licence">Licence</option><option value="Master">Master</option><option value="Doctorat">Doctorat</option></select></div>
+                              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Domaine</label><input name="domain" required defaultValue={selectedMajor?.domain} placeholder="Informatique" className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 text-sm" /></div>
+                              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Niveau</label><select name="level" defaultValue={selectedMajor?.level || "Licence"} className="w-full p-4 rounded-xl bg-[#162a1f] border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 text-sm"><option value="Licence">Licence</option><option value="Master">Master</option><option value="Doctorat">Doctorat</option></select></div>
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée</label><input name="duration" required defaultValue={selectedMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
+                              <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée</label><input name="duration" required defaultValue={selectedMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20 text-sm" /></div>
                            </div>
 
                            <div className="space-y-4 pt-4 border-t border-white/5">
                              <label className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2"><span className="material-symbols-outlined text-sm">work</span> Débouchés (Métiers)</label>
                              <div className="flex gap-2">
                                <input value={newProspect} onChange={(e) => setNewProspect(e.target.value)} placeholder="ex: Développeur Web" className="flex-1 p-3 rounded-xl bg-white/5 border-none text-xs font-bold text-white outline-none focus:ring-1 focus:ring-primary/20" />
-                               <button type="button" onClick={addProspect} className="px-4 bg-primary text-black rounded-xl font-black text-[10px] uppercase">Ajouter</button>
+                               <button type="button" onClick={addProspect} className="px-4 bg-primary text-black rounded-xl font-black text-[9px] md:text-[10px] uppercase">Ajouter</button>
                              </div>
                              <div className="flex flex-wrap gap-2">
                                {prospects.map((p, i) => (
-                                 <div key={i} className="px-3 py-1.5 bg-white/10 rounded-lg text-[10px] font-bold text-white border border-white/10 flex items-center gap-2">
+                                 <div key={i} className="px-3 py-1.5 bg-white/10 rounded-lg text-[9px] md:text-[10px] font-bold text-white border border-white/10 flex items-center gap-2">
                                    {p} <button type="button" onClick={() => removeProspect(i)} className="material-symbols-outlined text-xs hover:text-red-500">close</button>
                                  </div>
                                ))}
@@ -576,20 +579,20 @@ const AdminDashboard: React.FC = () => {
                              <label className="text-[10px] font-black uppercase text-amber-400 tracking-[0.2em] flex items-center gap-2"><span className="material-symbols-outlined text-sm">school</span> Diplômes Requis</label>
                              <div className="flex gap-2">
                                <input value={newDiploma} onChange={(e) => setNewDiploma(e.target.value)} placeholder="ex: BAC C ou D" className="flex-1 p-3 rounded-xl bg-white/5 border-none text-xs font-bold text-white outline-none focus:ring-1 focus:ring-amber-400/20" />
-                               <button type="button" onClick={addDiploma} className="px-4 bg-amber-400 text-black rounded-xl font-black text-[10px] uppercase">Ajouter</button>
+                               <button type="button" onClick={addDiploma} className="px-4 bg-amber-400 text-black rounded-xl font-black text-[9px] md:text-[10px] uppercase">Ajouter</button>
                              </div>
                              <div className="flex flex-wrap gap-2">
                                {diplomas.map((d, i) => (
-                                 <div key={i} className="px-3 py-1.5 bg-white/10 rounded-lg text-[10px] font-bold text-white border border-white/10 flex items-center gap-2">
+                                 <div key={i} className="px-3 py-1.5 bg-white/10 rounded-lg text-[9px] md:text-[10px] font-bold text-white border border-white/10 flex items-center gap-2">
                                    {d} <button type="button" onClick={() => removeDiploma(i)} className="material-symbols-outlined text-xs hover:text-red-500">close</button>
                                  </div>
                                ))}
                              </div>
                            </div>
 
-                           <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">{isProcessing ? "Enregistrement..." : isEditing ? "Mettre à jour la filière" : "+ Créer la filière"}</button>
+                           <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[10px] md:text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50 mt-4">{isProcessing ? "Enregistrement..." : isEditing ? "Mettre à jour la filière" : "+ Créer la filière"}</button>
                         </form>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">{!isEditing && (<button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>)}<button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">{isEditing ? "Annuler" : "Terminer"}</button></div>
+                        <div className="flex flex-col sm:flex-row gap-3 md:gap-4 pt-4 md:pt-6 border-t border-white/5">{!isEditing && (<button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>)}<button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">{isEditing ? "Annuler" : "Terminer"}</button></div>
                      </div>
                    )}
                 </div>
