@@ -123,25 +123,51 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleInstitutionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); setIsProcessing(true);
+    e.preventDefault(); 
+    setIsProcessing(true);
+    
     const fd = new FormData(e.currentTarget);
-    const apiPayload = new FormData();
-    apiPayload.append('name', fd.get('name') as string);
-    apiPayload.append('acronym', fd.get('acronym') as string);
-    apiPayload.append('city', fd.get('location') as string);
-    apiPayload.append('type', establishmentStatus.toLowerCase());
-    apiPayload.append('is_standalone', isSchoolKind ? '1' : '0');
+    const name = fd.get('name') as string;
+    const acronym = fd.get('acronym') as string;
+    const city = fd.get('location') as string;
+    const type = establishmentStatus.toLowerCase();
+    const is_standalone = isSchoolKind ? '1' : '0';
 
     try {
-      if (isEditing && currentInstId) {
-        await updateUniversity(currentInstId, { name: fd.get('name'), acronym: fd.get('acronym'), city: fd.get('location'), type: establishmentStatus.toLowerCase() });
+      // Si on a déjà un ID (soit on édite, soit on vient de le créer au passage précédent)
+      // on appelle UPDATE au lieu de ADD pour éviter les doublons.
+      if (currentInstId) {
+        await updateUniversity(currentInstId, { 
+          name, 
+          acronym, 
+          city, 
+          type, 
+          is_standalone 
+        });
       } else {
+        // Premier passage : création réelle
+        const apiPayload = new FormData();
+        apiPayload.append('name', name);
+        apiPayload.append('acronym', acronym);
+        apiPayload.append('city', city);
+        apiPayload.append('type', type);
+        apiPayload.append('is_standalone', is_standalone);
+
         const result = await addUniversity(apiPayload);
         const newId = result?.id || result?.data?.id || result?.university?.id || result?.institution?.id;
-        if (newId) setCurrentInstId(newId.toString()); else throw new Error("ID non récupéré.");
+        
+        if (newId) {
+          setCurrentInstId(newId.toString());
+        } else {
+          throw new Error("Impossible de récupérer l'identifiant après création.");
+        }
       }
       setWizardStep('faculties');
-    } catch (err: any) { alert("Erreur : " + err.message); } finally { setIsProcessing(false); }
+    } catch (err: any) { 
+      alert("Erreur lors de l'enregistrement : " + err.message); 
+    } finally { 
+      setIsProcessing(false); 
+    }
   };
 
   const addProspect = () => { if (newProspect.trim()) { setProspects([...prospects, newProspect.trim()]); setNewProspect(''); } };
@@ -311,7 +337,7 @@ const AdminDashboard: React.FC = () => {
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
                    <div className="text-left">
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing ? 'Modifier' : 'Nouvel'} Élément</h3>
+                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing || currentInstId ? 'Modifier' : 'Nouvel'} Élément</h3>
                       <div className="flex items-center gap-2 mt-2">
                          <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
