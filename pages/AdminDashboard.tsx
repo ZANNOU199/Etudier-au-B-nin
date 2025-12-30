@@ -13,6 +13,21 @@ const UNI_PER_PAGE = 4;
 const APPS_PER_PAGE = 8;
 const MAJORS_PER_PAGE = 8;
 
+/**
+ * Normalise une chaîne de caractères pour comparaison :
+ * - Passage en minuscules
+ * - Suppression des accents
+ * - Suppression des espaces superflus
+ */
+const normalizeString = (str: string) => {
+  if (!str) return '';
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};
+
 const AdminDashboard: React.FC = () => {
   const { 
     applications, updateApplicationStatus, deleteApplication,
@@ -42,6 +57,12 @@ const AdminDashboard: React.FC = () => {
   const [establishmentStatus, setEstablishmentStatus] = useState<'Public' | 'Privé'>('Public');
   const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // États pour la suggestion de noms
+  const [nameInput, setNameInput] = useState('');
+  const [acronymInput, setAcronymInput] = useState('');
+  const [locationInput, setLocationInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [prospects, setProspects] = useState<string[]>([]);
   const [diplomas, setDiplomas] = useState<string[]>([]);
@@ -102,6 +123,17 @@ const AdminDashboard: React.FC = () => {
     }
   }, [selectedMajor]);
 
+  // Suggestions filtrées en fonction de la saisie
+  const nameSuggestions = useMemo(() => {
+    if (!nameInput || currentInstId) return [];
+    const normalizedQuery = normalizeString(nameInput);
+    if (normalizedQuery.length < 2) return [];
+    return universities.filter(u => 
+      normalizeString(u.name).includes(normalizedQuery) || 
+      normalizeString(u.acronym).includes(normalizedQuery)
+    ).slice(0, 5);
+  }, [nameInput, universities, currentInstId]);
+
   const handleStatusUpdate = async (id: string, status: string) => {
     try { await updateApplicationStatus(id, status); } catch (e) { alert("Erreur mise à jour statut."); }
   };
@@ -111,14 +143,37 @@ const AdminDashboard: React.FC = () => {
   };
 
   const openWizardForEdit = (uni: University) => {
-    setCurrentInstId(uni.id); setIsSchoolKind(!!uni.isStandaloneSchool); setEstablishmentStatus(uni.type);
-    setIsEditing(true); setWizardStep('institution'); setShowWizard(true);
+    setCurrentInstId(uni.id); 
+    setIsSchoolKind(!!uni.isStandaloneSchool); 
+    setEstablishmentStatus(uni.type);
+    setNameInput(uni.name);
+    setAcronymInput(uni.acronym);
+    setLocationInput(uni.location);
+    setIsEditing(true); 
+    setWizardStep('institution'); 
+    setShowWizard(true);
+  };
+
+  const selectSuggestion = (uni: University) => {
+    setCurrentInstId(uni.id);
+    setNameInput(uni.name);
+    setAcronymInput(uni.acronym);
+    setLocationInput(uni.location);
+    setIsSchoolKind(!!uni.isStandaloneSchool);
+    setEstablishmentStatus(uni.type);
+    setShowSuggestions(false);
   };
 
   const openWizardForEditMajor = (major: Major) => {
     setSelectedMajor(major); setCurrentInstId(major.universityId || null);
     const parent = universities.find(u => u.id === major.universityId);
-    if (parent) { setIsSchoolKind(!!parent.isStandaloneSchool); setEstablishmentStatus(parent.type); }
+    if (parent) { 
+        setIsSchoolKind(!!parent.isStandaloneSchool); 
+        setEstablishmentStatus(parent.type);
+        setNameInput(parent.name);
+        setAcronymInput(parent.acronym);
+        setLocationInput(parent.location);
+    }
     setIsEditing(true); setWizardStep('majors'); setShowWizard(true);
   };
 
@@ -126,30 +181,41 @@ const AdminDashboard: React.FC = () => {
     e.preventDefault(); 
     setIsProcessing(true);
     
-    const fd = new FormData(e.currentTarget);
-    const name = fd.get('name') as string;
-    const acronym = fd.get('acronym') as string;
-    const city = fd.get('location') as string;
     const type = establishmentStatus.toLowerCase();
     const is_standalone = isSchoolKind ? '1' : '0';
 
+    // Vérification finale si un doublon exact existe et n'a pas été sélectionné via suggestion
+    const normalizedName = normalizeString(nameInput);
+    const normalizedAcronym = normalizeString(acronymInput);
+    
+    let targetId = currentInstId;
+    if (!targetId) {
+        const existing = universities.find(u => 
+            normalizeString(u.name) === normalizedName || 
+            normalizeString(u.acronym) === normalizedAcronym
+        );
+        if (existing) {
+            targetId = existing.id;
+        }
+    }
+
     try {
-      // Si on a déjà un ID (soit on édite, soit on vient de le créer au passage précédent)
-      // on appelle UPDATE au lieu de ADD pour éviter les doublons.
-      if (currentInstId) {
-        await updateUniversity(currentInstId, { 
-          name, 
-          acronym, 
-          city, 
+      if (targetId) {
+        // Mode UPDATE (existant trouvé ou sélectionné)
+        await updateUniversity(targetId, { 
+          name: nameInput, 
+          acronym: acronymInput, 
+          city: locationInput, 
           type, 
           is_standalone 
         });
+        setCurrentInstId(targetId);
       } else {
-        // Premier passage : création réelle
+        // Mode CREATE
         const apiPayload = new FormData();
-        apiPayload.append('name', name);
-        apiPayload.append('acronym', acronym);
-        apiPayload.append('city', city);
+        apiPayload.append('name', nameInput);
+        apiPayload.append('acronym', acronymInput);
+        apiPayload.append('city', locationInput);
         apiPayload.append('type', type);
         apiPayload.append('is_standalone', is_standalone);
 
@@ -159,7 +225,7 @@ const AdminDashboard: React.FC = () => {
         if (newId) {
           setCurrentInstId(newId.toString());
         } else {
-          throw new Error("Impossible de récupérer l'identifiant après création.");
+          throw new Error("Erreur de création de l'identifiant.");
         }
       }
       setWizardStep('faculties');
@@ -174,6 +240,7 @@ const AdminDashboard: React.FC = () => {
   const removeProspect = (index: number) => setProspects(prospects.filter((_, i) => i !== index));
 
   const addDiploma = () => { if (newDiploma.trim()) { setDiplomas([...diplomas, newDiploma.trim()]); setNewDiploma(''); } };
+  // Fixed: Added missing 'const' keyword for removeDiploma function definition.
   const removeDiploma = (index: number) => setDiplomas(diplomas.filter((_, i) => i !== index));
 
   const SidebarNav = () => (
@@ -299,7 +366,12 @@ const AdminDashboard: React.FC = () => {
                            <div className="flex gap-3"><button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">edit</span></button><button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">delete</span></button></div>
                         </div>
                       ))}
-                      <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); setSelectedMajor(null); setProspects([]); setDiplomas([]); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group"><div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-3xl font-bold">add</span></div><span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span></button>
+                      <button onClick={() => { 
+                          setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); setSelectedMajor(null); setProspects([]); setDiplomas([]); 
+                          setNameInput(''); setAcronymInput(''); setLocationInput('');
+                        }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                        <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-3xl font-bold">add</span></div><span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
+                      </button>
                     </div>
                     {Math.ceil(filteredUnis.length / UNI_PER_PAGE) > 1 && (<div className="flex justify-center gap-2 mt-10">{Array.from({ length: Math.ceil(filteredUnis.length / UNI_PER_PAGE) }).map((_, i) => (<button key={i} onClick={() => setUniPage(i+1)} className={`size-10 rounded-xl font-black text-xs transition-all ${uniPage === i+1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}>{i+1}</button>))}</div>)}
                   </div>
@@ -337,13 +409,15 @@ const AdminDashboard: React.FC = () => {
              <div className="bg-[#162a1f] w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-300 border border-white/5">
                 <div className="bg-white/5 px-10 py-8 flex items-center justify-between border-b border-white/5">
                    <div className="text-left">
-                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">{isEditing || currentInstId ? 'Modifier' : 'Nouvel'} Élément</h3>
+                      <h3 className="text-2xl font-black text-white tracking-tight leading-none">
+                        {(currentInstId || isEditing) ? 'Édition' : 'Nouvel'} Élément
+                      </h3>
                       <div className="flex items-center gap-2 mt-2">
                          <span className="material-symbols-outlined text-primary text-sm font-bold">{wizardStep === 'institution' ? 'account_balance' : wizardStep === 'faculties' ? 'domain' : 'school'}</span>
                          <p className="text-[10px] font-black text-primary uppercase tracking-widest">{wizardStep === 'institution' ? 'Étape 1 : Identité' : wizardStep === 'faculties' ? 'Étape 2 : Composantes' : 'Étape 3 : Filières'}</p>
                       </div>
                    </div>
-                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
+                   <button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); }} className="size-11 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined">close</span></button>
                 </div>
 
                 <div className="p-8 md:p-12 space-y-10">
@@ -351,7 +425,81 @@ const AdminDashboard: React.FC = () => {
                      <div className="space-y-8 animate-in slide-in-from-right-4 text-white text-left">
                         <div className="space-y-6"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Type d'établissement</label><div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10"><button type="button" onClick={() => setIsSchoolKind(false)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isSchoolKind ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'text-gray-500'}`}>Université</button><button type="button" onClick={() => setIsSchoolKind(true)} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isSchoolKind ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : 'text-gray-500'}`}>École / Institut</button></div></div>
                         <div className="space-y-6"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Statut</label><div className="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10"><button type="button" onClick={() => setEstablishmentStatus('Public')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Public' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-gray-500'}`}>Public</button><button type="button" onClick={() => setEstablishmentStatus('Privé')} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${establishmentStatus === 'Privé' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-gray-500'}`}>Privé</button></div></div>
-                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="md:col-span-2 space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Nom Complet</label><input name="name" defaultValue={currentUni?.name} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Sigle</label><input name="acronym" defaultValue={currentUni?.acronym} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest">Ville</label><input name="location" defaultValue={currentUni?.location} required className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div><div className="md:col-span-2 pt-6"><button type="submit" disabled={isProcessing} className="w-full py-5 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 transition-all disabled:opacity-50">{isProcessing ? "Traitement..." : "Enregistrer & Continuer"}</button></div></form>
+                        
+                        <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                          <div className="md:col-span-2 space-y-2 relative">
+                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom Complet (Saisir pour suggérer)</label>
+                            <div className="relative">
+                                <input 
+                                    name="name" 
+                                    required 
+                                    value={nameInput}
+                                    onFocus={() => setShowSuggestions(true)}
+                                    onChange={(e) => { 
+                                        setNameInput(e.target.value); 
+                                        setShowSuggestions(true); 
+                                        if (currentInstId) setCurrentInstId(null); 
+                                    }}
+                                    placeholder="Ex: Université d'Abomey-Calavi"
+                                    className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
+                                />
+                                {showSuggestions && nameSuggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#162a1f] border border-white/10 rounded-2xl shadow-2xl z-[110] overflow-hidden">
+                                        {nameSuggestions.map(uni => (
+                                            <button 
+                                                key={uni.id} 
+                                                type="button"
+                                                onClick={() => selectSuggestion(uni)}
+                                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-white/5 text-left border-b border-white/5 last:border-none group"
+                                            >
+                                                <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                                    <span className="material-symbols-outlined text-sm">account_balance</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-white">{uni.name}</p>
+                                                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{uni.acronym} • {uni.location}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Sigle</label>
+                            <input 
+                                name="acronym" 
+                                required 
+                                value={acronymInput}
+                                onChange={(e) => setAcronymInput(e.target.value)}
+                                placeholder="UAC"
+                                className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Ville</label>
+                            <input 
+                                name="location" 
+                                required 
+                                value={locationInput}
+                                onChange={(e) => setLocationInput(e.target.value)}
+                                placeholder="Abomey-Calavi"
+                                className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
+                            />
+                          </div>
+                          
+                          <div className="md:col-span-2 pt-6">
+                            <button 
+                                type="submit" 
+                                disabled={isProcessing} 
+                                className={`w-full py-5 font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl transition-all disabled:opacity-50 ${currentInstId ? 'bg-amber-400 text-black shadow-amber-400/20' : 'bg-primary text-black shadow-primary/20'}`}
+                            >
+                                {isProcessing ? "Traitement..." : currentInstId ? "Mettre à jour & Continuer" : "Enregistrer & Continuer"}
+                            </button>
+                          </div>
+                        </form>
                      </div>
                    )}
 
@@ -371,7 +519,6 @@ const AdminDashboard: React.FC = () => {
                            e.preventDefault(); setIsProcessing(true); const formRef = e.currentTarget; const fd = new FormData(formRef);
                            try {
                              if (!currentInstId) throw new Error("ID institution manquant.");
-                             // On utilise des clés camelCase pour correspondre à l'interface frontend attendue par CMSContext
                              const majorPayload: any = {
                                universityId: currentInstId,
                                facultyId: fd.get('faculty_id') ? (fd.get('faculty_id') as string) : null,
@@ -397,7 +544,6 @@ const AdminDashboard: React.FC = () => {
                            </div>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Durée</label><input name="duration" required defaultValue={selectedMajor?.duration} className="w-full p-4 rounded-xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" /></div>
-                              
                            </div>
 
                            <div className="space-y-4 pt-4 border-t border-white/5">
@@ -432,7 +578,7 @@ const AdminDashboard: React.FC = () => {
 
                            <button type="submit" disabled={isProcessing} className="w-full py-4 bg-primary text-black font-black rounded-2xl text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all disabled:opacity-50">{isProcessing ? "Enregistrement..." : isEditing ? "Mettre à jour la filière" : "+ Créer la filière"}</button>
                         </form>
-                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">{!isEditing && (<button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>)}<button onClick={() => { setShowWizard(false); setSelectedMajor(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">{isEditing ? "Annuler" : "Terminer"}</button></div>
+                        <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/5">{!isEditing && (<button onClick={() => setWizardStep('faculties')} className="flex-1 py-4 text-gray-500 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors">Retour</button>)}<button onClick={() => { setShowWizard(false); setSelectedMajor(null); setCurrentInstId(null); refreshData(); }} className="flex-1 py-4 bg-white/5 text-gray-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-white/5">{isEditing ? "Annuler" : "Terminer"}</button></div>
                      </div>
                    )}
                 </div>
