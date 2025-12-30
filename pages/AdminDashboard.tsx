@@ -14,10 +14,7 @@ const APPS_PER_PAGE = 8;
 const MAJORS_PER_PAGE = 8;
 
 /**
- * Normalise une chaîne de caractères pour comparaison :
- * - Passage en minuscules
- * - Suppression des accents
- * - Suppression des espaces superflus
+ * Normalise une chaîne pour comparaison robuste (casse, accents, espaces)
  */
 const normalizeString = (str: string) => {
   if (!str) return '';
@@ -58,7 +55,7 @@ const AdminDashboard: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // États pour la suggestion de noms
+  // États du formulaire avec suggestions
   const [nameInput, setNameInput] = useState('');
   const [acronymInput, setAcronymInput] = useState('');
   const [locationInput, setLocationInput] = useState('');
@@ -123,14 +120,14 @@ const AdminDashboard: React.FC = () => {
     }
   }, [selectedMajor]);
 
-  // Suggestions filtrées en fonction de la saisie
+  // Génération des suggestions basées sur la saisie actuelle
   const nameSuggestions = useMemo(() => {
-    if (!nameInput || currentInstId) return [];
-    const normalizedQuery = normalizeString(nameInput);
-    if (normalizedQuery.length < 2) return [];
+    const query = normalizeString(nameInput);
+    if (!query || query.length < 1 || currentInstId) return [];
+    
     return universities.filter(u => 
-      normalizeString(u.name).includes(normalizedQuery) || 
-      normalizeString(u.acronym).includes(normalizedQuery)
+      normalizeString(u.name).includes(query) || 
+      normalizeString(u.acronym).includes(query)
     ).slice(0, 5);
   }, [nameInput, universities, currentInstId]);
 
@@ -142,6 +139,21 @@ const AdminDashboard: React.FC = () => {
     try { await updateUniversity(uni.id, { recommended: uni.recommended === 1 ? 0 : 1 }); } catch (e) { alert("Erreur reco."); }
   };
 
+  // Préparation du wizard pour la création (Reset total)
+  const openWizardForNew = () => {
+    setCurrentInstId(null);
+    setIsEditing(false);
+    setNameInput('');
+    setAcronymInput('');
+    setLocationInput('');
+    setEstablishmentStatus('Public');
+    setIsSchoolKind(false);
+    setShowSuggestions(false);
+    setWizardStep('institution');
+    setShowWizard(true);
+  };
+
+  // Préparation du wizard pour l'édition
   const openWizardForEdit = (uni: University) => {
     setCurrentInstId(uni.id); 
     setIsSchoolKind(!!uni.isStandaloneSchool); 
@@ -184,10 +196,10 @@ const AdminDashboard: React.FC = () => {
     const type = establishmentStatus.toLowerCase();
     const is_standalone = isSchoolKind ? '1' : '0';
 
-    // Vérification finale si un doublon exact existe et n'a pas été sélectionné via suggestion
     const normalizedName = normalizeString(nameInput);
     const normalizedAcronym = normalizeString(acronymInput);
     
+    // Détection forcée du doublon au moment de l'envoi si non sélectionné manuellement
     let targetId = currentInstId;
     if (!targetId) {
         const existing = universities.find(u => 
@@ -225,7 +237,7 @@ const AdminDashboard: React.FC = () => {
         if (newId) {
           setCurrentInstId(newId.toString());
         } else {
-          throw new Error("Erreur de création de l'identifiant.");
+          throw new Error("L'API n'a pas retourné d'ID valide.");
         }
       }
       setWizardStep('faculties');
@@ -240,7 +252,6 @@ const AdminDashboard: React.FC = () => {
   const removeProspect = (index: number) => setProspects(prospects.filter((_, i) => i !== index));
 
   const addDiploma = () => { if (newDiploma.trim()) { setDiplomas([...diplomas, newDiploma.trim()]); setNewDiploma(''); } };
-  // Fixed: Added missing 'const' keyword for removeDiploma function definition.
   const removeDiploma = (index: number) => setDiplomas(diplomas.filter((_, i) => i !== index));
 
   const SidebarNav = () => (
@@ -366,10 +377,7 @@ const AdminDashboard: React.FC = () => {
                            <div className="flex gap-3"><button onClick={() => openWizardForEdit(uni)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-primary flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">edit</span></button><button onClick={() => deleteUniversity(uni.id)} className="size-11 rounded-xl bg-white/5 text-gray-400 hover:text-red-500 flex items-center justify-center transition-all border border-white/5"><span className="material-symbols-outlined">delete</span></button></div>
                         </div>
                       ))}
-                      <button onClick={() => { 
-                          setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); setSelectedMajor(null); setProspects([]); setDiplomas([]); 
-                          setNameInput(''); setAcronymInput(''); setLocationInput('');
-                        }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
+                      <button onClick={openWizardForNew} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group">
                         <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-3xl font-bold">add</span></div><span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span>
                       </button>
                     </div>
@@ -428,29 +436,30 @@ const AdminDashboard: React.FC = () => {
                         
                         <form onSubmit={handleInstitutionSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
                           <div className="md:col-span-2 space-y-2 relative">
-                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom Complet (Saisir pour suggérer)</label>
+                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest px-2">Nom Complet (Débutez la saisie pour voir les suggestions)</label>
                             <div className="relative">
                                 <input 
                                     name="name" 
                                     required 
+                                    autoComplete="off"
                                     value={nameInput}
                                     onFocus={() => setShowSuggestions(true)}
                                     onChange={(e) => { 
                                         setNameInput(e.target.value); 
                                         setShowSuggestions(true); 
-                                        if (currentInstId) setCurrentInstId(null); 
+                                        if (currentInstId) setCurrentInstId(null); // On repart sur une création si on modifie le nom
                                     }}
                                     placeholder="Ex: Université d'Abomey-Calavi"
                                     className="w-full p-4 rounded-2xl bg-white/5 border-none font-bold text-white outline-none focus:ring-2 focus:ring-primary/20" 
                                 />
                                 {showSuggestions && nameSuggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#162a1f] border border-white/10 rounded-2xl shadow-2xl z-[110] overflow-hidden">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-[#1b3326] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[200] overflow-hidden">
                                         {nameSuggestions.map(uni => (
                                             <button 
                                                 key={uni.id} 
                                                 type="button"
                                                 onClick={() => selectSuggestion(uni)}
-                                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-white/5 text-left border-b border-white/5 last:border-none group"
+                                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-primary/10 text-left border-b border-white/5 last:border-none group transition-colors"
                                             >
                                                 <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                                                     <span className="material-symbols-outlined text-sm">account_balance</span>
@@ -471,6 +480,7 @@ const AdminDashboard: React.FC = () => {
                             <input 
                                 name="acronym" 
                                 required 
+                                autoComplete="off"
                                 value={acronymInput}
                                 onChange={(e) => setAcronymInput(e.target.value)}
                                 placeholder="UAC"
@@ -483,6 +493,7 @@ const AdminDashboard: React.FC = () => {
                             <input 
                                 name="location" 
                                 required 
+                                autoComplete="off"
                                 value={locationInput}
                                 onChange={(e) => setLocationInput(e.target.value)}
                                 placeholder="Abomey-Calavi"
