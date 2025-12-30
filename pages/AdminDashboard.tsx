@@ -148,12 +148,13 @@ const AdminDashboard: React.FC = () => {
     const type = establishmentStatus.toLowerCase();
     const is_standalone = isSchoolKind ? '1' : '0';
 
-    // Normalisation pour vérification des doublons
+    // Normalisation pour vérification des doublons (casse et accents)
     const normalizedNewName = normalizeString(name);
     const normalizedNewAcronym = normalizeString(acronym);
 
-    // Recherche de doublon (on ignore l'établissement en cours de modification si currentInstId existe)
+    // Recherche de doublon
     const duplicate = universities.find(u => {
+      // Si on est déjà en train d'éditer cet établissement spécifique, ce n'est pas un doublon
       const isSelf = currentInstId !== null && String(u.id) === String(currentInstId);
       if (isSelf) return false;
 
@@ -161,15 +162,9 @@ const AdminDashboard: React.FC = () => {
              normalizeString(u.acronym) === normalizedNewAcronym;
     });
 
-    if (duplicate) {
-      alert(`Attention : L'établissement "${duplicate.name}" (${duplicate.acronym}) semble déjà exister dans la base de données. Veuillez vérifier le nom ou le sigle.`);
-      setIsProcessing(false);
-      return;
-    }
-
     try {
       if (currentInstId) {
-        // Mode Mise à jour (Edition ou Navigation arrière dans le wizard)
+        // SCÉNARIO 1 : MISE À JOUR (on a déjà un ID, soit via Edition soit via premier passage wizard)
         await updateUniversity(currentInstId, { 
           name, 
           acronym, 
@@ -177,8 +172,20 @@ const AdminDashboard: React.FC = () => {
           type, 
           is_standalone 
         });
+      } else if (duplicate) {
+        // SCÉNARIO 2 : DOUBLON DÉTECTÉ LORS D'UNE CRÉATION
+        // On notifie et on bascule automatiquement sur l'API UPDATE de l'existant
+        alert(`Information : L'établissement "${duplicate.name}" (${duplicate.acronym}) existe déjà. Le système va mettre à jour cet enregistrement existant au lieu d'en créer un nouveau.`);
+        setCurrentInstId(duplicate.id);
+        await updateUniversity(duplicate.id, { 
+          name, 
+          acronym, 
+          city, 
+          type, 
+          is_standalone 
+        });
       } else {
-        // Premier passage : Création réelle
+        // SCÉNARIO 3 : CRÉATION RÉELLE
         const apiPayload = new FormData();
         apiPayload.append('name', name);
         apiPayload.append('acronym', acronym);
@@ -192,12 +199,12 @@ const AdminDashboard: React.FC = () => {
         if (newId) {
           setCurrentInstId(newId.toString());
         } else {
-          throw new Error("Erreur de récupération de l'identifiant système.");
+          throw new Error("Erreur système : l'ID de l'établissement n'a pas pu être généré.");
         }
       }
       setWizardStep('faculties');
     } catch (err: any) { 
-      alert("Erreur technique : " + err.message); 
+      alert("Erreur technique lors de l'enregistrement : " + err.message); 
     } finally { 
       setIsProcessing(false); 
     }
@@ -334,9 +341,7 @@ const AdminDashboard: React.FC = () => {
                       ))}
                       <button onClick={() => { setShowWizard(true); setWizardStep('institution'); setCurrentInstId(null); setIsEditing(false); setEstablishmentStatus('Public'); setSelectedMajor(null); setProspects([]); setDiplomas([]); }} className="min-h-[140px] flex items-center justify-center gap-6 rounded-[32px] border-2 border-dashed border-primary/20 hover:bg-primary/5 transition-all group"><div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform"><span className="material-symbols-outlined text-3xl font-bold">add</span></div><span className="font-black uppercase text-[10px] tracking-[0.2em] text-primary">Nouvel établissement</span></button>
                     </div>
-                    {Math.ceil(filteredUnis.length / UNI_PER_PAGE) > 1 && (<div className="flex justify-center gap-2 mt-10">{Array.from({ length: Math.ceil(filteredUnis.length / UNI_PER_PAGE) }).map((_, i) => (
-                      <button key={i} onClick={() => setUniPage(i+1)} className={`size-10 rounded-xl font-black text-xs transition-all ${uniPage === i+1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}>{i+1}</button>
-                    ))}</div>)}
+                    {Math.ceil(filteredUnis.length / UNI_PER_PAGE) > 1 && (<div className="flex justify-center gap-2 mt-10">{Array.from({ length: Math.ceil(filteredUnis.length / UNI_PER_PAGE) }).map((_, i) => (<button key={i} onClick={() => setUniPage(i+1)} className={`size-10 rounded-xl font-black text-xs transition-all ${uniPage === i+1 ? 'bg-primary text-black' : 'bg-white/5 text-gray-500'}`}>{i+1}</button>))}</div>)}
                   </div>
                )}
 
